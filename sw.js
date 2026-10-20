@@ -1,5 +1,5 @@
 // Offline shell, no background notification or network analytics.
-const CACHE = 'fitnesspilot-shell-ro-dense-v5';
+const CACHE = 'fitnesspilot-shell-recovery-ul-v6';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './core.js', './ro-feedback.js', './ro-sound-data.js', './ro-theme.css', './manifest.webmanifest', './assets/icon.svg'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
