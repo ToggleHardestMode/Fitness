@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101827">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Your private training log, workout planner and strength dashboard.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; connect-src 'self'">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./assets/icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+  <title>FitnessPilot · Train with purpose</title>
+</head>
+<body>
+  <div class="shell">
+    <aside class="side-head">
+      <div class="brand"><img src="./assets/icon.svg" alt="" width="38" height="38"><div><strong>FitnessPilot</strong><small>YOUR TRAINING SYSTEM</small></div></div>
+      <div class="side-tag">PRIVATE • LOCAL FIRST</div>
+      <nav class="desktop-tabs" aria-label="Primary desktop navigation"></nav>
+      <div class="side-bottom">Built for repeatable progress.<br>Not perfect workouts.</div>
+    </aside>
+    <main id="main" tabindex="-1" aria-live="off"></main>
+    <nav class="bottom-tabs" aria-label="Primary navigation"></nav>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <input id="csv-file" type="file" accept=".csv,text/csv,text/plain" hidden>
+  <input id="backup-file" type="file" accept=".json,application/json" hidden>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
