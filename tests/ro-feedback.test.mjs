@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { SQUISH_SOUND_URL } from '../ro-sound-data.js';
 
 class EventSink {
   listeners = new Map();
@@ -16,38 +17,22 @@ class EventSink {
 const doc = new EventSink();
 const win = new EventSink();
 const preferences = new Map();
-const oscillators = [];
-const gains = [];
+let playCount = 0;
+let pauseCount = 0;
+let audioCreated = 0;
+let lastAudio;
 win.localStorage = {
   getItem(key) { return preferences.get(key) ?? null; },
   setItem(key, value) { preferences.set(key, value); },
 };
-function parameter() {
-  const changes = [];
-  return {
-    changes,
-    setValueAtTime(value, when) { changes.push({ op: 'set', value, when }); },
-    exponentialRampToValueAtTime(value, when) { changes.push({ op: 'ramp', value, when }); },
-  };
+class FakeAudio {
+  constructor(src) { this.src = src; this.currentTime = 5; audioCreated++; lastAudio = this; }
+  pause() { pauseCount++; }
+  play() { playCount++; return Promise.resolve(); }
 }
-class FakeAudioContext {
-  currentTime = 0;
-  state = 'running';
-  destination = {};
-  createOscillator() {
-    const osc = { type: '', frequency: parameter(), connect() {}, start(at) { this.started = at; }, stop(at) { this.stopped = at; } };
-    oscillators.push(osc);
-    return osc;
-  }
-  createGain() {
-    const gain = { gain: parameter(), connect() {} };
-    gains.push(gain);
-    return gain;
-  }
-}
-win.AudioContext = FakeAudioContext;
 globalThis.document = doc;
 globalThis.window = win;
+globalThis.Audio = FakeAudio;
 const { initRoFeedback, isRoSoundEnabled } = await import('../ro-feedback.js');
 initRoFeedback();
 const original = doc.listeners.get('click').length;
@@ -56,20 +41,24 @@ const classes = new Set();
 const button = { disabled: false, classList: { add: v => classes.add(v), remove: v => classes.delete(v) } };
 const event = (props = {}) => ({ target: { closest: () => button }, isTrusted: true, button: 0, ...props });
 
-test('initialization is idempotent and sound starts off', () => {
+test('Initialization is idempotent, sound starts off', () => {
   assert.equal(doc.listeners.get('click').length, original);
   assert.equal(isRoSoundEnabled(), false);
 });
-test('pointer press appears, then disappears on release or cancel', () => {
+test('Pressed state clears on release, cancellation and keyboard', () => {
   doc.fire('pointerdown', event());
   assert.equal(classes.has('ro-pressed'), true);
   doc.fire('pointerup', event());
-  assert.equal(classes.has('ro-pressed'), false);
+  assert.equal(classes.size, 0);
   doc.fire('pointerdown', event());
   doc.fire('pointercancel', event());
-  assert.equal(classes.has('ro-pressed'), false);
+  assert.equal(classes.size, 0);
+  doc.fire('keydown', event({ key: 'Enter' }));
+  assert.equal(classes.has('ro-pressed'), true);
+  doc.fire('keyup', event({ key: 'Enter' }));
+  assert.equal(classes.size, 0);
 });
-test('disabled and secondary mouse buttons do not press', () => {
+test('Disabled buttons and secondary mouse button are ignored', () => {
   button.disabled = true;
   doc.fire('pointerdown', event());
   assert.equal(classes.size, 0);
@@ -77,34 +66,36 @@ test('disabled and secondary mouse buttons do not press', () => {
   doc.fire('pointerdown', event({ button: 2 }));
   assert.equal(classes.size, 0);
 });
-test('keyboard press state clears on keyup', () => {
-  doc.fire('keydown', event({ key: 'Enter' }));
-  assert.equal(classes.has('ro-pressed'), true);
-  doc.fire('keyup', event({ key: 'Enter' }));
-  assert.equal(classes.has('ro-pressed'), false);
+test('Embedded sound is a nonempty MP3 with the expected header', () => {
+  assert.match(SQUISH_SOUND_URL, /^data:audio\/mpeg;base64,/);
+  const bytes = Buffer.from(SQUISH_SOUND_URL.split(',')[1], 'base64');
+  assert.ok(bytes.length > 1000);
+  assert.equal(bytes.subarray(0, 3).toString(), 'ID3');
 });
-test('slime feedback is opt-in and ignores synthetic clicks', () => {
+test('Sound off by default, enabled with checkbox and saved locally', () => {
   doc.fire('click', event());
-  assert.equal(oscillators.length, 0);
+  assert.equal(playCount, 0);
   doc.fire('change', { target: { id: 'ro-click-sound', checked: true } });
   assert.equal(isRoSoundEnabled(), true);
   assert.equal(preferences.get('fitnesspilot.ui.click-sound.v1'), 'on');
+});
+test('Real clicks use sample at moderate volume, synthetic clicks ignored', () => {
   doc.fire('click', event({ isTrusted: false }));
-  assert.equal(oscillators.length, 0);
+  assert.equal(playCount, 0);
   doc.fire('click', event());
-  assert.equal(oscillators.length, 2);
+  assert.equal(playCount, 1);
+  assert.equal(audioCreated, 1);
+  assert.equal(lastAudio.src, SQUISH_SOUND_URL);
+  assert.equal(lastAudio.volume, 0.55);
+  assert.equal(lastAudio.currentTime, 0);
+  assert.equal(pauseCount, 1);
+});
+test('Rapid taps restart same sample rather than stacking, off stops sound', () => {
+  doc.fire('click', event());
+  doc.fire('click', event());
+  assert.equal(playCount, 3);
+  assert.equal(audioCreated, 1);
   doc.fire('change', { target: { id: 'ro-click-sound', checked: false } });
   doc.fire('click', event());
-  assert.equal(oscillators.length, 2);
-});
-test('sound glides, rebounds and ends quietly within 250 ms', () => {
-  assert.equal(oscillators[0].type, 'sine');
-  assert.equal(oscillators[1].type, 'triangle');
-  assert.equal(oscillators[0].frequency.changes.length, 4);
-  const notes = oscillators[0].frequency.changes.map(x => x.value);
-  assert.deepEqual(notes, [590, 185, 235, 125]);
-  assert.equal(oscillators[0].stopped, 0.25);
-  assert.equal(oscillators[1].stopped, 0.225);
-  assert.ok(gains.every(x => x.gain.changes.at(-1).value <= 0.0001));
-  assert.ok(gains.every(x => Math.max(...x.gain.changes.map(y => y.value)) <= 0.03));
+  assert.equal(playCount, 3);
 });
