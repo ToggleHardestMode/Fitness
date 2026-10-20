@@ -1,0 +1,18 @@
+<PARSED TEXT FOR SHEET: 1 / 1 TABS
+TAB NAME: UpperLower-4-Day.csv>
+index,day,workout,exercise,muscle,sets,rep_min,rep_max,rest_seconds
+0,Mon,Upper A,Dumbbell Bench Press,Chest,3,8,12,120
+1,Mon,Upper A,Chest Supported Row,Back,3,8,12,120
+2,Mon,Upper A,Seated Shoulder Press,Shoulders,3,8,12,90
+3,Mon,Upper A,Lateral Raise,Shoulders,3,12,15,60
+4,Tue,Lower A,Leg Press,Quads,3,8,12,120
+5,Tue,Lower A,Seated Leg Curl,Hamstrings,3,10,15,90
+6,Tue,Lower A,Standing Calf Raise,Calves,3,12,20,60
+7,Thu,Upper B,Incline Dumbbell Press,Chest,3,8,12,120
+8,Thu,Upper B,One Arm Cable Row,Back,3,8,12,120
+9,Thu,Upper B,Triceps Pushdown,Arms,3,10,15,60
+10,Thu,Upper B,Dumbbell Curl,Arms,3,10,15,60
+11,Fri,Lower B,Hack Squat Machine,Quads,3,8,12,120
+12,Fri,Lower B,Leg Extension,Quads,3,12,15,60
+13,Fri,Lower B,Seated Leg Curl,Hamstrings,3,10,15,90
+14,Fri,Lower B,Seated Calf Raise,Calves,3,12,20,60
