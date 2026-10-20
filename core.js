@@ -21,6 +21,40 @@ Fri,Lower B,Leg Extension,Quads,3,12,15,60
 Fri,Lower B,Seated Leg Curl,Hamstrings,3,10,15,90
 Fri,Lower B,Seated Calf Raise,Calves,3,12,20,60`;
 
+// Recovery-Optimized Upper/Lower routine supplied 30 Sep 2026.
+// Unspecified rest durations use this app's 90-second default.
+export const RECOVERY_UL_CSV = `day,workout,exercise,muscle,sets,rep_min,rep_max,rest_seconds,source_note
+Mon,Recovery UL — Upper A,Flat Bench Press — Top Set,Chest,1,5,8,90,First heavy top set; barbell or heavy dumbbells
+Mon,Recovery UL — Upper A,Flat Bench Press — Back-offs,Chest,2,8,12,90,Two back-off sets after top set
+Mon,Recovery UL — Upper A,Chest-Supported DB Row,Back,3,8,12,90,Chest remains supported
+Mon,Recovery UL — Upper A,Incline DB Fly,Chest,3,12,15,90,Two-second squeeze at top
+Mon,Recovery UL — Upper A,Close-Grip Lat Pulldown,Back,3,10,12,90,Neutral or semi-supinated handle
+Mon,Recovery UL — Upper A,Lean-Away DB Lateral Raise,Shoulders,3,15,20,90,Controlled motion
+Mon,Recovery UL — Upper A,Incline DB Curl (SS1),Arms,3,10,15,90,Superset with Cable Triceps Pushdown; 60–90s rest after both
+Mon,Recovery UL — Upper A,Cable Triceps Pushdown (SS1),Arms,3,10,15,90,Superset with Incline DB Curl
+Tue,Recovery UL — Lower A,Heel-Elevated Goblet Squat — Top Set,Quads,1,6,8,90,Heels elevated 2–3 cm; maintain neutral spine
+Tue,Recovery UL — Lower A,Heel-Elevated Goblet Squat — Back-offs,Quads,2,10,12,90,Two back-off sets after top set
+Tue,Recovery UL — Lower A,DB Reverse Lunge,Quads,3,10,12,90,Reps per leg; maintain upright torso
+Tue,Recovery UL — Lower A,Weighted Glute Bridge,Glutes,3,8,12,90,Finish movement with glutes
+Tue,Recovery UL — Lower A,Slider Leg Curl,Hamstrings,3,10,15,90,Keep hips high
+Tue,Recovery UL — Lower A,Standing Calf Raise (DB),Calves,4,15,20,90,Controlled lowering
+Tue,Recovery UL — Lower A,Bird-Dogs,Core,2,8,10,90,Reps per side; low fatigue
+Thu,Recovery UL — Upper B,Incline DB Press — Top Set,Chest,1,6,9,90,First heavy top set
+Thu,Recovery UL — Upper B,Incline DB Press — Back-offs,Chest,2,10,12,90,Two back-off sets after top set
+Thu,Recovery UL — Upper B,Supported Single-Arm DB Row,Back,3,10,15,90,Reps per arm; do not twist torso
+Thu,Recovery UL — Upper B,Seated DB Shoulder Press,Shoulders,3,8,12,90,Back-supported bench preferred
+Thu,Recovery UL — Upper B,Chest-Supported DB Reverse Fly,Shoulders,3,15,20,90,"Rear delts, chest supported"
+Thu,Recovery UL — Upper B,Face Pull (SS1),Shoulders,3,15,20,60,Superset with DB Lateral Raise; third set optional
+Thu,Recovery UL — Upper B,DB Lateral Raise (SS1),Shoulders,3,15,20,60,Superset with Face Pull; third set optional; 60s rest after pair
+Thu,Recovery UL — Upper B,Hammer Curl (SS2),Arms,3,10,15,90,Superset with Overhead Cable Triceps Extension
+Thu,Recovery UL — Upper B,Overhead Cable Triceps Extension (SS2),Arms,3,10,15,90,Superset with Hammer Curl; 60–90s rest after pair
+Fri,Recovery UL — Lower B,Bulgarian Split Squat,Quads,3,8,12,90,Reps per leg; upright torso
+Fri,Recovery UL — Lower B,Cyclist Goblet Squat,Quads,3,12,15,90,Heels elevated; lighter quad emphasis
+Fri,Recovery UL — Lower B,Single-Leg Glute Bridge,Glutes,3,12,15,90,Reps per leg; avoid lumbar overextension
+Fri,Recovery UL — Lower B,Lying DB Leg Curl (SS1),Hamstrings,3,10,15,90,Superset with Slider Leg Curl; consider band alternative if unstable
+Fri,Recovery UL — Lower B,Slider Leg Curl (SS1),Hamstrings,3,10,15,90,Superset with Lying DB Leg Curl; 60–90s rest after pair
+Fri,Recovery UL — Lower B,Seated Calf Raise (DB),Calves,4,15,20,90,Dumbbell on thighs`;
+
 export function fail(message) { throw Error(message); }
 export function weekdayOf(dateKey) {
   const date = dateFromKey(dateKey);

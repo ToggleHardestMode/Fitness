@@ -1,5 +1,5 @@
 import { initRoFeedback, isRoSoundEnabled } from './ro-feedback.js';
-import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, addDays, weekdayOf, calendarICS, validateBackup, intRange } from './core.js';
+import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV } from './core.js';
 
 const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -89,6 +89,7 @@ function plan() {
   const pending=pendingWorkouts?`<div class="notice"><strong>Import preview ready:</strong> ${pendingWorkouts.length} workout template(s). This adds templates only; it will not alter the existing schedule or workout logs.<div class="preview-list">${pendingWorkouts.map(w=>`<p><strong>${DAY_NAMES[w.day]} · ${esc(w.name)}</strong> — ${w.exercises.length} exercises</p>`).join('')}</div><div class="quick-actions"><button class="btn small-btn" data-action="confirm-csv">Add templates to library</button><button class="btn secondary small-btn" data-action="cancel-csv">Cancel import</button></div></div>`:'';
   return `${shellHeading()}${heading('YOUR PROGRAM','Weekly plan','Create your schedule once. Your completed workout history stays intact if the plan changes.')}
   <section class="card"><div class="card-head"><div><h2>Choose your workout days</h2><p>Leave any day as Rest day</p></div></div><form id="schedule-form">${rows}<div class="form-actions"><button class="btn" type="submit">Save weekly schedule</button></div></form></section>
+  <div class="section-label"><h2>Your latest training plan</h2></div><section class="card stack"><strong>Recovery-Optimized Upper/Lower · 30 Sep 2026</strong><p class="subtle small">Mon Upper A · Tue Lower A · Thu Upper B · Fri Lower B. Includes top/back-off sets and labelled superset pairs. For Face Pull/Lateral Raise, the third set is optional. Reps listed per arm/leg are per side. Rest is 90 seconds by default unless noted.</p><div class="quick-actions"><button class="btn" type="button" data-action="latest-ul">Add my Recovery UL templates</button><button class="btn secondary" type="button" data-action="latest-ul-csv">Download this plan (.csv)</button></div><p class="hint">Adds templates only. Your current weekly schedule and completed workout sets are unchanged. After import, assign the new workouts to weekdays above and save the schedule.</p></section>
   <div class="section-label"><h2>Workout library</h2><span>${state.templates.length} saved templates</span></div>
   <section class="card">${state.templates.length?state.templates.map(t=>`<div class="template-row"><div><strong>${esc(t.name)}</strong><small>${DAY_NAMES[t.day]} suggestion · ${t.exercises.length} exercises</small></div><span class="badge">${t.exercises.reduce((s,e)=>s+e.sets,0)} SETS</span></div>`).join(''):'<div class="empty"><strong>No workout templates</strong>Use the starter plan or import a CSV.</div>'}</section>
   <div class="section-label"><h2>Import from Excel</h2></div><section class="card stack"><p class="subtle small">In Excel, choose <strong>Save As → CSV UTF-8</strong>. Then select that file here. The original .xlsx file is not imported directly.</p><div class="upload-card"><div class="file-ico">↓</div><div style="flex:1;min-width:140px"><strong>Excel-exported CSV</strong><p class="subtle small">Up to 500 exercises · Max 1 MB</p></div><button class="btn secondary small-btn" data-action="pick-csv">Choose CSV</button></div>${pending}<div class="quick-actions"><button class="btn ghost small-btn" data-action="example-csv">Download example CSV →</button></div><p class="hint">Required columns: day, workout, exercise, muscle, sets, rep_min, rep_max. Optional: rest_seconds. Identical imports are skipped; imported templates do not replace completed workouts.</p></section>`;
@@ -131,6 +132,12 @@ document.addEventListener('click', event=>{
     if(act==='pick-csv')$('#csv-file').click();
     if(act==='cancel-csv'){pendingWorkouts=null;render();}
     if(act==='confirm-csv'){if(!pendingWorkouts)throw Error('Choose a CSV first.');const out=addWorkouts(state,pendingWorkouts);pendingWorkouts=null;commit(out.state,`Imported ${out.added}; skipped ${out.skipped} identical template(s).`);}
+    if(act==='latest-ul'){
+      const result=addWorkouts(state,parseWorkouts(RECOVERY_UL_CSV));
+      if(result.added)commit(result.state,`Added ${result.added} Recovery UL templates. Assign them in the schedule above.`);
+      else toast('Recovery UL templates already in your library. No duplicates added.');
+    }
+    if(act==='latest-ul-csv')download('Recovery-Optimized-UL.csv',RECOVERY_UL_CSV+'\r\n','text/csv;charset=utf-8');
     if(act==='example-csv')download('UpperLower-4-Day.csv',STARTER_CSV+'\r\n','text/csv;charset=utf-8');
     if(act==='backup-export'){if(storageError)throw Error('Cannot export invalid records safely.');download(`FitnessPilot-backup-${today()}.json`,JSON.stringify(state,null,2)+'\n','application/json');toast('Backup file prepared. Store it in Files or iCloud Drive.');}
     if(act==='backup-pick')$('#backup-file').click();
