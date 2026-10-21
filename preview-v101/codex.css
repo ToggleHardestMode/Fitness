@@ -163,3 +163,46 @@ a,.eyebrow,.hero-kicker,.exercise-choice b,.side-tag {color:var(--lime);}
   .codex-log-panel .log-grid {gap:4px}
 }
 @media (prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
+
+/* Phase 5: clearer quest planning, records, recovery and data tools. */
+.codex-waypoints{display:grid;gap:8px;margin:0 0 16px}
+.codex-waypoints>div{display:flex;gap:12px;align-items:center;padding:11px 13px;background:#202436;border:1px solid #6c586b;border-radius:12px;color:#e7d8be;font-size:13px}
+.codex-waypoints b{color:#f5d496;background:#393044;border:1px solid #8e765e;border-radius:8px;padding:6px 8px}
+.codex-board .schedule-row{grid-template-columns:88px minmax(0,1fr);padding:5px 0;border-bottom:1px solid #ffffff0b}
+.codex-board .schedule-row:last-of-type{border-bottom:0}
+.codex-program{border-color:#b89663;background:linear-gradient(145deg,#30273c,#1d2531)}
+.codex-library-help{margin:0 0 13px}
+.codex-library-grid{display:grid;gap:10px}
+.codex-library-entry{border:1px solid #726078;border-radius:14px;background:#202537;overflow:hidden}
+.codex-library-entry summary{cursor:pointer;display:flex;align-items:center;gap:12px;padding:15px 13px;list-style:none;min-height:72px}
+.codex-library-entry summary::-webkit-details-marker,.codex-archive summary::-webkit-details-marker{display:none}
+.codex-entry-symbol{color:#f1d299;font-size:24px}
+.codex-entry-title{flex:1;min-width:0;display:grid;gap:3px}
+.codex-entry-title strong{color:#f5e7cb;font-size:14px;line-height:1.3}
+.codex-entry-title small{color:#bdb5c6;font-size:11px;line-height:1.3}
+.codex-entry-arrow{color:#f5d396;transition:transform .15s}
+.codex-library-entry[open] .codex-entry-arrow{transform:rotate(180deg)}
+.codex-entry-body{padding:5px 16px 15px;border-top:1px solid #81717e61}
+.codex-entry-body>strong{display:block;margin-top:8px;font-size:12px;color:#f3d89d}
+.codex-entry-body ul{list-style:none;margin:8px 0;padding:0}
+.codex-entry-body li{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff12;font-size:12px;color:#f0e6d4}
+.codex-entry-body li span:last-child{color:#d6b985;white-space:nowrap}
+.codex-archive{margin:20px 0;border:1px solid #665d74;border-radius:14px;background:#1b2030}
+.codex-archive>summary{cursor:pointer;padding:16px;color:#f3ddba;font-weight:700;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.codex-archive>summary span{font-size:11px;color:#c5b6c6;font-weight:400}
+.codex-archive-body{padding:0 14px 15px}
+.codex-utility-intro{padding:16px 18px;background:#2c2638;border:1px solid #9c7b5f;border-radius:14px;display:grid;gap:5px;margin:0 0 18px}
+.codex-utility-intro strong{color:#f3dcaa;font-family:Georgia,serif;font-size:20px}
+.codex-utility-intro span{font-size:12px;color:#cfc4d0}
+.codex-vault{border-color:#9e8062}
+.codex-timer{text-align:left}
+.codex-timer .rest-timer{font-family:Georgia,serif;font-size:46px;font-variant-numeric:tabular-nums}
+.codex-progress .kpis{margin:14px 0 8px}
+.codex-muscle-row{padding:11px 0;border-bottom:1px solid #ffffff15}
+.codex-muscle-line{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.codex-muscle-line strong{color:#f0e3cc;font-size:13px}
+.codex-muscle-line span{color:#cfbda2;font-size:11px;text-align:right}
+.codex-muscle-row .progress-track{margin:8px 0 0;height:7px}
+.codex-recovery{border-color:#91745e}
+.codex-recovery .eyebrow{margin-bottom:12px}
+@media(min-width:700px){.codex-waypoints{grid-template-columns:repeat(3,minmax(0,1fr))}.codex-library-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
