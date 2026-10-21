@@ -1,4 +1,6 @@
 import { initRoFeedback, isRoSoundEnabled } from './ro-feedback.js';
+import { symptomPanel } from './symptom-ui.js';
+import { addSymptomEntry } from './symptom-journal.js';
 import { V101_CSV, V101_VERSION, V101_EQUIPMENT } from './v101-data.js';
 import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
 
@@ -98,7 +100,7 @@ function train() {
   } else {exMarkup=`<div class="card empty"><strong>${state.templates.length?'No workout selected':'No templates yet'}</strong>${state.templates.length?'Choose any workout above or assign a day in Plan.':'Go to Dashboard and load the example plan, or import your own CSV in Plan.'}</div>`;}
   return `${shellHeading()}${heading('WORKOUT LOGGER','Train today','Record the work you actually did. Nothing is marked complete until you save it.')}
   <div class="card"><div class="two-panels"><label><span class="form-label" style="margin-top:0">Workout date</span><input class="field" type="date" id="active-date" value="${activeDate}"></label><label><span class="form-label" style="margin-top:0">Workout for this date</span><select class="field" id="active-workout">${options}</select></label></div><div class="inline-meta"><span class="dot"></span>${DAY_NAMES[day]} · ${state.logs.filter(l=>l.date===activeDate).length} set(s) saved</div></div>
-  ${exMarkup}<div class="section-label"><h2>Daily check-in</h2><span>${nice(activeDate)}</span></div><section class="card"><form id="metrics-form"><div class="metrics-grid">${[['weight','Body weight (kg)','0.1'],['calories','Calories (kcal)','1'],['protein','Protein (g)','1'],['sleep','Sleep (hours)','0.1'],['recovery','Recovery (1–5)','1']].map(([key,label,step])=>`<label><span class="form-label">${label}</span><input class="field" type="number" inputmode="decimal" step="${step}" name="${key}" value="${esc(metrics[key]??'')}" placeholder="Not recorded"></label>`).join('')}</div><div class="form-actions"><button class="btn secondary" type="submit">Save daily check-in</button></div><p class="hint" style="margin-top:10px">Only enter values you measured. Blank fields are not guessed.</p></form></section>`;
+  ${exMarkup}<div class="section-label"><h2>Daily check-in</h2><span>${nice(activeDate)}</span></div><section class="card"><form id="metrics-form"><div class="metrics-grid">${[['weight','Body weight (kg)','0.1'],['calories','Calories (kcal)','1'],['protein','Protein (g)','1'],['sleep','Sleep (hours)','0.1'],['recovery','Recovery (1–5)','1']].map(([key,label,step])=>`<label><span class="form-label">${label}</span><input class="field" type="number" inputmode="decimal" step="${step}" name="${key}" value="${esc(metrics[key]??'')}" placeholder="Not recorded"></label>`).join('')}</div><div class="form-actions"><button class="btn secondary" type="submit">Save daily check-in</button></div><p class="hint" style="margin-top:10px">Only enter values you measured. Blank fields are not guessed.</p></form></section>${symptomPanel(activeDate,state,selected)}`;
 }
 function plan() {
   const assigned = i=>state.assignments[i]||'';
@@ -122,7 +124,7 @@ function plan() {
 }
 function tools() {
   const reminder=state.reminder, time=`${String(reminder.hour).padStart(2,'0')}:${String(reminder.minute).padStart(2,'0')}`;
-  const backupInfo=pendingBackup?`<div class="notice warn"><strong>Backup checked:</strong> ${pendingBackup.templates.length} templates, ${pendingBackup.logs.length} saved sets, ${pendingBackup.metrics.length} daily entries. <strong>Restore replaces all data currently in this app.</strong><label><span class="form-label">Type REPLACE to confirm</span><input class="field" type="text" id="restore-word" autocomplete="off" placeholder="REPLACE"></label><div class="form-actions"><button class="btn danger" data-action="restore-confirm">Replace with this backup</button><button class="btn secondary" data-action="restore-cancel">Cancel</button></div></div>`:'';
+  const backupInfo=pendingBackup?`<div class="notice warn"><strong>Backup checked:</strong> ${pendingBackup.templates.length} templates, ${pendingBackup.logs.length} saved sets, ${pendingBackup.metrics.length} daily entries, ${(pendingBackup.symptomLogs??[]).length} symptom observations. <strong>Restore replaces all data currently in this app.</strong><label><span class="form-label">Type REPLACE to confirm</span><input class="field" type="text" id="restore-word" autocomplete="off" placeholder="REPLACE"></label><div class="form-actions"><button class="btn danger" data-action="restore-confirm">Replace with this backup</button><button class="btn secondary" data-action="restore-cancel">Cancel</button></div></div>`:'';
   return `${shellHeading()}${heading('REMINDERS & DATA','Your tools','Protect your training history, and plan alerts for your workout days.')}
   <section class="card"><div class="card-head"><div><h2>Workout reminders</h2><p>Uses your iPhone Calendar — even when FitnessPilot is closed</p></div><span class="badge">CALENDAR</span></div><form id="reminder-form"><div class="metrics-grid"><label><span class="form-label">Workout time</span><input class="field" type="time" name="time" required value="${time}"></label><label><span class="form-label">Alert ahead of time</span><select class="field" name="lead"><option value="0" ${reminder.lead===0?'selected':''}>At workout time</option><option value="5" ${reminder.lead===5?'selected':''}>5 minutes before</option><option value="15" ${reminder.lead===15?'selected':''}>15 minutes before</option><option value="30" ${reminder.lead===30?'selected':''}>30 minutes before</option><option value="60" ${reminder.lead===60?'selected':''}>1 hour before</option></select></label></div><div class="form-actions"><button class="btn" type="submit">Save alert settings</button><button class="btn secondary" type="button" data-action="calendar">Export Calendar reminders (.ics)</button></div></form><p class="hint" style="margin-top:14px">First save your settings, then export the .ics file. Import it into a calendar that supports .ics events and alarms. Some iPhone import paths may require emailing the file to yourself or using a computer calendar. Check the alert in Apple Calendar after import. If you change the schedule, remove previous imported events and export again to avoid duplicate alerts.</p><div class="notice warn"><strong>Not a Clock alarm.</strong> This web app cannot force a loud full-screen ring while closed. Calendar notifications depend on your phone's notification, Focus and Silent settings. Use the iPhone Clock app if an audible alarm is essential.</div></section>
   <div class="section-label"><h2>Game-style controls</h2></div><section class="card"><label class="ro-sound-switch"><input type="checkbox" id="ro-click-sound" ${isRoSoundEnabled()?'checked':''}> Slime squish sound</label><p class="hint">Sound is off by default and plays only when you tap a control. iPhone Silent Mode and browser restrictions may affect playback.</p></section>
@@ -190,6 +192,11 @@ document.addEventListener('change',event=>{
   const target=event.target;
   if(target.id==='active-date'){tryAction(()=>{activeDate=target.value;chosenExercise=0;chosenTemplate=null;render();});}
   if(target.id==='active-workout'){chosenTemplate=target.value;chosenExercise=0;render();}
+  if(target.id==='symptom-template'){
+    const tmpl=state.templates.find(t=>t.id===target.value);
+    const list=$('#symptom-exercise');
+    if(list)list.innerHTML='<option value="">Whole workout / not exercise-specific</option>'+(tmpl?tmpl.exercises.map((e,i)=>`<option value="${i}">${i+1}. ${esc(e.name)}</option>`).join(''):'');
+  }
   if(target.id==='csv-file'){const file=target.files?.[0];target.value='';if(file)readCSV(file).catch(e=>toast(e.message,true));}
   if(target.id==='backup-file'){const file=target.files?.[0];target.value='';if(file)readBackup(file).catch(e=>toast(e.message,true));}
 });
@@ -211,6 +218,18 @@ document.addEventListener('submit',event=>{
       const exercise=template?.exercises[chosenExercise];if(!exercise)throw Error('Select a valid exercise.');
       const entries=Array.from({length:exercise.sets},(_,i)=>({completed:form.elements[`done${i}`].checked,kg:form.elements[`kg${i}`].value,reps:form.elements[`reps${i}`].value,rpe:form.elements[`rpe${i}`].value,rest:form.elements.rest.value,notes:form.elements.notes.value,tempo:form.elements.tempo.value}));
       const out=recordSets(state,{date:activeDate,templateId:chosenTemplate,exerciseIndex:chosenExercise,entries});commit(out.state,`${out.saved} set(s) saved for ${exercise.name}.`);
+    }
+    if(form.id==='symptom-form'){
+      const draft={
+        date:activeDate, timepoint:form.elements.timepoint.value,
+        templateId:form.elements.templateId.value||null,
+        exerciseIndex:form.elements.exerciseIndex.value===''?null:Number(form.elements.exerciseIndex.value),
+        side:form.elements.side.value,location:form.elements.location.value,
+        severity:form.elements.severity.value,tingling:form.elements.tingling.checked,
+        numbness:form.elements.numbness.checked,functionChange:form.elements.functionChange.value,
+        notes:form.elements.notes.value
+      };
+      commit(addSymptomEntry(state,draft),'Symptom observation saved locally and included in full backups.');
     }
     if(form.id==='metrics-form'){
       const data=Object.fromEntries(['weight','calories','protein','sleep','recovery'].map(k=>[k,form.elements[k].value]));
