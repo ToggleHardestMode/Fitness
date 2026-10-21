@@ -2,6 +2,7 @@ import { weeklyTrainingAnalysis, recoveryReview } from './training-analytics.js'
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
 const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const MUSCLES = ['Chest','Back','Shoulders','Biceps','Triceps','Quads','Hamstrings','Glutes','Calves','Core'];
 const STATUS = {
   not_scheduled: 'Not scheduled', not_logged: 'No assigned sets recorded',
   partial: 'Some assigned sets logged', all_sets_logged: 'All assigned sets logged',
@@ -10,7 +11,7 @@ const STATUS = {
 
 export function trainingAnalyticsPanel(state, monday, today) {
   const report = weeklyTrainingAnalysis(state, monday);
-  const categories = Object.entries(report.byMuscle).sort(([a],[b])=>a.localeCompare(b));
+  const categories = [...MUSCLES.map(name => [name, report.byMuscle[name] || { planned: 0, completed: 0 }]), ...Object.entries(report.byMuscle).filter(([name])=>!MUSCLES.includes(name)).sort(([a],[b])=>a.localeCompare(b))];
   const reviewDay = [...report.days].reverse().find(day => {
     if (day.date > today) return false;
     const assigned = state.templates.find(t => t.id === day.templateId);
@@ -25,7 +26,7 @@ export function trainingAnalyticsPanel(state, monday, today) {
     ? `<div class="notice warn"><strong>${esc(reviewDay.date)} · ${esc(review.level.replaceAll('_',' '))}</strong><p>${esc(review.message)}</p></div>`
     : '<p class="hint">No symptom entry or [PT Review] session identified this week. Recovery status is unknown, not medically cleared.</p>';
   return `<div class="section-label"><h2>Training accounting</h2><span>Logged does not mean cleared</span></div>
-    <section class="card codex-progress"><div class="card-head"><div><div class="eyebrow">THE PROGRESS LEDGER</div><h2>Scheduled vs recorded</h2>
+    <section class="card codex-progress"><div class="card-head"><div><div class="eyebrow">WEEKLY SETS</div><h2>Planned vs logged sets</h2>
     <p>Based on your current weekday assignments</p></div></div>
     <div class="kpis grid">
       <div><div class="kpi-label">Scheduled sets</div><div class="kpi-value">${report.planned}</div></div>
@@ -34,7 +35,7 @@ export function trainingAnalyticsPanel(state, monday, today) {
       <div><div class="kpi-label">Off-plan sets</div><div class="kpi-value">${report.offPlan}</div></div>
     </div>
     <p class="hint">Counts are saved working sets, not finished workout sessions. An imported template without assigned days adds zero scheduled sets. Timed holds count as sets, not lifting repetitions.</p>
-    <div class="section-label"><h2>Muscle-focused working sets</h2><span>Planned and recorded</span></div>
+    <div class="section-label"><h2>Muscle sets this week</h2><span>Direct working sets logged</span></div>
     ${categories.length ? categories.map(([muscle,counts])=>
       `<div class="codex-muscle-row"><div class="codex-muscle-line"><strong>${esc(muscle)}</strong><span>${counts.completed} logged / ${counts.planned} planned</span></div><div class="progress-track"><div class="progress-fill" style="width:${counts.planned?Math.min(100,Math.round(counts.completed/counts.planned*100)):0}%"></div></div></div>`).join('')
       : '<p class="hint">No planned or recorded sets for this week.</p>'}
@@ -44,5 +45,5 @@ export function trainingAnalyticsPanel(state, monday, today) {
     ${report.timedHolds.length?`<p class="hint">Timed holds: ${report.timedHolds.map(h=>`${esc(h.exercise)} ${h.secondsPerSide}s/side (${esc(h.date)})`).join('; ')}. Excluded from kg × repetitions.</p>`:''}
     </section>
     <div class="section-label"><h2>Recovery response</h2><span>Decision support, not medical approval</span></div>
-    <section class="card codex-recovery"><div class="eyebrow">RECOVERY WATCH</div>${note}<p class="hint">Do not increase lower-body loading automatically. A missing next-day journal entry is unknown, never a green signal. The original [PT Review] requirement remains.</p></section>`;
+    <section class="card codex-recovery"><div class="eyebrow">RECOVERY REVIEW</div>${note}<p class="hint">Do not increase lower-body loading automatically. A missing next-day journal entry is unknown, never a green signal. The original [PT Review] requirement remains.</p></section>`;
 }
