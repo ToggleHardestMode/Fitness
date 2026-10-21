@@ -1,4 +1,6 @@
 // FitnessPilot's data rules. No network calls or browser-specific APIs.
+import { validateSymptomLogs } from './symptom-journal.js';
+
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 export const STORAGE_KEY = "fitnesspilot.web.v1";
@@ -327,6 +329,7 @@ export function validateBackup(value) {
   for(const m of value.metrics) { dateFromKey(m.date);if(metricDays.has(m.date))fail("Backup contains duplicate check-in dates.");metricDays.add(m.date);
     for(const [key,min,max,whole] of [["weight",1,400,false],["calories",0,15000,true],["protein",0,600,true],["sleep",0,24,false],["recovery",1,5,true]])if(m[key] != null)(whole?intRange(m[key],key,min,max):numRange(m[key],key,min,max));
   }
+  validateSymptomLogs(value);
   const rem=value.reminder;
   if(!rem) fail("Backup lacks reminder settings.");
   intRange(rem.hour,"Reminder hour",0,23);intRange(rem.minute,"Reminder minute",0,59);intRange(rem.lead,"Reminder lead",0,120);
