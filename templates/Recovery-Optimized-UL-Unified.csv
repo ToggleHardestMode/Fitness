@@ -1,0 +1,28 @@
+day,workout,exercise,muscle,sets,rep_min,rep_max,rest_seconds,set_targets,source_note
+Mon,Recovery UL Unified — Upper A,Flat Bench Press,Chest,3,5,12,90,5-8|8-12|8-12,Top set: 5-8 reps; back-offs: 8-12 and 8-12 reps; First heavy top set; barbell or heavy dumbbells; Two back-off sets after top set
+Mon,Recovery UL Unified — Upper A,Chest-Supported DB Row,Back,3,8,12,90,,Chest remains supported
+Mon,Recovery UL Unified — Upper A,Incline DB Fly,Chest,3,12,15,90,,Two-second squeeze at top
+Mon,Recovery UL Unified — Upper A,Close-Grip Lat Pulldown,Back,3,10,12,90,,Neutral or semi-supinated handle
+Mon,Recovery UL Unified — Upper A,Lean-Away DB Lateral Raise,Shoulders,3,15,20,90,,Controlled motion
+Mon,Recovery UL Unified — Upper A,Incline DB Curl (SS1),Arms,3,10,15,90,,Superset with Cable Triceps Pushdown; 60–90s rest after both
+Mon,Recovery UL Unified — Upper A,Cable Triceps Pushdown (SS1),Arms,3,10,15,90,,Superset with Incline DB Curl
+Tue,Recovery UL Unified — Lower A,Heel-Elevated Goblet Squat,Quads,3,6,12,90,6-8|10-12|10-12,Top set: 6-8 reps; back-offs: 10-12 and 10-12 reps; Heels elevated 2–3 cm; maintain neutral spine; Two back-off sets after top set
+Tue,Recovery UL Unified — Lower A,DB Reverse Lunge,Quads,3,10,12,90,,Reps per leg; maintain upright torso
+Tue,Recovery UL Unified — Lower A,Weighted Glute Bridge,Glutes,3,8,12,90,,Finish movement with glutes
+Tue,Recovery UL Unified — Lower A,Slider Leg Curl,Hamstrings,3,10,15,90,,Keep hips high
+Tue,Recovery UL Unified — Lower A,Standing Calf Raise (DB),Calves,4,15,20,90,,Controlled lowering
+Tue,Recovery UL Unified — Lower A,Bird-Dogs,Core,2,8,10,90,,Reps per side; low fatigue
+Thu,Recovery UL Unified — Upper B,Incline DB Press,Chest,3,6,12,90,6-9|10-12|10-12,Top set: 6-9 reps; back-offs: 10-12 and 10-12 reps; First heavy top set; Two back-off sets after top set
+Thu,Recovery UL Unified — Upper B,Supported Single-Arm DB Row,Back,3,10,15,90,,Reps per arm; do not twist torso
+Thu,Recovery UL Unified — Upper B,Seated DB Shoulder Press,Shoulders,3,8,12,90,,Back-supported bench preferred
+Thu,Recovery UL Unified — Upper B,Chest-Supported DB Reverse Fly,Shoulders,3,15,20,90,,"Rear delts, chest supported"
+Thu,Recovery UL Unified — Upper B,Face Pull (SS1),Shoulders,3,15,20,60,,Superset with DB Lateral Raise; third set optional
+Thu,Recovery UL Unified — Upper B,DB Lateral Raise (SS1),Shoulders,3,15,20,60,,Superset with Face Pull; third set optional; 60s rest after pair
+Thu,Recovery UL Unified — Upper B,Hammer Curl (SS2),Arms,3,10,15,90,,Superset with Overhead Cable Triceps Extension
+Thu,Recovery UL Unified — Upper B,Overhead Cable Triceps Extension (SS2),Arms,3,10,15,90,,Superset with Hammer Curl; 60–90s rest after pair
+Fri,Recovery UL Unified — Lower B,Bulgarian Split Squat,Quads,3,8,12,90,,Reps per leg; upright torso
+Fri,Recovery UL Unified — Lower B,Cyclist Goblet Squat,Quads,3,12,15,90,,Heels elevated; lighter quad emphasis
+Fri,Recovery UL Unified — Lower B,Single-Leg Glute Bridge,Glutes,3,12,15,90,,Reps per leg; avoid lumbar overextension
+Fri,Recovery UL Unified — Lower B,Lying DB Leg Curl (SS1),Hamstrings,3,10,15,90,,Superset with Slider Leg Curl; consider band alternative if unstable
+Fri,Recovery UL Unified — Lower B,Slider Leg Curl (SS1),Hamstrings,3,10,15,90,,Superset with Lying DB Leg Curl; 60–90s rest after pair
+Fri,Recovery UL Unified — Lower B,Seated Calf Raise (DB),Calves,4,15,20,90,,Dumbbell on thighs
