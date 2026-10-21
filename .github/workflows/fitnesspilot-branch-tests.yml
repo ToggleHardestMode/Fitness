@@ -1,0 +1,25 @@
+name: FitnessPilot branch checks
+on:
+  pull_request:
+    branches:
+      - feature/v101-symptom-journal-20261021
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Check Node and run all tests
+        run: |
+          node --version
+          npm test
+      - name: Check JavaScript syntax
+        run: |
+          node --check app.js
+          node --check core.js
+          node --check symptom-journal.js
+          node --check symptom-ui.js
+          node --check training-analytics.js
+          node --check training-analytics-ui.js
