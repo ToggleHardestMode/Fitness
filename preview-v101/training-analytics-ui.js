@@ -34,13 +34,13 @@ export function trainingAnalyticsPanel(state, monday, today) {
       <div><div class="kpi-label">Off-plan sets</div><div class="kpi-value">${report.offPlan}</div></div>
     </div>
     <p class="hint">Counts are saved working sets, not finished workout sessions. An imported template without assigned days adds zero scheduled sets. Timed holds count as sets, not lifting repetitions.</p>
-    <div class="section-label"><h2>Direct muscle-group sets</h2><span>Scheduled / Recorded</span></div>
+    <div class="section-label"><h2>Muscle-focused working sets</h2><span>Planned and recorded</span></div>
     ${categories.length ? categories.map(([muscle,counts])=>
-      `<div class="data-row"><strong>${esc(muscle)}${muscle==='Arms'?' (combined)':''}</strong><div class="score">${counts.planned} / ${counts.completed}</div></div>`).join('')
+      `<div class="data-row"><strong>${esc(muscle)}</strong><div class="score">${counts.planned} planned · ${counts.completed} logged</div></div>`).join('')
       : '<p class="hint">No planned or recorded sets for this week.</p>'}
-    <p class="hint">Direct category labels only; arms are not split into biceps/triceps. No indirect set credits, no doubling for unilateral work. Old logs without a warm-up marker are treated as working sets.</p>
+    <p class="hint">Direct sets mean sets focused on the listed muscle: a bench press is counted for chest, not again for its assisting triceps. V10.1 biceps and triceps are separated; older ambiguous Arms exercises appear as unclassified. Unilateral work counts once.</p>
     <div class="section-label"><h2>Daily set status</h2></div>
-    ${report.days.map(d=>`<div class="data-row"><strong>${DAY_NAMES[d.day]}</strong><div class="score">${d.assignedCompleted}/${d.planned} assigned · ${esc(STATUS[d.status])}${d.offPlan?` · ${d.offPlan} off-plan`:''}</div></div>`).join('')}
+    ${report.days.map(d=>`<div class="data-row"><strong>${DAY_NAMES[d.day]}</strong><div class="score">${d.assignedCompleted} logged of ${d.planned} planned · ${esc(STATUS[d.status])}${d.offPlan?` · ${d.offPlan} off-plan`:''}</div></div>`).join('')}
     ${report.timedHolds.length?`<p class="hint">Timed holds: ${report.timedHolds.map(h=>`${esc(h.exercise)} ${h.secondsPerSide}s/side (${esc(h.date)})`).join('; ')}. Excluded from kg × repetitions.</p>`:''}
     </section>
     <div class="section-label"><h2>Recovery response</h2><span>Decision support, not medical approval</span></div>
