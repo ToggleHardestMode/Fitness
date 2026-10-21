@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FitnessPilot V10.1 Preview",
+  "name": "FitnessPilot V15.1 Preview",
   "short_name": "FP Preview",
-  "description": "Private workouts, progress, and weekly training planner",
+  "description": "V15.1 dashboard with V10.1 Home workouts; private local-first preview",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
