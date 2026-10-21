@@ -25,7 +25,7 @@ export function trainingAnalyticsPanel(state, monday, today) {
     ? `<div class="notice warn"><strong>${esc(reviewDay.date)} · ${esc(review.level.replaceAll('_',' '))}</strong><p>${esc(review.message)}</p></div>`
     : '<p class="hint">No symptom entry or [PT Review] session identified this week. Recovery status is unknown, not medically cleared.</p>';
   return `<div class="section-label"><h2>Training accounting</h2><span>Logged does not mean cleared</span></div>
-    <section class="card"><div class="card-head"><div><h2>Scheduled vs recorded</h2>
+    <section class="card codex-progress"><div class="card-head"><div><div class="eyebrow">THE PROGRESS LEDGER</div><h2>Scheduled vs recorded</h2>
     <p>Based on your current weekday assignments</p></div></div>
     <div class="kpis grid">
       <div><div class="kpi-label">Scheduled sets</div><div class="kpi-value">${report.planned}</div></div>
@@ -36,7 +36,7 @@ export function trainingAnalyticsPanel(state, monday, today) {
     <p class="hint">Counts are saved working sets, not finished workout sessions. An imported template without assigned days adds zero scheduled sets. Timed holds count as sets, not lifting repetitions.</p>
     <div class="section-label"><h2>Muscle-focused working sets</h2><span>Planned and recorded</span></div>
     ${categories.length ? categories.map(([muscle,counts])=>
-      `<div class="data-row"><strong>${esc(muscle)}</strong><div class="score">${counts.planned} planned · ${counts.completed} logged</div></div>`).join('')
+      `<div class="codex-muscle-row"><div class="codex-muscle-line"><strong>${esc(muscle)}</strong><span>${counts.completed} logged / ${counts.planned} planned</span></div><div class="progress-track"><div class="progress-fill" style="width:${counts.planned?Math.min(100,Math.round(counts.completed/counts.planned*100)):0}%"></div></div></div>`).join('')
       : '<p class="hint">No planned or recorded sets for this week.</p>'}
     <p class="hint">Direct sets mean sets focused on the listed muscle: a bench press is counted for chest, not again for its assisting triceps. V10.1 biceps and triceps are separated; older ambiguous Arms exercises appear as unclassified. Unilateral work counts once.</p>
     <div class="section-label"><h2>Daily set status</h2></div>
@@ -44,5 +44,5 @@ export function trainingAnalyticsPanel(state, monday, today) {
     ${report.timedHolds.length?`<p class="hint">Timed holds: ${report.timedHolds.map(h=>`${esc(h.exercise)} ${h.secondsPerSide}s/side (${esc(h.date)})`).join('; ')}. Excluded from kg × repetitions.</p>`:''}
     </section>
     <div class="section-label"><h2>Recovery response</h2><span>Decision support, not medical approval</span></div>
-    <section class="card">${note}<p class="hint">Do not increase lower-body loading automatically. A missing next-day journal entry is unknown, never a green signal. The original [PT Review] requirement remains.</p></section>`;
+    <section class="card codex-recovery"><div class="eyebrow">RECOVERY WATCH</div>${note}<p class="hint">Do not increase lower-body loading automatically. A missing next-day journal entry is unknown, never a green signal. The original [PT Review] requirement remains.</p></section>`;
 }
