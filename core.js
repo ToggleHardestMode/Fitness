@@ -286,6 +286,7 @@ export function validateBackup(value) {
     limited(t.id, "Template ID", 140); limited(t.name, "Workout name", 60);
     intRange(t.day, "Workout weekday", 0, 6);
     if (t.sourceVersion !== undefined && (typeof t.sourceVersion !== "string" || t.sourceVersion.length < 1 || t.sourceVersion.length > 60)) fail("Backup contains an invalid source version.");
+    if (t.equipmentNote !== undefined && (typeof t.equipmentNote !== "string" || t.equipmentNote.length > 250)) fail("Backup contains invalid equipment guidance.");
     if (t.requiresClinicalReview !== undefined && typeof t.requiresClinicalReview !== "boolean") fail("Backup contains an invalid PT review flag.");
     if (tids.has(t.id)) fail("Backup has duplicate template IDs.");
     tids.add(t.id);
