@@ -28,6 +28,11 @@ function press(button) {
   pressed.add(button);
 }
 
+function reportSound(message) {
+  const status = document.getElementById('ro-sound-status');
+  if (status) status.textContent = message;
+}
+
 function playSquish() {
   if (!soundOn) return;
   try {
@@ -39,8 +44,15 @@ function playSquish() {
     sound.pause();
     sound.currentTime = 0;
     const attempt = sound.play();
-    attempt?.catch?.(() => {}); // iOS may block audio; pressing still works.
-  } catch { /* Keep the UI responsive without audio. */ }
+    if (attempt && typeof attempt.then === 'function') {
+      attempt.then(() => reportSound('Playback started. If inaudible, check device volume and Silent Mode.'))
+        .catch(error => reportSound('Audio blocked (' + (error?.name || 'unknown') + '). Check Safari sound settings.'));
+    } else {
+      reportSound('Playback requested. If inaudible, check device volume and Silent Mode.');
+    }
+  } catch (error) {
+    reportSound('Audio unavailable (' + (error?.name || 'unknown') + ').');
+  }
 }
 
 export function initRoFeedback() {
@@ -63,6 +75,10 @@ export function initRoFeedback() {
     if (control && !control.disabled && event.isTrusted) playSquish();
   }, true);
   document.addEventListener('change', event => {
-    if (event.target.id === 'ro-click-sound') saveSoundChoice(event.target.checked);
+    if (event.target.id === 'ro-click-sound') {
+      saveSoundChoice(event.target.checked);
+      if (event.target.checked) playSquish();
+      else reportSound('Click sound switched off.');
+    }
   });
 }
