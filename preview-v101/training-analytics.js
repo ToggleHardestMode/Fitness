@@ -1,4 +1,18 @@
 // Read-only training and recovery summaries. No medical clearance or automatic progression.
+const V101_ARMS = Object.freeze({
+  'DB Supinating Curl (SS1)': 'Biceps',
+  'Lying DB Triceps Extension (SS1)': 'Triceps',
+  'DB Hammer Curl (SS1)': 'Biceps',
+  'Supported DB Overhead Triceps Ext (SS1)': 'Triceps'
+});
+const directMuscle = (template, exercise) => {
+  if (exercise.muscle !== 'Arms') return exercise.muscle;
+  if (exercise.muscleDetail === 'Biceps' || exercise.muscleDetail === 'Triceps') return exercise.muscleDetail;
+  if (template?.sourceVersion === 'V10.1 Home' || template?.name?.startsWith('V10.1 Home —')) {
+    return V101_ARMS[exercise.name] || 'Arms (unclassified)';
+  }
+  return 'Arms (unclassified)';
+};
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 const DISTAL = {none: 0, back: 1, buttock: 2, thigh: 3, calf: 4, foot: 5};
 
@@ -43,7 +57,7 @@ export function weeklyTrainingAnalysis(state, monday) {
     planned += day.planned;
     day.status = 'not_logged';
     for (const exercise of t.exercises) {
-      for (let i = 0; i < exercise.sets; i++) addCount(byMuscle, exercise.muscle, 'planned');
+      for (let i = 0; i < exercise.sets; i++) addCount(byMuscle, directMuscle(t, exercise), 'planned');
     }
   }
 
@@ -60,7 +74,7 @@ export function weeklyTrainingAnalysis(state, monday) {
     completed++; day.completed++;
     if (day.templateId === log.templateId) day.assignedCompleted++;
     else {day.offPlan++;offPlan++;}
-    addCount(byMuscle, exercise.muscle, 'completed');
+    addCount(byMuscle, directMuscle(template, exercise), 'completed');
     if (exercise.repUnit === 'seconds_per_side') {
       timedHolds.push({date: log.date, exercise: exercise.name, secondsPerSide: log.reps, muscle: exercise.muscle});
     } else if (Number.isFinite(log.kg) && Number.isFinite(log.reps)) {
@@ -80,7 +94,7 @@ export function weeklyTrainingAnalysis(state, monday) {
   return {
     planned, completed, assignedCompleted: days.reduce((n,d)=>n+d.assignedCompleted,0),
     offPlan, byMuscle: {...byMuscle}, days, timedHolds, loadVolume,
-    caveat: 'Direct categories only. Arms is combined/unspecified; no indirect credits. Logged unilateral sets count once. Untagged legacy logs are assumed working sets.'
+    caveat: 'Direct categories only. V10.1 biceps and triceps are separated by exact exercise names; legacy arms without explicit labels remain unclassified. No indirect credits. Logged unilateral sets count once. Untagged legacy logs are assumed working sets.'
   };
 }
 
