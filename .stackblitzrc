@@ -1,0 +1,8 @@
+{
+  "installDependencies": false,
+  "startCommand": "npm run dev",
+  "env": {
+    "HOST": "0.0.0.0",
+    "PORT": "3000"
+  }
+}
