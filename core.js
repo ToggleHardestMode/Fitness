@@ -55,6 +55,36 @@ Fri,Recovery UL — Lower B,Lying DB Leg Curl (SS1),Hamstrings,3,10,15,90,Supers
 Fri,Recovery UL — Lower B,Slider Leg Curl (SS1),Hamstrings,3,10,15,90,Superset with Lying DB Leg Curl; 60–90s rest after pair
 Fri,Recovery UL — Lower B,Seated Calf Raise (DB),Calves,4,15,20,90,Dumbbell on thighs`;
 
+// Optional per-set rep targets; existing templates without this property remain supported.
+export const UNIFIED_UL_CSV = `day,workout,exercise,muscle,sets,rep_min,rep_max,rest_seconds,set_targets,source_note
+Mon,Recovery UL Unified — Upper A,Flat Bench Press,Chest,3,5,12,90,5-8|8-12|8-12,Top set: 5-8 reps; back-offs: 8-12 and 8-12 reps; First heavy top set; barbell or heavy dumbbells; Two back-off sets after top set
+Mon,Recovery UL Unified — Upper A,Chest-Supported DB Row,Back,3,8,12,90,,Chest remains supported
+Mon,Recovery UL Unified — Upper A,Incline DB Fly,Chest,3,12,15,90,,Two-second squeeze at top
+Mon,Recovery UL Unified — Upper A,Close-Grip Lat Pulldown,Back,3,10,12,90,,Neutral or semi-supinated handle
+Mon,Recovery UL Unified — Upper A,Lean-Away DB Lateral Raise,Shoulders,3,15,20,90,,Controlled motion
+Mon,Recovery UL Unified — Upper A,Incline DB Curl (SS1),Arms,3,10,15,90,,Superset with Cable Triceps Pushdown; 60–90s rest after both
+Mon,Recovery UL Unified — Upper A,Cable Triceps Pushdown (SS1),Arms,3,10,15,90,,Superset with Incline DB Curl
+Tue,Recovery UL Unified — Lower A,Heel-Elevated Goblet Squat,Quads,3,6,12,90,6-8|10-12|10-12,Top set: 6-8 reps; back-offs: 10-12 and 10-12 reps; Heels elevated 2–3 cm; maintain neutral spine; Two back-off sets after top set
+Tue,Recovery UL Unified — Lower A,DB Reverse Lunge,Quads,3,10,12,90,,Reps per leg; maintain upright torso
+Tue,Recovery UL Unified — Lower A,Weighted Glute Bridge,Glutes,3,8,12,90,,Finish movement with glutes
+Tue,Recovery UL Unified — Lower A,Slider Leg Curl,Hamstrings,3,10,15,90,,Keep hips high
+Tue,Recovery UL Unified — Lower A,Standing Calf Raise (DB),Calves,4,15,20,90,,Controlled lowering
+Tue,Recovery UL Unified — Lower A,Bird-Dogs,Core,2,8,10,90,,Reps per side; low fatigue
+Thu,Recovery UL Unified — Upper B,Incline DB Press,Chest,3,6,12,90,6-9|10-12|10-12,Top set: 6-9 reps; back-offs: 10-12 and 10-12 reps; First heavy top set; Two back-off sets after top set
+Thu,Recovery UL Unified — Upper B,Supported Single-Arm DB Row,Back,3,10,15,90,,Reps per arm; do not twist torso
+Thu,Recovery UL Unified — Upper B,Seated DB Shoulder Press,Shoulders,3,8,12,90,,Back-supported bench preferred
+Thu,Recovery UL Unified — Upper B,Chest-Supported DB Reverse Fly,Shoulders,3,15,20,90,,"Rear delts, chest supported"
+Thu,Recovery UL Unified — Upper B,Face Pull (SS1),Shoulders,3,15,20,60,,Superset with DB Lateral Raise; third set optional
+Thu,Recovery UL Unified — Upper B,DB Lateral Raise (SS1),Shoulders,3,15,20,60,,Superset with Face Pull; third set optional; 60s rest after pair
+Thu,Recovery UL Unified — Upper B,Hammer Curl (SS2),Arms,3,10,15,90,,Superset with Overhead Cable Triceps Extension
+Thu,Recovery UL Unified — Upper B,Overhead Cable Triceps Extension (SS2),Arms,3,10,15,90,,Superset with Hammer Curl; 60–90s rest after pair
+Fri,Recovery UL Unified — Lower B,Bulgarian Split Squat,Quads,3,8,12,90,,Reps per leg; upright torso
+Fri,Recovery UL Unified — Lower B,Cyclist Goblet Squat,Quads,3,12,15,90,,Heels elevated; lighter quad emphasis
+Fri,Recovery UL Unified — Lower B,Single-Leg Glute Bridge,Glutes,3,12,15,90,,Reps per leg; avoid lumbar overextension
+Fri,Recovery UL Unified — Lower B,Lying DB Leg Curl (SS1),Hamstrings,3,10,15,90,,Superset with Slider Leg Curl; consider band alternative if unstable
+Fri,Recovery UL Unified — Lower B,Slider Leg Curl (SS1),Hamstrings,3,10,15,90,,Superset with Lying DB Leg Curl; 60–90s rest after pair
+Fri,Recovery UL Unified — Lower B,Seated Calf Raise (DB),Calves,4,15,20,90,,Dumbbell on thighs`;
+
 export function fail(message) { throw Error(message); }
 export function weekdayOf(dateKey) {
   const date = dateFromKey(dateKey);
@@ -151,11 +181,24 @@ export function parseWorkouts(csv) {
     const min = intRange(r.rep_min, `Row ${i + 2}: minimum reps`, 1, 100);
     const max = intRange(r.rep_max, `Row ${i + 2}: maximum reps`, 1, 100);
     if (min > max) fail(`Row ${i + 2}: minimum reps exceed maximum reps.`);
-    groups.get(key).exercises.push({ name: limited(r.exercise, `Row ${i + 2}: exercise`, 80), muscle: limited(r.muscle, `Row ${i + 2}: muscle`, 40), sets, min, max, rest: intRange((r.rest_seconds === undefined || r.rest_seconds === "" ? "90" : r.rest_seconds), `Row ${i + 2}: rest seconds`, 0, 600) });
+    let setTargets;
+    if (r.set_targets !== undefined && r.set_targets !== "") {
+      const parts = r.set_targets.split('|');
+      if (parts.length !== sets) fail(`Row ${i + 2}: set_targets must contain exactly ${sets} ranges.`);
+      setTargets = parts.map((part, setIndex) => {
+        const match = /^(\d{1,3})-(\d{1,3})$/.exec(part.trim());
+        if (!match) fail(`Row ${i + 2}: set_targets range ${setIndex + 1} must look like 5-8.`);
+        const low = intRange(match[1], `Row ${i + 2}: set ${setIndex + 1} minimum`, 1, 100);
+        const high = intRange(match[2], `Row ${i + 2}: set ${setIndex + 1} maximum`, 1, 100);
+        if (low > high || low < min || high > max) fail(`Row ${i + 2}: set target ${setIndex + 1} conflicts with the exercise range.`);
+        return { min: low, max: high };
+      });
+    }
+    groups.get(key).exercises.push({ name: limited(r.exercise, `Row ${i + 2}: exercise`, 80), muscle: limited(r.muscle, `Row ${i + 2}: muscle`, 40), sets, min, max, rest: intRange((r.rest_seconds === undefined || r.rest_seconds === "" ? "90" : r.rest_seconds), `Row ${i + 2}: rest seconds`, 0, 600), ...(setTargets ? { setTargets } : {}) });
   }
   return [...groups.values()];
 }
-const signature = t => JSON.stringify([t.day, t.name.toLowerCase(), t.exercises.map(e => [e.name.toLowerCase(), e.muscle.toLowerCase(), e.sets, e.min, e.max, e.rest])]);
+const signature = t => JSON.stringify([t.day, t.name.toLowerCase(), t.exercises.map(e => [e.name.toLowerCase(), e.muscle.toLowerCase(), e.sets, e.min, e.max, e.rest, e.setTargets ?? null])]);
 export function addWorkouts(state, workouts, makeAssignments = false, makeId = () => globalThis.crypto?.randomUUID?.() || `fp-${Date.now()}-${Math.random().toString(36).slice(2)}`) {
   const next = structuredClone(state);
   const existing = new Set(next.templates.map(signature));
@@ -236,7 +279,21 @@ export function validateBackup(value) {
     if (tids.has(t.id)) fail("Backup has duplicate template IDs.");
     tids.add(t.id);
     if (!Array.isArray(t.exercises) || !t.exercises.length || t.exercises.length > 200) fail("Backup contains an invalid exercise list.");
-    t.exercises.forEach(e => { limited(e.name, "Exercise name", 80); limited(e.muscle, "Muscle", 40); intRange(e.sets, "Sets", 1, 10); intRange(e.min, "Minimum reps", 1, 100); intRange(e.max, "Maximum reps", 1, 100); intRange(e.rest, "Rest seconds", 0, 600); if(e.min > e.max) fail("Backup contains inverted rep ranges."); });
+    t.exercises.forEach(e => {
+      limited(e.name, "Exercise name", 80); limited(e.muscle, "Muscle", 40);
+      intRange(e.sets, "Sets", 1, 10); intRange(e.min, "Minimum reps", 1, 100);
+      intRange(e.max, "Maximum reps", 1, 100); intRange(e.rest, "Rest seconds", 0, 600);
+      if (e.min > e.max) fail("Backup contains inverted rep ranges.");
+      if (e.setTargets !== undefined) {
+        if (!Array.isArray(e.setTargets) || e.setTargets.length !== e.sets) fail("Backup contains an invalid per-set target count.");
+        e.setTargets.forEach((target, i) => {
+          if (!target || typeof target !== 'object') fail(`Backup contains an invalid set target ${i + 1}.`);
+          const low = intRange(target.min, `Set ${i + 1} minimum`, 1, 100);
+          const high = intRange(target.max, `Set ${i + 1} maximum`, 1, 100);
+          if (low > high || low < e.min || high > e.max) fail(`Backup contains an invalid rep target for set ${i + 1}.`);
+        });
+      }
+    });
   }
   for (const [d,tid] of Object.entries(value.assignments)) { intRange(d, "Assigned weekday", 0, 6); if (tid !== null && !tids.has(tid)) fail("Backup assigns a missing workout."); }
   const logKeys = new Set();
