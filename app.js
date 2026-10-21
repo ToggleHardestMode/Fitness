@@ -109,7 +109,7 @@ function plan() {
   <div class="section-label"><h2>V10.1 Home · Candidate workout program</h2></div>
   <section class="card stack"><strong>Adaptive Recovery Upper/Lower V10.1</strong>
   <p class="subtle small">4 optional templates · 24 exercises · 62 prescribed working sets: Mon 17, Tue 13, Thu 21, Fri 11. Importing does not mark any sets completed or change the schedule. Tuesday and Friday are <strong>[PT Review]</strong> and are not medically cleared.</p>
-  <div class="notice warn"><strong>Lower-body clinical review required.</strong> Ongoing or delayed radiating leg symptoms mean these lower-body templates must not be automatically activated. No missing symptom entry means clearance.</div>
+  <div class="notice warn"><strong>Lower-body clinical review required.</strong> Ongoing or delayed radiating leg symptoms mean these lower-body templates must not be automatically activated. A missing symptom entry never implies medical clearance.</div>
   <p class="hint"><strong>Equipment:</strong> ${esc(V101_EQUIPMENT)}</p>
   <div class="quick-actions"><button type="button" class="btn" data-action="v101-add">Add V10.1 Home templates</button><button type="button" class="btn secondary" data-action="v101-csv">Download canonical V10.1 CSV</button></div>
   <p class="hint">After import, you may manually assign suitable sessions in your weekly schedule. Do not assign the lower-body templates without appropriate clinician review.</p></section>
