@@ -1,6 +1,6 @@
 // Offline, optional soft button sound and short pressed-state animation.
 import { SQUISH_SOUND_URL } from './ro-sound-data.js';
-const SOUND_KEY = 'fitnesspilot.ui.click-sound.v1';
+const SOUND_KEY = 'fitnesspilot.preview.v101.ui.click-sound.v1';
 const PRESS_SELECTOR = 'button, input[type="checkbox"]';
 let sound;
 let soundOn = false;
