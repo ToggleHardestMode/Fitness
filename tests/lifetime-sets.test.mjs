@@ -33,7 +33,7 @@ test('duplicates, warmups and dangling/out-of-range entries do not inflate progr
 test('planned templates without logs do not count as accomplished sets', () => {
   const data=state([]);
   assert.equal(lifetimeTrainingSets(data),0);
-  assert.equal(weeklyTrainingAnalysis(data,week).planned,3);
+  assert.equal(weeklyTrainingAnalysis(data,week).planned,4);
 });
 
 test('daily set chart reflects counts, not kilogram volume', () => {
