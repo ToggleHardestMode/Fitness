@@ -81,7 +81,7 @@ test('opt-in import preserves all prior logs and schedule, skips duplicates, ref
 
 test('invalid coefficients and invalid Monday reject rather than invent doses',()=>{
   assert.throws(()=>weeklyV102Overlap(scheduled(),'2026-10-20'),/Monday/);
-  assert.throws(()=>parseV102Coefficients('day,exercise,prescribed_sets\nMon,Bad,2'),/coefficient/);
+  assert.throws(()=>parseV102Coefficients('day,exercise,prescribed_sets\nMon,Bad,2'),/coefficient/i);
 });
 
 test('historical V10.1 logs are not retroactively assigned V10.2 overlap coefficients',()=>{
