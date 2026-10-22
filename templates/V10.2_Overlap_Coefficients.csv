@@ -1,0 +1,25 @@
+day,exercise,prescribed_sets,Chest,Lats,Upper Back,Front Delts,Side Delts,Rear Delts,Biceps,Triceps,Quads,Hamstrings,Glutes,Calves,Core,PT_review,explanation
+Mon,DB Flat Bench Press,4,1,0,0,0.5,0,0,0,0.5,0,0,0,0,0,NO,Bench flat; no maximal set; stop if leg or back symptoms intensify; V10.1: one added working set; progress only if recovered and symptom-stable
+Mon,Chest-Supported DB Row — Lat Bias,4,0,1,0.5,0,0,0.5,0.5,0,0,0,0,0,0,NO,Elbows stay close to ribs; pull DBs toward hips; chest supported; primary lats; secondary upper back rear delts biceps; avoid lumbar movement
+Mon,Low-Incline DB Press,2,1,0,0,0.5,0,0,0,0.5,0,0,0,0,0,NO,Bench 15-20 degrees; chest primary; front delt and triceps indirect; no painful arch or leg drive
+Mon,DB Lateral Raise,3,0,0,0,0,1,0,0,0,0,0,0,0,0,NO,Use LIGHT dumbbells; thumbs neutral; no swinging; V10.1: one added working set; progress only if recovered and symptom-stable
+Mon,Incline DB Supinating Curl (SS1),2,0,0,0,0,0,0,1,0,0,0,0,0,0,NO,Use a comfortable bench incline and shoulder position; do not chase painful stretch; direct biceps; pair with lying triceps extension
+Mon,Lying DB Triceps Extension (SS1),2,0,0,0,0,0,0,0,1,0,0,0,0,0,NO,Bench supported; controlled; choose shoulder-comfortable ROM
+Tue,Supported Sit-to-Stand to Bench [PT],2,0,0,0,0,0,0,0,0,1,0,0.5,0,0,YES,PT review required with active radiating symptoms; start unloaded; stable support; controlled ROM
+Tue,Floor Glute Bridge [PT],3,0,0,0,0,0,0,0,0,0,0,1,0,0,YES,PT review; initially bodyweight; avoid back arch; add DB only after symptom-stable exposures
+Tue,Heel-Dig Hamstring Bridge [PT],3,0,0,0,0,0,0,0,0,0,1,0.5,0,0,YES,PT review; each rep 3-second heel dig; stop if distal symptoms change
+Tue,"Standing Calf Raise, Supported [PT]",3,0,0,0,0,0,0,0,0,0,0,0,1,0,YES,PT review; use balance support; bodyweight or light DB if tolerated
+Tue,Dead Bug (reps/side) [PT],2,0,0,0,0,0,0,0,0,0,0,0,0,1,YES,PT review; easy short-lever motion; natural comfortable back position
+Thu,Incline DB Press,4,1,0,0,0.5,0,0,0,0.5,0,0,0,0,0,NO,Bench about 25-30 degrees; chest primary; front delt triceps indirect; higher incline is not automatically better; stop if symptoms increase
+Thu,Bench-Supported One-Arm DB Row — Lat Bias,4,0,1,0.5,0,0,0.5,0.5,0,0,0,0,0,0,NO,Brace with bench; pull elbow toward hip; no twisting; primary lats; secondary upper back rear delts biceps
+Thu,Back-Supported DB Shoulder Press,2,0,0,0,1,0.5,0,0,0.5,0,0,0,0,0,NO,Bench about 75-85 degrees; stop if arch or symptoms increase
+Thu,Chest-Supported DB High Row — Upper Back,2,0,0,1,0,0,0.5,0.5,0,0,0,0,0,0,NO,Chest supported; elbows slightly flared; pull toward upper ribs for scapular retraction; primary upper back; secondary rear delts biceps
+Thu,Chest-Supported DB Reverse Fly,2,0,0,0.5,0,0,1,0,0,0,0,0,0,0,NO,Very light DBs; focus rear delts
+Thu,DB Lateral Raise,3,0,0,0,0,1,0,0,0,0,0,0,0,0,NO,Use LIGHT DBs; no failure partials; V10.1: one added working set; progress only if recovered and symptom-stable
+Thu,DB Hammer Curl (SS1),2,0,0,0,0,0,0,1,0,0,0,0,0,0,NO,Superset with supported triceps extension
+Thu,Supported DB Overhead Triceps Ext (SS1),2,0,0,0,0,0,0,0,1,0,0,0,0,0,NO,Direct triceps including long head; back-supported; use manageable weight and symptom comfortable shoulder ROM; swap to lying version if needed
+Fri,Supported Shallow Split Squat [PT],2,0,0,0,0,0,0,0,0,1,0,0.5,0,0,YES,PT review required; bodyweight and hand support first; per leg; shallow pain-free ROM
+Fri,Partial Slider Hamstring Curl [PT],2,0,0,0,0,0,0,0,0,0,1,0.5,0,0,YES,PT review; socks/towel only on safe non-slip setup; replace with heel dig if needed
+Fri,Floor Glute Bridge [PT],2,0,0,0,0,0,0,0,0,0,0,1,0,0,YES,PT review; load only after repeat stable symptom response
+Fri,Seated DB Calf Raise [PT],3,0,0,0,0,0,0,0,0,0,0,0,1,0,YES,PT review; weight above knee; controlled
+Fri,Modified Side Plank (seconds/side) [PT],2,0,0,0,0,0,0,0,0,0,0,0,0,1,YES,PT review; IMPORTANT log reps as SECONDS per side; app cannot store timed holds
