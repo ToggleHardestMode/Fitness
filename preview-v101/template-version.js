@@ -55,7 +55,8 @@ export function createExerciseVersion(state, templateId, exerciseIndex, changes,
   template.sourceVersion = 'Custom'; // Never apply canonical V10.2 overlap weights to modified plans.
   template.exercises[exerciseIndex] = revised;
   const isLower = template.exercises.some(ex =>
-    ['quads','hamstrings','glutes','calves'].includes(ex.muscle.toLowerCase()));
+    ['quads','hamstrings','glutes','calves'].includes(ex.muscle.toLowerCase()) ||
+    /\b(squat|deadlift|lunge|leg press|split squat)\b/i.test(ex.name));
   template.requiresClinicalReview = !!original.requiresClinicalReview ||
     /\b(lower|legs?)\b/i.test(original.name) || isLower;
   const result = addWorkouts(state, [template], false, makeId);
