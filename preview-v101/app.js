@@ -7,6 +7,7 @@ import { V101_CSV, V101_VERSION, V101_EQUIPMENT } from './v101-data.js';
 import { V102_CSV, V102_VERSION, V102_EQUIPMENT } from './v102-data.js';
 import { v102OverlapPanel } from './v102-overlap-ui.js';
 import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.js';
+import { manualProgressionPanel } from './manual-progression-ui.js';
 import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
 
 const $ = selector => document.querySelector(selector);
@@ -163,6 +164,7 @@ function train() {
     ${workout.sourceVersion?`<div class="hint">Source: ${esc(workout.sourceVersion)}</div>`:''}
     ${workout.equipmentNote?`<div class="hint"><strong>Equipment:</strong> ${esc(workout.equipmentNote)}</div>`:''}
     ${ex.sourceNote?`<div class="notice"><strong>Exercise instructions:</strong> ${esc(ex.sourceNote)}</div>`:''}
+    ${focusMode?manualProgressionPanel(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise,set:focusSet+1}):''}
     <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">RPE</span><span class="micro">✓</span></div>${setFields}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">${ex.rest}s rest timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
   } else {exMarkup=`<div class="card empty"><strong>${state.templates.length?'No workout selected':'No templates yet'}</strong>${state.templates.length?'Choose any workout above or assign a day in Plan.':'Go to Dashboard and load the example plan, or import your own CSV in Plan.'}</div>`;}
   return `${shellHeading()}${heading('TRAINING','One set at a time','Choose an exercise, record your completed sets, then rest before the next one.')}
