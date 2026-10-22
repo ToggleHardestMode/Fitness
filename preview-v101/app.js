@@ -1,5 +1,5 @@
-import { weeklyTrainingAnalysis } from './training-analytics.js';
-import { volumeBarsMarkup } from './volume-bars.js';
+import { weeklyTrainingAnalysis, lifetimeTrainingSets } from './training-analytics.js';
+import { setsBarsMarkup } from './volume-bars.js';
 import { trainingAnalyticsPanel } from './training-analytics-ui.js';
 import { initRoFeedback, isRoSoundEnabled } from './ro-feedback.js';
 import { symptomPanel } from './symptom-ui.js';
@@ -56,7 +56,7 @@ function navMarkup() {return navItems.map(([id,label])=>`<button type="button" c
 function heading(kicker,title,subtitle='') {return `<div class="screen-intro"><div class="eyebrow">${esc(kicker)}</div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div>`;}
 function shellHeading() {return `<div class="header-row"><div class="wordmark"><img src="./assets/icon.svg" alt=""><span>FitnessPilot</span></div><div class="date-pill">${new Date().toLocaleDateString('en-SG',{month:'short',day:'numeric',weekday:'short'})}</div></div>`;}
 function initialCard() {return `<section class="hero codex-quest"><div class="quest-topline"><span>✦ FITNESSPILOT</span><span class="quest-date">GET STARTED</span></div><h1>Set up your first workout plan.</h1><p class="quest-subtitle">Add reusable workout plans, assign training days, and record the sets you actually complete.</p><div class="quest-facts"><span>Private training journal</span><span>Offline-first</span></div><button class="btn" data-page="plan">Open Plan →</button></section>`;}
-function gildedSummary(analysis, nextDay) {
+function gildedSummary(analysis, nextDay, lifetimeSets) {
   const daysLogged = analysis.days.filter(day => day.completed > 0).length;
   // Off-plan sets are included in the logged total, but not in schedule completion.
   const completion = analysis.planned > 0
@@ -64,12 +64,12 @@ function gildedSummary(analysis, nextDay) {
     : '—';
   const nextName = nextDay ? esc(nextDay.t.name) : 'Not scheduled';
   const nextDate = nextDay ? (nextDay.date === today() ? 'Today' : nice(nextDay.date)) : 'Choose days in Plan';
-  return `<section class="v151-gold-summary" aria-label="Weekly fitness summary">
-    <div class="v151-gold-head"><span>WEEKLY FITNESS SUMMARY</span><span>Saved sets only</span></div>
-    <div class="v151-gold-feature"><span>Muscle-group sets done</span><strong>${analysis.completed}</strong>
-      <small>Direct working sets logged this week, including off-plan workouts</small></div>
+  return `<section class="v151-gold-summary" aria-label="Training progress">
+    <div class="v151-gold-head"><span>YOUR TRAINING PROGRESS</span><span>Saved sets only</span></div>
+    <div class="v151-gold-feature"><span>Total completed sets</span><strong>${fmt(lifetimeSets)}</strong>
+      <small>All-time saved working sets, including bodyweight, timed holds and off-plan sessions</small></div>
     <div class="v151-gold-stats">
-      <div><span>Planned sets</span><strong>${analysis.planned}</strong></div>
+      <div><span>This week</span><strong>${analysis.completed} sets</strong></div><div><span>Planned sets</span><strong>${analysis.planned}</strong></div>
       <div><span>Schedule completion</span><strong>${completion}</strong></div>
       <div><span>Days with logs</span><strong>${daysLogged}</strong></div>
     </div>
@@ -80,22 +80,21 @@ function gildedSummary(analysis, nextDay) {
 function inWeekCards(s, analysis) {return `<div class="kpis grid">
   <div class="card"><div class="kpi-label">Days with logs</div><div class="kpi-value">${s.sessions}</div><div class="kpi-bottom">One logged set is not a completed workout</div></div>
   <div class="card"><div class="kpi-label">Logged sets</div><div class="kpi-value">${analysis.completed}</div><div class="kpi-bottom">Recorded working sets</div></div>
-  <div class="card"><div class="kpi-label">Weight × reps total</div><div class="kpi-value">${fmt(analysis.loadVolume)} <small>kg × reps</small></div><div class="kpi-bottom">Sum of saved weight × reps — not a repetition count. Timed holds excluded.</div></div>
   <div class="card"><div class="kpi-label">Body weight</div><div class="kpi-value">${s.weight==null?'—':fmt(s.weight)} <small>${s.weight==null?'':'kg'}</small></div><div class="kpi-bottom">Weekly recorded average</div></div>
 </div>`;}
 function dashboard() {
   const s=weeklyStats(state,today()), analysis=weeklyTrainingAnalysis(state,s.dates[0]);
   const best=bestSets(state).filter(log=>state.templates.find(t=>t.id===log.templateId)?.exercises[log.exerciseIndex]?.repUnit!=='seconds_per_side').slice(0,4);
-  const chart=volumeBarsMarkup(analysis.days, fmt);
+  const chart=setsBarsMarkup(analysis.days);
   const breakdown=analysis.volumeEntries.length
     ? analysis.volumeEntries.map(entry=>`<div class="volume-detail-row"><span>${esc(entry.date)} · ${esc(entry.exercise)} · Set ${entry.set}</span><strong>${fmt(entry.kg)} kg × ${fmt(entry.reps)} = ${fmt(entry.contribution)}</strong></div>`).join('')
     : '<p class="hint">No weight-based sets recorded this week. Bodyweight sets at 0 kg contribute zero; timed holds are excluded.</p>';
-  const volumeExplanation=`<details class="volume-explanation"><summary>Show calculation · ${analysis.volumeEntries.length} weight-based set(s)</summary><p class="hint">Each saved set contributes its entered kg × completed reps. Dumbbell weights are not automatically doubled; totals are not total repetitions.</p>${breakdown}<div class="volume-detail-total"><strong>Weekly total</strong><strong>${fmt(analysis.loadVolume)} kg × reps</strong></div></details>`;
+  const volumeExplanation=`<details class="volume-explanation"><summary>Show calculation · weight × reps (secondary)</summary><p class="hint">Each saved set contributes its entered kg × completed reps. Dumbbell weights are not automatically doubled; totals are not total repetitions.</p>${breakdown}<div class="volume-detail-total"><strong>Weekly total</strong><strong>${fmt(analysis.loadVolume)} kg × reps</strong></div></details>`;
   const days=DAYS.map((d,i)=>{const t=state.templates.find(t=>t.id===state.assignments[i]);return `<div class="day-tile ${t?'active':''}"><strong>${d}</strong><span>${esc(t?.name||'Rest')}</span></div>`;}).join('');
   const nextDay=(()=>{for(let i=0;i<7;i++){const day=weekdayOf(addDays(today(),i));const t=state.templates.find(t=>t.id===state.assignments[day]);if(t)return {date:addDays(today(),i),t};}return null;})();
-  return `${shellHeading()}${gildedSummary(analysis,nextDay)}${!state.templates.length?initialCard():`<section class="hero codex-quest"><div class="quest-topline"><span>✦ NEXT WORKOUT</span><span class="quest-date">${nextDay?(nextDay.date===today()?'TODAY':nice(nextDay.date)):'UNASSIGNED'}</span></div><h1>${nextDay?esc(nextDay.t.name):'Your weekly plan is ready to set up.'}</h1><p class="quest-subtitle">${nextDay?'Your next scheduled workout. Only saved working sets count as progress.':'Choose your training days in Plan before heading into the training hall.'}</p><div class="quest-facts">${nextDay?`<span>${nextDay.t.exercises.length} exercises</span><span>${nextDay.t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</span><span>${isPTReview(nextDay.t)?'PT review required':'Scheduled'}</span>`:'<span>Choose a plan</span><span>Log actual sets</span>'}</div><button class="btn" data-page="${nextDay?'train':'plan'}">${nextDay?'Open Workout →':'Open Plan →'}</button>${nextDay&&isPTReview(nextDay.t)?'<span class="quest-caution">PT Review is not medical clearance.</span>':''}</section>`}
+  return `${shellHeading()}${gildedSummary(analysis,nextDay,lifetimeTrainingSets(state))}${!state.templates.length?initialCard():`<section class="hero codex-quest"><div class="quest-topline"><span>✦ NEXT WORKOUT</span><span class="quest-date">${nextDay?(nextDay.date===today()?'TODAY':nice(nextDay.date)):'UNASSIGNED'}</span></div><h1>${nextDay?esc(nextDay.t.name):'Your weekly plan is ready to set up.'}</h1><p class="quest-subtitle">${nextDay?'Your next scheduled workout. Only saved working sets count as progress.':'Choose your training days in Plan before heading into the training hall.'}</p><div class="quest-facts">${nextDay?`<span>${nextDay.t.exercises.length} exercises</span><span>${nextDay.t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</span><span>${isPTReview(nextDay.t)?'PT review required':'Scheduled'}</span>`:'<span>Choose a plan</span><span>Log actual sets</span>'}</div><button class="btn" data-page="${nextDay?'train':'plan'}">${nextDay?'Open Workout →':'Open Plan →'}</button>${nextDay&&isPTReview(nextDay.t)?'<span class="quest-caution">PT Review is not medical clearance.</span>':''}</section>`}
   <div class="section-label"><h2>This week</h2><span>${nice(s.dates[0])} – ${nice(s.dates[6])}</span></div>${inWeekCards(s,analysis)}
-  <div class="two-panels" style="margin-top:12px"><section class="card"><div class="card-head"><div><h2>Training volume</h2><p>See how much you've logged each day</p></div><span class="badge">7 DAYS</span></div><div class="day-bars" role="img" aria-label="Training volume by day: ${analysis.days.map((v,i)=>`${DAYS[i]} ${fmt(v.loadVolume)} kg·reps`).join('; ')}">${chart}</div><div class="inline-meta"><span class="dot"></span>Volume is based on saved sets only.</div>${volumeExplanation}</section>
+  <div class="two-panels" style="margin-top:12px"><section class="card"><div class="card-head"><div><h2>Completed sets by day</h2><p>Working sets logged each day</p></div><span class="badge">7 DAYS</span></div><div class="day-bars" role="img" aria-label="Completed sets by day: ${analysis.days.map((v,i)=>`${DAYS[i]} ${v.completed} sets`).join('; ')}">${chart}</div><div class="inline-meta"><span class="dot"></span>Chart counts unique logged working sets, not finished sessions.</div>${volumeExplanation}</section>
   <section class="card"><div class="card-head"><div><h2>Your training week</h2><p>Workout assignments</p></div><button class="btn ghost small-btn" data-page="plan">Edit plan →</button></div><div class="day-calendar">${days}</div><div class="inline-meta">${analysis.days.filter(d=>d.assignedCompleted>0).length} assigned day(s) with logged sets · ${s.planned} scheduled. This is not a workout-completion score.</div></section></div>
   ${trainingAnalyticsPanel(state,s.dates[0],today())}
   ${v102OverlapPanel(state,s.dates[0])}
