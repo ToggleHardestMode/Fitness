@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FitnessPilot V15.7 Preview",
+  "name": "FitnessPilot V15.8 Preview",
   "short_name": "FP Preview",
-  "description": "V15.7 versioned workout editor and historical data preservation with V10.2 workouts, recovery checks and offline fallback plus manual workout progression hints with V10.2 and historical workout support; private local-first preview",
+  "description": "V15.8 workout logbook with historical versions and optional local CSV export with V10.2 workouts, recovery checks and offline fallback plus manual workout progression hints with V10.2 and historical workout support; private local-first preview",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
