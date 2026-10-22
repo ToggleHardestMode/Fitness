@@ -1,11 +1,25 @@
-# Workout templates
+# FitnessPilot workout templates
 
-**Current standalone import:** [V10.2 Home Overlap CSV](V10.2_Home_FitnessPilot_Import.csv) (4 workouts, 24 exercises, 62 planned sets: Mon 17 / Tue 13 / Thu 21 / Fri 11).
+**Current canonical workout source:** [V10.2 Home CSV](V10.2_Home_FitnessPilot_Import.csv) (four workouts, 24 exercise entries, **62 planned physical working sets**: Monday 17, Tuesday 13, Thursday 21, Friday 11).
 
-- [Muscle overlap coefficient source](V10.2_Overlap_Coefficients.csv)
-- [Counting method and training guidance](V10.2_Overlap_Optimization_Guide.md)
-- Older workout source files: [archive/workouts](../archive/workouts/README.md)
+| Source | Purpose |
+| --- | --- |
+| [V10.2 workout CSV](V10.2_Home_FitnessPilot_Import.csv) | Exercise names, prescribed sets, rep targets, rest and source instructions |
+| [V10.2 overlap coefficient CSV](V10.2_Overlap_Coefficients.csv) | Approximate direct/indirect muscle-dose coefficients for training-planning comparisons |
+| [V10.2 optimization guide](V10.2_Overlap_Optimization_Guide.md) | Counting method, exercise emphasis and known constraints |
+| [Archived workouts](../archive/workouts/README.md) | Historical V10/V10.1 and earlier sources retained for reference |
 
-**Important:** V10.2 is a downloadable CSV source, **not an automatic upgrade of the hosted app**. The separate `preview-v101/` app still embeds V10.1. Importing V10.2 into FitnessPilot must be initiated by the user; saved logs and schedules are not automatically changed. The older production parser does **not** retain `source_note`; the V15.3 preview parser retains exercise notes and supports seconds-per-side holds. Keep the source guide, and do not interpret symptom notes as clinical clearance. Lower-body sessions marked `[PT Review]` are not medically cleared or automatically assigned.
+## Application status
 
-Do not publish workout history, backups, personal medical records or symptom journals to this public repository.
+- **Production root** [FitnessPilot](https://togglehardestmode.github.io/Fitness/) is an older separate application.
+- **V15.8 preview** [FitnessPilot test app](https://togglehardestmode.github.io/Fitness/preview-v101/?v=29) already embeds V10.2 and also retains the V10.1 import option. To add V10.2 in the preview, use **Plan → Add V10.2 Home templates**. Imports are opt-in and do **not** change previously logged sets or auto-assign weekdays.
+- The preview preserves exercise `sourceNote`, PT-review status and seconds-per-side holds. The older production parser does **not** preserve all the same metadata.
+- A **Custom** workout created with the V15.7+ versioned editor is separate from canonical V10.2; it must not silently reuse the original exercise's overlap coefficients.
+
+**[PT Review]:** Tuesday and Friday lower sessions require physiotherapist review; an app import, symptom form or estimated muscle contribution does **not** constitute clinical clearance. Do not automatically assign or progress them.
+
+**Math:** 62 prescribed sets means 62 physical sets, *not* the sum of regional direct and weighted indirect set equivalents. The coefficients are approximate planning weights and do not measure hypertrophy directly.
+
+**Verification:** GitHub's merged V15.8 preview source is confirmed. Live Pages behavior, exported-file recovery, full native repository tests and real-device interactions are not confirmed by the source review. See the [root README](../README.md) and the [preview guide](../preview-v101/README.md).
+
+Do not publish personal logged weights, workout history, backups, private health data, credentials or connected-account details to this public repository.
