@@ -1,4 +1,5 @@
 import { weeklyTrainingAnalysis } from './training-analytics.js';
+import { volumeBarsMarkup } from './volume-bars.js';
 import { trainingAnalyticsPanel } from './training-analytics-ui.js';
 import { initRoFeedback, isRoSoundEnabled } from './ro-feedback.js';
 import { symptomPanel } from './symptom-ui.js';
@@ -81,8 +82,8 @@ function inWeekCards(s, analysis) {return `<div class="kpis grid">
 </div>`;}
 function dashboard() {
   const s=weeklyStats(state,today()), analysis=weeklyTrainingAnalysis(state,s.dates[0]);
-  const best=bestSets(state).filter(log=>state.templates.find(t=>t.id===log.templateId)?.exercises[log.exerciseIndex]?.repUnit!=='seconds_per_side').slice(0,4), max=Math.max(...analysis.days.map(d=>d.loadVolume),1);
-  const chart=analysis.days.map((d,i)=>`<div class="day-slot" title="${DAYS[i]}: ${fmt(d.loadVolume)} kg·reps"><div class="bar ${d.loadVolume===0?'empty':''}" style="height:${Math.max(4,Math.round(d.loadVolume/max*111))}px"></div><span class="bar-label">${DAYS[i]}</span></div>`).join('');
+  const best=bestSets(state).filter(log=>state.templates.find(t=>t.id===log.templateId)?.exercises[log.exerciseIndex]?.repUnit!=='seconds_per_side').slice(0,4);
+  const chart=volumeBarsMarkup(analysis.days, fmt);
   const days=DAYS.map((d,i)=>{const t=state.templates.find(t=>t.id===state.assignments[i]);return `<div class="day-tile ${t?'active':''}"><strong>${d}</strong><span>${esc(t?.name||'Rest')}</span></div>`;}).join('');
   const nextDay=(()=>{for(let i=0;i<7;i++){const day=weekdayOf(addDays(today(),i));const t=state.templates.find(t=>t.id===state.assignments[day]);if(t)return {date:addDays(today(),i),t};}return null;})();
   return `${shellHeading()}${gildedSummary(analysis,nextDay)}${!state.templates.length?initialCard():`<section class="hero codex-quest"><div class="quest-topline"><span>✦ NEXT WORKOUT</span><span class="quest-date">${nextDay?(nextDay.date===today()?'TODAY':nice(nextDay.date)):'UNASSIGNED'}</span></div><h1>${nextDay?esc(nextDay.t.name):'Your weekly plan is ready to set up.'}</h1><p class="quest-subtitle">${nextDay?'Your next scheduled workout. Only saved working sets count as progress.':'Choose your training days in Plan before heading into the training hall.'}</p><div class="quest-facts">${nextDay?`<span>${nextDay.t.exercises.length} exercises</span><span>${nextDay.t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</span><span>${isPTReview(nextDay.t)?'PT review required':'Scheduled'}</span>`:'<span>Choose a plan</span><span>Log actual sets</span>'}</div><button class="btn" data-page="${nextDay?'train':'plan'}">${nextDay?'Open Workout →':'Open Plan →'}</button>${nextDay&&isPTReview(nextDay.t)?'<span class="quest-caution">PT Review is not medical clearance.</span>':''}</section>`}
