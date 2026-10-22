@@ -112,7 +112,12 @@ const v102Templates = () => parseWorkouts(V102_CSV).map(t => ({
   ...t, sourceVersion: V102_VERSION, equipmentNote: V102_EQUIPMENT,
   requiresClinicalReview: !!t.requiresClinicalReview,
   exercises: t.exercises.map(e => ({
-    ...e, ...(V102_ARMS[e.name] ? {muscleDetail: V102_ARMS[e.name]} : {})
+    ...e,
+    ...(V102_ARMS[e.name] ? {muscleDetail: V102_ARMS[e.name]} : {}),
+    ...(e.repUnit === 'seconds_per_side' && e.sourceNote ? {
+      sourceNote: e.sourceNote.replace('app cannot store timed holds',
+        'record seconds per side; timed holds are excluded from lifting volume')
+    } : {})
   }))
 }));
 function isPTReview(t) { return !!t?.requiresClinicalReview || !!t?.name?.includes('[PT Review]'); }
