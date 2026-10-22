@@ -176,7 +176,7 @@ export function parseWorkouts(csv) {
   for (const [i, r] of rows.entries()) {
     const day = dayIndex(r.day), name = limited(r.workout, `Row ${i + 2}: workout`, 60);
     const key = `${day}|${name.toLowerCase()}`;
-    if (!groups.has(key)) groups.set(key, { day, name, exercises: [] });
+    if (!groups.has(key)) groups.set(key, { day, name, exercises: [], ...(name.includes('[PT Review]') ? { requiresClinicalReview: true } : {}) });
     const sets = intRange(r.sets, `Row ${i + 2}: sets`, 1, 10);
     const min = intRange(r.rep_min, `Row ${i + 2}: minimum reps`, 1, 100);
     const max = intRange(r.rep_max, `Row ${i + 2}: maximum reps`, 1, 100);
@@ -194,7 +194,16 @@ export function parseWorkouts(csv) {
         return { min: low, max: high };
       });
     }
-    groups.get(key).exercises.push({ name: limited(r.exercise, `Row ${i + 2}: exercise`, 80), muscle: limited(r.muscle, `Row ${i + 2}: muscle`, 40), sets, min, max, rest: intRange((r.rest_seconds === undefined || r.rest_seconds === "" ? "90" : r.rest_seconds), `Row ${i + 2}: rest seconds`, 0, 600), ...(setTargets ? { setTargets } : {}) });
+    const exerciseName = limited(r.exercise, `Row ${i + 2}: exercise`, 80);
+    const note = r.source_note ? limited(r.source_note, `Row ${i + 2}: source note`, 500) : undefined;
+    const equipment = r.equipment ? limited(r.equipment, `Row ${i + 2}: equipment`, 120) : undefined;
+    const repUnit = /\(seconds\/side\)/i.test(exerciseName) ? "seconds_per_side" : undefined;
+    groups.get(key).exercises.push({
+      name: exerciseName, muscle: limited(r.muscle, `Row ${i + 2}: muscle`, 40), sets, min, max,
+      rest: intRange((r.rest_seconds === undefined || r.rest_seconds === "" ? "90" : r.rest_seconds), `Row ${i + 2}: rest seconds`, 0, 600),
+      ...(setTargets ? { setTargets } : {}), ...(note ? { sourceNote: note } : {}),
+      ...(equipment ? { equipment } : {}), ...(repUnit ? { repUnit } : {})
+    });
   }
   return [...groups.values()];
 }
@@ -209,7 +218,7 @@ export function addWorkouts(state, workouts, makeAssignments = false, makeId = (
     existing.add(key);
     const template = { ...structuredClone(workout), id: makeId() };
     next.templates.push(template);
-    if (makeAssignments && !(String(workout.day) in next.assignments)) next.assignments[workout.day] = template.id;
+    if (makeAssignments && !(template.requiresClinicalReview || template.name.includes('[PT Review]')) && !(String(workout.day) in next.assignments)) next.assignments[workout.day] = template.id;
     added++;
   }
   return { state: next, added, skipped };
@@ -276,6 +285,9 @@ export function validateBackup(value) {
   for (const t of value.templates) {
     limited(t.id, "Template ID", 140); limited(t.name, "Workout name", 60);
     intRange(t.day, "Workout weekday", 0, 6);
+    if (t.sourceVersion !== undefined && (typeof t.sourceVersion !== "string" || t.sourceVersion.length < 1 || t.sourceVersion.length > 60)) fail("Backup contains an invalid source version.");
+    if (t.equipmentNote !== undefined && (typeof t.equipmentNote !== "string" || t.equipmentNote.length > 250)) fail("Backup contains invalid equipment guidance.");
+    if (t.requiresClinicalReview !== undefined && typeof t.requiresClinicalReview !== "boolean") fail("Backup contains an invalid PT review flag.");
     if (tids.has(t.id)) fail("Backup has duplicate template IDs.");
     tids.add(t.id);
     if (!Array.isArray(t.exercises) || !t.exercises.length || t.exercises.length > 200) fail("Backup contains an invalid exercise list.");
@@ -284,6 +296,9 @@ export function validateBackup(value) {
       intRange(e.sets, "Sets", 1, 10); intRange(e.min, "Minimum reps", 1, 100);
       intRange(e.max, "Maximum reps", 1, 100); intRange(e.rest, "Rest seconds", 0, 600);
       if (e.min > e.max) fail("Backup contains inverted rep ranges.");
+      if (e.sourceNote !== undefined && (typeof e.sourceNote !== "string" || e.sourceNote.length > 500)) fail("Backup contains invalid exercise notes.");
+      if (e.equipment !== undefined && (typeof e.equipment !== "string" || e.equipment.length > 120)) fail("Backup contains invalid equipment notes.");
+      if (e.repUnit !== undefined && e.repUnit !== "seconds_per_side") fail("Backup contains an invalid timed exercise unit.");
       if (e.setTargets !== undefined) {
         if (!Array.isArray(e.setTargets) || e.setTargets.length !== e.sets) fail("Backup contains an invalid per-set target count.");
         e.setTargets.forEach((target, i) => {
