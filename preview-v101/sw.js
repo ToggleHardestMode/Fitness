@@ -1,5 +1,5 @@
 // Offline shell, no background notification or network analytics.
-const CACHE = 'fitnesspilot-preview-v1551-layout-v25';
+const CACHE = 'fitnesspilot-preview-v1552-volume-v26';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './focus-mode.js', './manual-progression.js', './manual-progression-ui.js', './recovery-check.js', './v154-progression.css', './template-transfer.js', './template-import-ui.js', './v152-focus.css', './core.js', './v101-data.js', './v102-data.js', './v102-overlap.js', './v102-overlap-ui.js', './v102-overlap.css', './symptom-journal.js', './symptom-ui.js', './training-analytics.js', './training-analytics-ui.js', './volume-bars.js', './ro-feedback.js', './ro-sound-data.js', './ro-theme.css', './ro-unified.css', './codex.css', './manifest.webmanifest', './assets/icon.svg'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('fitnesspilot-preview-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
