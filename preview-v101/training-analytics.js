@@ -25,6 +25,19 @@ function addDays(key, n) {
 }
 
 const working = log => log.isWarmup !== true && log.kind !== 'warmup';
+// Read-only lifetime progress: unique saved working sets, not scheduled work.
+export function lifetimeTrainingSets(state) {
+  const templates = new Map((state.templates ?? []).map(t => [t.id, t]));
+  const seen = new Set();
+  for (const log of state.logs ?? []) {
+    if (!working(log) || typeof log.date !== 'string' || !DATE_KEY.test(log.date)) continue;
+    const exercise = templates.get(log.templateId)?.exercises?.[log.exerciseIndex];
+    if (!exercise || !Number.isInteger(log.set) || log.set < 1 || log.set > exercise.sets) continue;
+    seen.add(`${log.date}|${log.templateId}|${log.exerciseIndex}|${log.set}`);
+  }
+  return seen.size;
+}
+
 const blankCount = () => ({planned: 0, completed: 0});
 const addCount = (map, muscle, field) => {
   const category = typeof muscle === 'string' && muscle.trim() ? muscle.trim() : 'Unknown';
