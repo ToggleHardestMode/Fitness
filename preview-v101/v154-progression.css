@@ -1,0 +1,15 @@
+.v154-progression {
+  margin: 14px 0 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(196,163,97,.38);
+  border-radius: 14px;
+  background: rgba(196,163,97,.08);
+}
+.v154-progression > strong {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.v154-progression .hint { margin: 6px 0; line-height: 1.45; }
+.v154-candidate { margin: 10px 0; font-weight: 600; }
+.v154-progression .v154-candidate strong { color: #e4bf79; }
