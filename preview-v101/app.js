@@ -9,6 +9,7 @@ import { V102_CSV, V102_VERSION, V102_EQUIPMENT } from './v102-data.js';
 import { v102OverlapPanel } from './v102-overlap-ui.js';
 import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
+import { createExerciseVersion } from './template-version.js';
 import { manualProgressionPanel } from './manual-progression-ui.js';
 import { verifyLocalSnapshot } from './recovery-check.js';
 import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
@@ -35,7 +36,7 @@ try {
   state = emptyState(); storageError = `Existing saved data could not be read: ${error.message}. This app will not overwrite it. Keep this browser's website data intact while you investigate the problem.`;
 }
 let page='dashboard', activeDate=today(), chosenTemplate=null, chosenExercise=0, pendingWorkouts=null, pendingBackup=null;
-let focusMode=false, focusSet=0;
+let focusMode=false, focusSet=0, customizing=null;
 let timerEnd=null,timerHandle=null, audioContext=null, toastHandle=null;
 function toast(msg,error=false) {
   const el=$('#toast'); el.textContent=msg; el.classList.toggle('error',error);el.classList.add('on');
@@ -186,6 +187,25 @@ function plan() {
   const assigned = i=>state.assignments[i]||'';
   const rows=DAYS.map((d,i)=>`<div class="schedule-row"><label for="day${i}">${DAY_NAMES[i]}</label><select class="field" id="day${i}" name="day${i}"><option value="">Rest day</option>${state.templates.map(t=>`<option value="${esc(t.id)}" ${assigned(i)===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></div>`).join('');
   const pending=pendingWorkouts?`<div class="notice"><strong>Import preview ready:</strong> ${pendingWorkouts.length} workout template(s). This adds templates only; it will not alter the existing schedule or workout logs.<div class="preview-list">${pendingWorkouts.map(w=>`<p><strong>${DAY_NAMES[w.day]} · ${esc(w.name)}</strong> — ${w.exercises.length} exercises</p>`).join('')}</div><div class="quick-actions"><button class="btn small-btn" data-action="confirm-csv">Add templates to library</button><button class="btn secondary small-btn" data-action="cancel-csv">Cancel import</button></div></div>`:'';
+  const editable=customizing && state.templates.find(t=>t.id===customizing.id);
+  const exercise=editable?.exercises?.[customizing?.index];
+  const editor=editable && exercise?`<section class="card stack v157-editor" aria-label="Customize exercise">
+    <h3>Create a new version of ${esc(editable.name)}</h3>
+    <p class="hint">Editing ${esc(exercise.name)}. The original workout, existing logs and weekly schedule stay unchanged. After saving, assign your new custom workout manually.</p>
+    <form id="template-version-form">
+      <div class="metrics-grid">
+        <label><span class="form-label">Exercise</span><input class="field" name="name" maxlength="80" required value="${esc(exercise.name)}"></label>
+        <label><span class="form-label">Primary muscle</span><input class="field" name="muscle" maxlength="40" required value="${esc(exercise.muscle)}"></label>
+        <label><span class="form-label">Sets</span><input class="field" name="sets" type="number" min="1" max="10" required value="${exercise.sets}"></label>
+        <label><span class="form-label">Minimum reps</span><input class="field" name="min" type="number" min="1" max="100" required value="${exercise.min}"></label>
+        <label><span class="form-label">Maximum reps</span><input class="field" name="max" type="number" min="1" max="100" required value="${exercise.max}"></label>
+        <label><span class="form-label">Rest (seconds)</span><input class="field" name="rest" type="number" min="0" max="600" required value="${exercise.rest}"></label>
+      </div>
+      <label><span class="form-label">Exercise instructions (for substitutions, write new instructions)</span><textarea class="field" name="sourceNote" maxlength="500" rows="3">${esc(exercise.sourceNote??'')}</textarea></label>
+      <p class="hint">PT Review status is preserved. Customized V10.2 routines do not reuse original muscle-overlap estimates. Per-set target exercises retain their target structure.</p>
+      <div class="form-actions"><button type="submit" class="btn">Save as new workout version</button><button type="button" class="btn secondary" data-action="cancel-customize">Cancel</button></div>
+    </form>
+  </section>`:'';
   return `${shellHeading()}${heading('PLAN','Plan your training','Choose workouts, assign training days, and browse your saved templates. Saved sets remain unchanged.')}
   <div class="codex-waypoints" aria-label="Planning steps"><div><b>01</b><span>Add a workout to the library</span></div><div><b>02</b><span>Assign it to training days</span></div><div><b>03</b><span>Log real sets in Train</span></div></div>
   <section class="card codex-board"><div class="card-head"><div><div class="eyebrow">WEEKLY SCHEDULE</div><h2>Choose your training days</h2><p>${Object.keys(state.assignments).filter(k=>state.assignments[k]).length} days assigned · All changes take effect only when you save</p></div></div><form id="schedule-form">${rows}<div class="form-actions"><button class="btn" type="submit">Save weekly schedule</button></div></form></section>
@@ -203,7 +223,7 @@ function plan() {
   <div class="quick-actions"><button type="button" class="btn" data-action="v101-add">Add V10.1 Home templates</button><button type="button" class="btn secondary" data-action="v101-csv">Download canonical V10.1 CSV</button></div>
   <p class="hint">After import, you may manually assign suitable sessions in your weekly schedule. Do not assign the lower-body templates without appropriate clinician review.</p></section>
   <div class="section-label"><h2>Workout library</h2><span>${state.templates.length} saved templates</span></div><p class="hint codex-library-help">These are reusable workout templates—not completed workouts. Tap a loadout to inspect its exercises. Assign it to a weekday above, then save completed sets in Train.</p>
-  <section class="codex-library-grid">${state.templates.length ? state.templates.map(t=>`<details class="codex-library-entry"><summary><span class="codex-entry-symbol" aria-hidden="true">✦</span><span class="codex-entry-title"><strong>${esc(t.name)}</strong><small>${t.exercises.length} exercises · ${t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</small><small>${DAYS.filter((d,i)=>state.assignments[i]===t.id).join(', ')||'Not scheduled'}${isPTReview(t)?' · PT review required':''}</small></span><span class="codex-entry-arrow" aria-hidden="true">⌄</span></summary><div class="codex-entry-body"><strong>Exercise loadout</strong><ul>${t.exercises.map(e=>`<li><span>${esc(e.name)}</span><span>${e.sets} × ${esc(rangeSummary(e))}</span></li>`).join('')}</ul><p class="hint">${isPTReview(t)?'Clinical review is required for this lower-body template. Saving an assignment is not clearance.':'Select this workout in the schedule above; saved sets are recorded separately.'}</p></div></details>`).join(''):'<section class="card empty"><strong>No workout templates yet</strong>Use the V10.1 import above, or import your own CSV below.</section>'}</section>
+  <section class="codex-library-grid">${state.templates.length ? state.templates.map(t=>`<details class="codex-library-entry"><summary><span class="codex-entry-symbol" aria-hidden="true">✦</span><span class="codex-entry-title"><strong>${esc(t.name)}</strong><small>${t.exercises.length} exercises · ${t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</small><small>${DAYS.filter((d,i)=>state.assignments[i]===t.id).join(', ')||'Not scheduled'}${isPTReview(t)?' · PT review required':''}</small></span><span class="codex-entry-arrow" aria-hidden="true">⌄</span></summary><div class="codex-entry-body"><strong>Exercise loadout</strong><ul>${t.exercises.map((e,i)=>`<li><span>${esc(e.name)}</span><span>${e.sets} × ${esc(rangeSummary(e))} <button type="button" class="btn secondary small-btn v157-edit-button" data-template-edit="${esc(t.id)}" data-exercise-edit="${i}">Customize</button></span></li>`).join('')}</ul><p class="hint">${isPTReview(t)?'Clinical review is required for this lower-body template. Saving an assignment is not clearance.':'Select this workout in the schedule above; saved sets are recorded separately.'}</p></div></details>`).join(''):'<section class="card empty"><strong>No workout templates yet</strong>Use the V10.1 import above, or import your own CSV below.</section>'}</section>${editor}
   <details class="codex-archive"><summary>Other saved program options <span>Historical & Unified UL</span></summary><div class="codex-archive-body">  <div class="section-label"><h2>Historical training plans</h2></div><section class="card stack"><strong>Recovery-Optimized Upper/Lower · 30 Sep 2026</strong><p class="subtle small">Mon Upper A · Tue Lower A · Thu Upper B · Fri Lower B. Includes top/back-off sets and labelled superset pairs. For Face Pull/Lateral Raise, the third set is optional. Reps listed per arm/leg are per side. Rest is 90 seconds by default unless noted.</p><div class="quick-actions"><button class="btn" type="button" data-action="latest-ul">Add my Recovery UL templates</button><button class="btn secondary" type="button" data-action="latest-ul-csv">Download this plan (.csv)</button></div><p class="hint">Adds templates only. Your current weekly schedule and completed workout sets are unchanged. After import, assign the new workouts to weekdays above and save the schedule.</p></section>
   <div class="section-label"><h2>Unified Recovery UL (per-set targets)</h2></div>
   <section class="card stack"><p class="subtle small">Now one Bench Press, one Goblet Squat, and one Incline Press. Each has different rep targets for top and back-off sets. Your older split templates and saved logs stay available.</p><div class="quick-actions"><button class="btn" type="button" data-action="unified-ul">Add Unified Upper/Lower plan</button><button class="btn secondary" type="button" data-action="unified-ul-csv">Download Unified plan (.csv)</button></div><p class="hint">Adding these templates does not change your current workout days. Choose the new Unified workouts in the schedule above, then save.</p></section>
@@ -239,7 +259,7 @@ async function readBackup(file) {
 }
 
 document.addEventListener('click', event=>{
-  const button=event.target.closest('[data-page],[data-exercise],[data-action],[data-rest],[data-focus-set]');if(!button)return;
+  const button=event.target.closest('[data-page],[data-exercise],[data-action],[data-rest],[data-focus-set],[data-template-edit]');if(!button)return;
   if(button.dataset.page){
     if(button.dataset.page===page)return;
     if(!mayLeaveFocusSet())return;
@@ -261,11 +281,22 @@ document.addEventListener('click', event=>{
     }
     return;
   }
+  if(button.dataset.templateEdit!==undefined) {
+    tryAction(()=>{
+      const id=button.dataset.templateEdit,index=Number(button.dataset.exerciseEdit);
+      const template=state.templates.find(t=>t.id===id);
+      if(!template || !Number.isInteger(index) || !template.exercises[index])throw Error('Choose a saved workout exercise.');
+      customizing={id,index};render();
+      document.getElementById('template-version-form')?.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+    return;
+  }
   if(button.dataset.rest){tryAction(()=>{const seconds=intRange(button.dataset.rest,'Rest',1,600);timerEnd=Date.now()+seconds*1000;clearInterval(timerHandle);timerHandle=setInterval(timerTick,250);
     try{const A=window.AudioContext||window.webkitAudioContext;if(A){audioContext=audioContext||new A();void audioContext.resume();}}catch{}
     timerTick();toast(`Rest timer started: ${seconds} seconds.`);});return;}
   const act=button.dataset.action;
   tryAction(()=>{
+    if(act==='cancel-customize'){customizing=null;render();return;}
     if(act==='focus-repeat') {
       if(!focusMode)throw Error('Switch to Focus Mode first.');
       const choice=repeatLastSessionSet(state,{date:activeDate,templateId:chosenTemplate,exerciseIndex:chosenExercise,set:focusSet+1});
@@ -352,6 +383,16 @@ document.addEventListener('change',event=>{
 document.addEventListener('submit',event=>{
   event.preventDefault();const form=event.target;
   tryAction(()=>{
+    if(form.id==='template-version-form'){
+      if(!customizing)throw Error('Select a saved exercise to customize first.');
+      const changes=Object.fromEntries(['name','muscle','sets','min','max','rest','sourceNote']
+        .map(key=>[key,form.elements[key].value]));
+      const out=createExerciseVersion(state,customizing.id,customizing.index,changes);
+      if(!confirm(`Add "${out.template.name}" as a NEW workout? Your original, schedules, and logged sets remain unchanged.`))return;
+      commit(out.state,`Custom workout "${out.template.name}" added. Assign it in Plan when ready.`);
+      customizing=null;
+      return;
+    }
     if(form.id==='schedule-form'){
       const next=structuredClone(state);const assignments={};
       for(let i=0;i<7;i++){const id=form.elements[`day${i}`].value;if(id){if(!state.templates.some(t=>t.id===id))throw Error(`Unknown workout selected for ${DAY_NAMES[i]}.`);assignments[i]=id;}}

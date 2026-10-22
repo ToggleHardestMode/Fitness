@@ -245,3 +245,9 @@ a,.eyebrow,.hero-kicker,.exercise-choice b,.side-tag {color:var(--lime);}
  .v151-gold-stats>div{padding:11px 6px;}
  .v151-gold-stats span{font-size:10px;}
 }
+/* V15.7 versioned exercise editing */
+.v157-editor{margin:16px 0;scroll-margin-top:20px}
+.v157-editor .metrics-grid{margin:10px 0}
+.v157-editor textarea.field{width:100%;min-height:85px;resize:vertical}
+.codex-entry-body .v157-edit-button{margin-left:8px;padding:7px 10px;min-height:35px;font-size:.76rem}
+@media(max-width:540px){.codex-entry-body .v157-edit-button{display:block;margin:8px 0 0}}
