@@ -251,3 +251,19 @@ a,.eyebrow,.hero-kicker,.exercise-choice b,.side-tag {color:var(--lime);}
 .v157-editor textarea.field{width:100%;min-height:85px;resize:vertical}
 .codex-entry-body .v157-edit-button{margin-left:8px;padding:7px 10px;min-height:35px;font-size:.76rem}
 @media(max-width:540px){.codex-entry-body .v157-edit-button{display:block;margin:8px 0 0}}
+
+/* V15.8: local, read-only workout logbook */
+.v158-logbook{min-width:0}
+.v158-logbook .card-head{flex-wrap:wrap;gap:12px}
+.v158-session{border:1px solid rgba(199,172,117,.25);border-radius:12px;overflow:hidden;margin:8px 0}
+.v158-session summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;list-style:none}
+.v158-session summary::-webkit-details-marker{display:none}
+.v158-session summary span:first-child{min-width:0;overflow-wrap:anywhere}
+.v158-session summary small{display:block;margin-top:5px;opacity:.8;font-size:.78rem}
+.v158-session[open] summary{border-bottom:1px solid rgba(199,172,117,.25)}
+.v158-session ul{list-style:none;margin:0;padding:4px 12px}
+.v158-session li{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;padding:10px 2px;border-bottom:1px solid rgba(199,172,117,.12);font-size:.85rem}
+.v158-session li:last-child{border-bottom:0}
+.v158-session li span:last-of-type{font-variant-numeric:tabular-nums}
+.v158-session li small{flex-basis:100%;opacity:.85;overflow-wrap:anywhere}
+@media(max-width:520px){.v158-session li{flex-direction:column;align-items:flex-start;gap:3px}}
