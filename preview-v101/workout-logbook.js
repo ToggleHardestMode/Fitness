@@ -63,12 +63,9 @@ const csvValue = value => {
 };
 
 export function workoutLogbookCsv(state) {
-  const {sessions}=workoutLogbook(state,100);
-  // The UI limits to 15, but CSV exports *all* history, including >100 sessions.
-  // Paginate batches to avoid dropping older records.
+  // The UI limits to 15; CSV exports every valid saved set, without a date cap.
   const lines=[['Date','Workout','Source version','Exercise','Set','Weight kg',
     'Reps or seconds per side','Unit','RPE','Working set','Notes'].map(csvValue).join(',')];
-  // Enumerate without a 100-session cap by reusing the complete indexed source logs:
   const templates=new Map((state.templates || []).map(t=>[t.id,t]));
   const seen=new Set(),items=[];
   for(const log of state.logs || []) {
