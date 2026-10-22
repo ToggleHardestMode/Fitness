@@ -201,17 +201,23 @@ async function readBackup(file) {
 
 document.addEventListener('click', event=>{
   const button=event.target.closest('[data-page],[data-exercise],[data-action],[data-rest],[data-focus-set]');if(!button)return;
-  if(button.dataset.page){if(button.dataset.page!==page&& !mayLeaveFocusSet())return;goto(button.dataset.page);return;}
+  if(button.dataset.page){
+    if(button.dataset.page===page)return;
+    if(!mayLeaveFocusSet())return;
+    goto(button.dataset.page);return;
+  }
   if(button.dataset.exercise!==undefined){
     const next=Number(button.dataset.exercise);
-    if(next!==chosenExercise && !mayLeaveFocusSet())return;
+    if(next===chosenExercise)return;
+    if(!mayLeaveFocusSet())return;
     chosenExercise=next;selectFocusSet();render();return;
   }
   if(button.dataset.focusSet!==undefined){
     const next=Number(button.dataset.focusSet);
     const ex=state.templates.find(t=>t.id===chosenTemplate)?.exercises[chosenExercise];
     if(Number.isInteger(next)&&ex&&next>=0&&next<ex.sets){
-      if(next!==focusSet && !mayLeaveFocusSet())return;
+      if(next===focusSet)return;
+      if(!mayLeaveFocusSet())return;
       focusSet=next;render();
     }
     return;
