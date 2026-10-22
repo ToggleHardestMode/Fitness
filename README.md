@@ -1,146 +1,103 @@
-# FitnessPilot Web — iPhone workout tracker, v1
+# FitnessPilot — local-first workout tracker
 
-A private, no-account workout tracker that you can add to the Home Screen of an **iPhone 12 Pro Max** from Safari. No Xcode, Mac, App Store, subscription, build tools, or app developer account required. Built using only HTML, CSS, and JavaScript.
+FitnessPilot is a browser-based, no-account workout tracker hosted on GitHub Pages. The public repository contains **application source and example routines only**, not your private workout history.
 
-This package is **a website ready to upload**, not a live hosted URL. Follow the steps below to put it on your iPhone.
+## Open the app
 
-## 1. Put it online using GitHub Pages (Windows PC)
+| Edition | Link | What it is |
+| --- | --- | --- |
+| **Production (older app)** | [Open FitnessPilot](https://togglehardestmode.github.io/Fitness/) | Existing root application, kept separate from experimental features |
+| **V15.8 test preview** | [Open the V15.8 preview](https://togglehardestmode.github.io/Fitness/preview-v101/?v=29) | Most recent GitHub **source** version; preview-only workout features, not a production upgrade |
 
-You need a free GitHub account. For the simplest free Pages setup, use a public repository. **The app's source code will be public, but workout records stay on your iPhone** (not in GitHub).
+**Release status (22 October 2026):** V15.8 source was merged into `main` in [PR #28](https://github.com/ToggleHardestMode/Fitness/pull/28). This confirms the repository source, **not** live Pages delivery or real iPhone acceptance. Check that the preview displays the **V15.8** banner. Production root has **not** been upgraded to V15.8.
 
-1. Download and unzip `FitnessPilot-Web-v1.zip` to your Windows PC.
-2. Open https://github.com and sign in.
-3. At the top right click the **+** icon, choose **New repository**.
-4. Name it `fitnesspilot-web`. Select **Public**. Click **Create repository**.
-5. Choose **uploading an existing file** (or **Add file → Upload files**).
-6. Drag the **contents** of the `FitnessPilot-Web` folder into the upload area — **not the containing folder**. Make sure `index.html` is in the repository's top level along with `app.js`, `core.js`, `styles.css`, `sw.js`, `manifest.webmanifest`, the `assets` folder, and the `examples` folder. The `tests` folder is optional for publishing.
-7. Scroll down and click **Commit changes**.
-8. In the repository open **Settings → Pages**.
-9. Under **Build and deployment**, choose **Deploy from a branch**. Choose `main`, select `/(root)`, and click **Save**.
-10. Give GitHub a few minutes to publish. The URL usually looks like `https://YOUR-USERNAME.github.io/fitnesspilot-web/` (replace YOUR-USERNAME). The exact link is shown in GitHub Pages settings after publishing.
-11. Open that URL on your Windows PC first. Confirm the FitnessPilot screen appears and you can select **Use example workout plan**.
+Both editions are served from the same web origin but use different browser-storage keys:
 
-**Don't upload real workout logs, personal data exports, Apple passwords, API keys or `.json` backups to GitHub.** Everything in this starter ZIP is code or an example workout CSV, not your personal history.
+- Production: `fitnesspilot.web.v1`
+- Preview: `fitnesspilot.preview.v101.v1`
 
-If your repository uses a different branch name or Pages interface, choose that actual branch and the folder containing `index.html`.
+The preview folder's historic name `preview-v101` is intentional; it does **not** mean the preview is still at app version V10.1. Do not clear Safari website data to force an update, because doing so can remove saved records.
 
-## 2. Install on your iPhone 12 Pro Max
+## Install and start on iPhone
 
-1. On the iPhone open **Safari** (not the GitHub mobile app).
-2. Visit the published Pages URL from step 10.
-3. Tap **Share** (or the Page Menu and Share, depending on iOS version).
-4. Tap **Add to Home Screen**.
-5. Enable **Open as Web App** if that option appears, then tap **Add**.
-6. Tap the **FitnessPilot** icon on the Home Screen. It opens in its own window.
-7. Tap **Use example workout plan** to add Monday Upper A, Tuesday Lower A, Thursday Upper B, and Friday Lower B.
+1. Open the edition you want in **Safari** and confirm its version, especially for the preview.
+2. Use Safari's **Share → Add to Home Screen** (labels depend on iOS). A separate installed web-app storage context can behave differently; do not assume workout history is automatically shared with a Safari tab.
+3. In **Plan**, add a template (the current preview recommends **V10.2 Home**), then separately choose weekdays if you want a schedule.
+4. In **Train**, choose the workout and date, enter your actual weight, repetitions and effort, and **Save** the completed sets.
+5. In **Tools**, export a full JSON backup regularly and save it somewhere you control.
 
-After the first online visit, the static website files are cached for offline use. Workout records save locally on the device. Offline support still needs to be verified on your own iPhone, and an iPhone can clear website data under storage pressure.
+Workout templates are **not** automatically assigned, completed or medically cleared when imported. Exercise history and weekly assignments are distinct.
 
-## 3. Your first workout — example
+## V15.8 preview feature guide
 
-1. Open **Train**. Change **Workout date** if needed.
-2. Select your workout (for example, Upper A).
-3. Tap **Dumbbell Bench Press**.
-4. In set 1, enter `20` kg, `10` reps, `8` RPE (effort 8/10).
-5. Tick the check box at the right of that set.
-6. Tap **Save checked sets**. The app saves the checked set only.
-7. Repeat for more sets or other exercises.
-8. Open **Dashboard** to see the saved working sets and volume.
+These features are implemented in `preview-v101/`. Their presence in GitHub is verified; individual device behavior still requires testing.
 
-Example: 20 kg × 10 reps = 200 kg training volume for that logged set. For dumbbells, enter the weight consistently (such as **per hand**); FitnessPilot does **not** automatically double the volume for two hands. Bodyweight exercises can use 0 kg; these count as completed sets but contribute 0 kg of external load volume.
+| Area | Available in the V15.8 preview |
+| --- | --- |
+| **Plan** | Optional **V10.2 Home** 4-day workout import, earlier **V10.1 Home** templates, CSV template import, seven-day scheduling |
+| **Workout editor** | **Customize** an exercise and **Save as new workout version**; original template IDs and saved historical sets are preserved; new version is not scheduled automatically |
+| **Train** | Standard logging, Focus Mode, saved-set references, explicit **Copy saved set** for eligible upper-body sets, RPE entry, rest timer |
+| **Dashboard** | Direct logged/planned sets, session summary, entered-kg × reps volume, per-set calculation details, and **13-region V10.2** direct/estimated indirect overlap |
+| **Recovery** | Before/after/next-day symptom journal and **[PT Review]** warning for lower-body sessions; no automatic clinical clearance or loading progression |
+| **Progression review** | Read-only comparison with prior sets; any suggested target is optional and is **never** auto-filled or saved |
+| **Tools** | Full JSON export/guarded restore, local-data integrity check, calendar reminder export, **Workout Logbook**, full-history CSV export, sound preference |
 
-Use **Train → Daily check-in** to add body weight, protein, calories, sleep and recovery. Leaving a field blank means it was not measured.
+The logbook displays the **latest 15 historical sessions** in the preview and lets you **Download full history (.csv)** with all valid historical saved sets. It refers to the workout template version used when the set was logged; it does not rewrite history to match the current schedule. The CSV contains workout details and notes, so keep it private.
 
-## 4. Import a different workout plan from Excel
+The Ragnarok-inspired soft UI, gold styling and click-feedback sound remain part of the preview. Browser audio and service-worker offline behavior are device-dependent and must be checked in Safari.
 
-Open the provided `examples/UpperLower-4-Day.csv` to see the format.
+### V10.2 exercise plan and overlap numbers
 
-Required column headings:
+The canonical [V10.2 workout CSV](templates/V10.2_Home_FitnessPilot_Import.csv) contains **4 workouts, 24 exercise entries and 62 planned physical weekly sets**:
 
-`day,workout,exercise,muscle,sets,rep_min,rep_max`
+| Day | Workout | Prescribed sets |
+| --- | --- | ---: |
+| Monday | Upper A | 17 |
+| Tuesday | Lower A **[PT Review]** | 13 |
+| Thursday | Upper B | 21 |
+| Friday | Lower B **[PT Review]** | 11 |
 
-Optional column: `rest_seconds` (default 90)
+[Muscle-overlap coefficients](templates/V10.2_Overlap_Coefficients.csv) and the [optimization guide](templates/V10.2_Overlap_Optimization_Guide.md) are training-planning sources. Estimated indirect muscle-set equivalents are **not additional physically completed sets** or scientific measurements of muscle growth. They cannot establish medical clearance; the lower-body routines must remain clinician-dependent.
 
-Example rows:
+Older versioned sources are retained under [archive/workouts](archive/workouts/README.md). Template editing creates a separate custom version; custom exercises must not inherit unverified canonical V10.2 coefficient assumptions.
 
-```csv
-day,workout,exercise,muscle,sets,rep_min,rep_max,rest_seconds
-Mon,Upper A,Dumbbell Bench Press,Chest,3,8,12,120
-Mon,Upper A,Chest Supported Row,Back,3,8,12,120
-Tue,Lower A,Leg Press,Quads,3,8,12,120
-```
+### What does “kg × reps” mean?
 
-1. Enter your routine into Excel.
-2. Choose **File → Save As → CSV UTF-8 (Comma delimited)**.
-3. Put the `.csv` file in iCloud Drive, Files, or another location your iPhone can open.
-4. Open FitnessPilot **Plan → Choose CSV**, select the file, review the list, and tap **Add templates to library**.
-5. Assign the imported plan to the right weekday and tap **Save weekly schedule**.
+The displayed external-load volume is **the sum of entered weight × repetitions for saved working sets**, not a count of repetitions or a measure of muscle growth. A set of 11 kg × 12 reps contributes 132 kg × reps. Dumbbell weights are **not** automatically doubled for two hands. Time-based holds count as working sets but do not contribute to kg × reps. Open **Show calculation** on the Dashboard to audit set contributions.
 
-Importing **adds** workout templates and skips exact duplicates. It does **not** delete saved sets or silently change a schedule. The app does **not** yet import `.xlsx` directly, nor historic rows from an old gym workbook.
+## Back up and restore safely
 
-## 5. Set workout reminders
+- **Tools → Download full backup (.json)** saves the app's templates, workouts and related stored data for the selected browser edition.
+- **Tools → Check saved data integrity** checks the current browser snapshot read-only; it does **not** prove that an exported file can be recovered on another device.
+- **Tools → Restore backup** previews the JSON and requires an explicit **REPLACE** confirmation. **Restoring replaces current preview records**. Back up first and test restore only with disposable data.
+- Root production and preview have separate storage keys; transferring or switching devices requires deliberate export/import. There is **no automatic cross-device synchronization**.
+- The web app uses a service worker for offline caching, but real iPhone offline navigation, background audio, exported-file recovery and Pages-served content are **not yet confirmed**. Do not use “clear website data” as a troubleshooting shortcut.
 
-**This is the main limitation of a static web app.** No Clock-style alarm can ring while FitnessPilot is closed. Actual background web push would require a separate server and notification permissions. We have not built that server.
+## Development and testing
 
-FitnessPilot instead exports repeatable calendar events:
-
-1. Assign at least one workout day in **Plan** and **Save weekly schedule**.
-2. In **Tools → Workout reminders**, set the workout time (example: `18:30`) and alert lead time (`15 minutes before`).
-3. Tap **Save alert settings**.
-4. Tap **Export Calendar reminders (.ics)**.
-5. Import that file into a calendar app that supports `.ics` events and alerts, such as an Apple Calendar-compatible import workflow. Depending on your iPhone/iOS version, directly tapping an `.ics` from Files might not offer the import; emailing the file to yourself or importing through a desktop calendar may be necessary. **Verify the weekly repeating events and alert in Apple Calendar.**
-6. For guaranteed audible alarms, set a repeating alarm in the iPhone **Clock** app instead.
-
-If you change your workout days or times, existing calendar events do not auto-update. Remove the old imported events before adding a new file, or you may get duplicate alerts. Calendar notifications still respect notification and Focus settings.
-
-The in-app **Rest timer** can beep while the app is open; it is not reliable when the phone is locked or the app is closed.
-
-## 6. Protect your records
-
-- Open **Tools → Download full backup (.json)** every week, and save the file in **Files / iCloud Drive**. Do this before changing phones or restoring another file.
-- To restore, choose **Tools → Restore backup**, review the number of records in the file, type `REPLACE`, and confirm. It will **replace the app's current templates, sets, and daily metrics**. Export a backup first.
-- **Do not clear Safari website data** or delete the Home Screen web app until you have a recent backup and have verified restoring it.
-- Records stay in that phone/browser's local storage; they do **not** follow your GitHub account or automatically sync between Safari and your Home Screen web app. Export/import if you move between them.
-- The source files have **no network requests for your workout data**, advertising libraries, analytics, or third-party packages. Web hosting still processes normal page visits.
-
-The original browser state remains untouched when you first open the app. Only explicit actions such as **Save**, **Use example workout plan**, **Add templates**, or the two-confirmation **Restore** write local data.
-
-## 7. How to update your website later
-
-1. Back up the app's data on your iPhone first.
-2. Upload replacement project files to the same GitHub repository, preserving its Pages URL.
-3. Wait for Pages to publish, and open the installed web app while online. The service worker uses the network when available and falls back to cached files when offline.
-4. Confirm the app still displays your records before making changes.
-
-Keep the repository and site URL stable to preserve its local-storage origin. Do not assume changing domains or GitHub repository names carries records across.
-
-## 8. Test on a Windows PC before uploading
-
-In the extracted folder, open PowerShell:
+The code is plain HTML/CSS/JavaScript ES modules; no npm packages are required to use the site. To run a local HTTP server from a repository checkout:
 
 ```powershell
 py -m http.server 8000
 ```
 
-Then open `http://localhost:8000/` in a Windows browser. Press `Ctrl+C` in PowerShell to stop the preview server.
+Open `http://localhost:8000/` for production or `http://localhost:8000/preview-v101/` for the preview. Do not double-click the HTML file because module loading and service-worker behavior require a local server or HTTPS.
 
-Do **not** open `index.html` by double-clicking it: module loading and offline web-app features need a local web server or an HTTPS website.
-
-Developer-only automated data checks, if Node.js is installed:
+For automated checks, install Node.js and run from the repo root:
 
 ```powershell
-node --test tests/core.test.mjs
+npm test
 ```
 
-No Node.js, npm, Python, or Xcode is required to **use** the live website from your iPhone.
+The test command is `node --test tests/*.test.mjs` ([package.json](package.json)). The repository contains source-based regression checks for historical templates, volume calculations, workout editing, recovery, Focus Mode and logbook export.
 
-## 9. Limits and current verification
+**Verification boundary:** Earlier changes were checked using synthetic V8 fixtures and GitHub source read-backs; a complete native test run on the current full GitHub checkout, live GitHub Pages HTTP check, and physical iPhone acceptance have **not** been established by those checks. Do not treat a green documentation check as proof of device behavior.
 
-- Compatible design: iPhone 12 Pro Max, Safari with iOS 17+ (not tested on a real device in this environment).
-- Dashboard: weekly sessions, saved sets, total external-load volume, weight/nutrition/sleep averages, strongest logged sets.
-- Plans: 7-day assignments, example 4-day split, CSV import and duplicate prevention.
-- Storage: local-only; JSON export and guarded JSON restore. No remote sync.
-- Reminders: calendar file and in-app rest timer. No guaranteed background ringing, no push server.
-- Offline: service worker precache; real iPhone offline behavior not yet tested.
-- Checks: `node --test tests/core.test.mjs` and a headless Chromium UI exercise on mobile dimensions. Real navigation on sandbox Chromium was blocked by the sandbox policy, so UI checks loaded the same HTML/CSS/JavaScript in a controlled `about:blank` fixture rather than verifying actual HTTP/service worker behavior.
-- No website was deployed to GitHub on your behalf.
+## Project status and deferred ideas
+
+- **Current preview source:** V15.8; production remains a separate older application.
+- **Pending release QA:** Native full test suite on a complete checkout, real Safari/iPhone walkthrough, offline test and export/restore using disposable data.
+- **KIV (not built):** Illustrated **Weight Trend Journey** chart with daily weigh-ins, a prominent 7-day trend, goal trajectory and milestone annotations; separate SATNA experiment.
+- **Future work:** Measured 30-set logging speed/error benchmark and optional UX improvements based on real device use.
+
+Public repo documentation is intentionally limited to product and technical behavior. Private development notes, personal training records and health observations belong **outside** this repository.
