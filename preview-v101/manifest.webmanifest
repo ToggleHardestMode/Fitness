@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FitnessPilot V15.3 Preview",
+  "name": "FitnessPilot V15.4 Preview",
   "short_name": "FP Preview",
-  "description": "V15.3 V10.2 overlap-aware workouts; V10.1 templates remain available; private local-first preview",
+  "description": "V15.4 read-only manual workout progression hints with V10.2 and historical workout support; private local-first preview",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
