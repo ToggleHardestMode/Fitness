@@ -1,0 +1,8 @@
+.v102-overlap { overflow: hidden; }
+.v102-overlap-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 12px; }
+.v102-overlap table { border-collapse: collapse; min-width: 660px; width: 100%; font-variant-numeric: tabular-nums; }
+.v102-overlap th, .v102-overlap td { padding: 9px 10px; border-bottom: 1px solid rgba(199,172,117,.22); text-align: right; white-space: nowrap; }
+.v102-overlap th:first-child { text-align: left; }
+.v102-overlap tbody th { font-weight: 600; }
+.v102-overlap thead th { font-size: .78rem; }
+.v102-overlap tbody tr:hover { background: rgba(199,172,117,.06); }
