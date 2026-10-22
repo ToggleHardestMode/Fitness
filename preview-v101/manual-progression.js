@@ -4,10 +4,15 @@ const sameSet = (row, templateId, exerciseIndex, set) =>
   row.templateId === templateId && row.exerciseIndex === exerciseIndex && row.set === set;
 const concerning = row => row.severity !== 0 || row.tingling !== false ||
   row.numbness !== false || row.functionChange !== 'none' || row.location !== 'none';
-const observedNextDay = (state, date, templateId, exerciseIndex) =>
-  (state.symptomLogs || []).filter(row => row.date === date && row.timepoint === 'next_day' &&
+const observations = (state, date, templateId, exerciseIndex) =>
+  (state.symptomLogs || []).filter(row => row.date === date &&
     (row.templateId === null || (row.templateId === templateId &&
       (row.exerciseIndex === null || row.exerciseIndex === exerciseIndex))));
+const completeResponse = (state, date, templateId, exerciseIndex) => {
+  const rows = observations(state,date,templateId,exerciseIndex);
+  return ['before','after','next_day'].every(t=>rows.some(r=>r.timepoint===t)) &&
+    !rows.some(concerning);
+};
 
 export function manualProgression(state, {date, templateId, exerciseIndex, set}) {
   const template = state.templates.find(t => t.id === templateId);
@@ -38,12 +43,12 @@ export function manualProgression(state, {date, templateId, exerciseIndex, set})
   if (!checkin || !Number.isInteger(checkin.recovery) || checkin.recovery < 4) {
     return {...base,reason:'Recovery score of 4–5 is not recorded for this day. Repeat or adjust manually; no progression candidate.'};
   }
-  const followup=observedNextDay(state,latest.date,templateId,exerciseIndex);
-  if (!followup.length) {
-    return {...base,reason:'No matching next-day symptom follow-up was recorded. Delayed response is unknown; no progression candidate.'};
+  const timeline=observations(state,latest.date,templateId,exerciseIndex);
+  if (timeline.some(concerning)) {
+    return {...base,reason:'Recorded symptoms or functional changes require review; no progression candidate.'};
   }
-  if (followup.some(concerning)) {
-    return {...base,reason:'Recorded next-day symptoms or functional changes require review; no progression candidate.'};
+  if (!completeResponse(state,latest.date,templateId,exerciseIndex)) {
+    return {...base,reason:'Before, after and next-day observations are incomplete. Delayed response remains unknown; no progression candidate.'};
   }
   const target=exercise.setTargets?.[set-1] || {min:exercise.min,max:exercise.max};
   if (!Number.isFinite(latest.kg) || !Number.isInteger(latest.reps) ||
@@ -58,8 +63,7 @@ export function manualProgression(state, {date, templateId, exerciseIndex, set})
   const prior=uniqueDays[1];
   const stableSecond=prior && prior.reps >= target.max && prior.kg === latest.kg &&
     Number.isFinite(prior.rpe) && prior.rpe <= 8 &&
-    observedNextDay(state,prior.date,templateId,exerciseIndex).length > 0 &&
-    observedNextDay(state,prior.date,templateId,exerciseIndex).every(row=>!concerning(row));
+    completeResponse(state,prior.date,templateId,exerciseIndex);
   if (stableSecond) {
     return {...base,status:'load-review',
       reason:'Top of rep range on two recorded sessions. Review the smallest available dumbbell increment manually, subject to symptoms and technique. No automatic load change.'};
