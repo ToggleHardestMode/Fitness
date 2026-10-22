@@ -37,6 +37,7 @@ export function createExerciseVersion(state, templateId, exerciseIndex, changes,
     throw Error('For an exercise substitution, replace the old instructions with instructions for the new movement.');
   }
   const revised = { ...structuredClone(old), name, muscle, sets, min, max, rest };
+  if (name !== old.name || muscle !== old.muscle) delete revised.muscleDetail;
   if (note) revised.sourceNote = note;
   else delete revised.sourceNote;
   const unchanged = ['name','muscle','sets','min','max','rest','sourceNote']
