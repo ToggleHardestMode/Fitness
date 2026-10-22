@@ -8,6 +8,7 @@ import { V101_CSV, V101_VERSION, V101_EQUIPMENT } from './v101-data.js';
 import { V102_CSV, V102_VERSION, V102_EQUIPMENT } from './v102-data.js';
 import { v102OverlapPanel } from './v102-overlap-ui.js';
 import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.js';
+import { repeatLastSessionSet } from './quick-repeat.js';
 import { manualProgressionPanel } from './manual-progression-ui.js';
 import { verifyLocalSnapshot } from './recovery-check.js';
 import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
@@ -160,6 +161,8 @@ function train() {
       const target=ex.setTargets?.[i] ?? {min:ex.min,max:ex.max};
       return `<div class="log-grid set-row ${focusMode?'v152-focused-row':''}"><strong class="tiny set-target-label">${i+1}<small>${target.min}–${target.max}</small></strong><input class="field" inputmode="decimal" type="number" min="0" max="500" step="0.5" name="kg${i}" aria-label="Set ${i+1} kilograms" value="${esc(old?.kg??prior?.kg??'')}"><input class="field" inputmode="numeric" type="number" min="1" max="100" step="1" name="reps${i}" aria-label="Set ${i+1} ${ex.repUnit==='seconds_per_side'?'seconds per side':'reps'}" value="${esc(old?.reps??prior?.reps??'')}"><input class="field" inputmode="decimal" type="number" min="1" max="10" step="0.5" name="rpe${i}" aria-label="Set ${i+1} RPE" value="${esc(old?.rpe??'')}">${focusMode?`<span class="v152-set-status">${old?'Saved':'New'}</span>`:`<input class="tick" type="checkbox" name="done${i}" aria-label="Mark set ${i+1} complete" ${old?'checked':''}>`}</div>`;
     }).join('');
+    const repeatChoice=focusMode?repeatLastSessionSet(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise,set:focusSet+1}):null;
+    const repeatButton=repeatChoice?`<div class="v156-repeat"><button class="btn secondary small-btn" type="button" data-action="focus-repeat">↻ Copy saved set ${repeatChoice.sourceSet}</button><span class="hint">${esc(repeatChoice.kg)} kg × ${esc(repeatChoice.reps)} reps. Copies only kg/reps; RPE is entered separately. Review before saving.</span></div>`:'';
     const selectedOld=current.find(l=>l.set===focusSet+1);
     const selectedPrior=previous.find(l=>l.set===focusSet+1);
     const focusIntro=focusMode?`<div class="v152-focus-header"><strong>Set ${focusSet+1} of ${ex.sets}</strong><span>${selectedOld?'Editing a saved set':'Not logged yet'}</span></div><p class="v152-history">${selectedOld?'Saved today — values below are editable.':selectedPrior?`Previous: ${esc(selectedPrior.kg)} kg × ${esc(selectedPrior.reps)} ${ex.repUnit==='seconds_per_side'?'seconds/side':'reps'} (${esc(selectedPrior.date)}). Review before saving.`:'No earlier set recorded. Enter actual values before saving.'}</p>`:'';
@@ -171,7 +174,7 @@ function train() {
     ${workout.equipmentNote?`<div class="hint"><strong>Equipment:</strong> ${esc(workout.equipmentNote)}</div>`:''}
     ${ex.sourceNote?`<div class="notice"><strong>Exercise instructions:</strong> ${esc(ex.sourceNote)}</div>`:''}
     ${focusMode?manualProgressionPanel(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise,set:focusSet+1}):''}
-    <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">RPE</span><span class="micro">✓</span></div>${setFields}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">${ex.rest}s rest timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
+    <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">RPE</span><span class="micro">✓</span></div>${setFields}${repeatButton}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">${ex.rest}s rest timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
   } else {exMarkup=`<div class="card empty"><strong>${state.templates.length?'No workout selected':'No templates yet'}</strong>${state.templates.length?'Choose any workout above or assign a day in Plan.':'Go to Dashboard and load the example plan, or import your own CSV in Plan.'}</div>`;}
   return `${shellHeading()}${heading('TRAINING','One set at a time','Choose an exercise, record your completed sets, then rest before the next one.')}
   <div class="card"><div class="two-panels"><label><span class="form-label" style="margin-top:0">Workout date</span><input class="field" type="date" id="active-date" value="${activeDate}"></label><label><span class="form-label" style="margin-top:0">Workout for this date</span><select class="field" id="active-workout">${options}</select></label></div><div class="inline-meta"><span class="dot"></span>${DAY_NAMES[day]} · ${state.logs.filter(l=>l.date===activeDate).length} set(s) saved</div></div>
@@ -263,6 +266,21 @@ document.addEventListener('click', event=>{
     timerTick();toast(`Rest timer started: ${seconds} seconds.`);});return;}
   const act=button.dataset.action;
   tryAction(()=>{
+    if(act==='focus-repeat') {
+      if(!focusMode)throw Error('Switch to Focus Mode first.');
+      const choice=repeatLastSessionSet(state,{date:activeDate,templateId:chosenTemplate,exerciseIndex:chosenExercise,set:focusSet+1});
+      if(!choice)throw Error('No eligible earlier saved set to copy.');
+      const form=$('#sets-form');
+      if(!form)throw Error('The current set form is unavailable.');
+      const kg=form.elements[`kg${focusSet}`],reps=form.elements[`reps${focusSet}`];
+      if(!kg||!reps)throw Error('Weight/reps fields are unavailable.');
+      const edited=kg.value!==kg.defaultValue||reps.value!==reps.defaultValue;
+      if(edited&&!confirm('Replace your unsaved weight and reps with the previously saved set?'))return;
+      kg.value=String(choice.kg);
+      reps.value=String(choice.reps);
+      toast(`Copied saved set ${choice.sourceSet}. Check actual weight and reps, enter today's RPE, then save.`);
+      return;
+    }
     if(act==='focus-toggle') {
       if(!mayLeaveFocusSet())return;
       focusMode=!focusMode;
