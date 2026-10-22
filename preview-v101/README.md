@@ -1,24 +1,24 @@
-# FitnessPilot V15.8 — test preview
+# FitnessPilot V15.9 — test preview
 
-**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=29
+**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=30
 
-The folder is still named `preview-v101` for continuity; the application banner and manifest currently identify **V15.8**. It is a separate preview application, **not** the production root upgrade.
+The folder is still named `preview-v101` for continuity; the application banner and manifest currently identify **V15.9**. It is a separate preview application, **not** the production root upgrade.
 
 ## Quick acceptance walkthrough
 
 Use disposable example data and **do not clear browser website data**:
 
-1. Confirm the preview banner shows **V15.8**.
+1. Confirm the preview banner shows **V15.9**.
 2. Under **Plan**, choose **Add V10.2 Home templates** and verify four sessions/24 exercise entries/62 prescribed weekly sets. An additional **V10.1 Home** import remains available.
 3. Confirm that both lower workouts retain **[PT Review]**, and that importing never assigns them to weekdays automatically.
-4. Under **Train**, log a sample upper-body set; check the Dashboard's **Weight × reps total** and expanded **Show calculation** entries. Actual entered kg × repetitions are summed; dumbbell weight is not doubled and timed holds are excluded from lifting volume.
+4. Under **Train**, log a sample upper-body set. Verify the gold **Total completed sets** and weekly total both rise by one and the daily set chart updates. Editing the same set must not add another. Weight × reps remains in **Show calculation** as secondary detail. Timed holds count as working sets, not kg × reps.
 5. Try **Focus Mode** and, on an eligible unsaved next set, **Copy saved set**. It must copy only weight and repetitions; RPE and saving remain explicit.
 6. In the **Plan → Workout Library**, select **Customize** and **Save as new workout version** with one safe test change. The original workout and saved history must remain unchanged; the new version should remain unassigned until you choose it.
 7. Under **Tools → Workout logbook**, expand a session and confirm it uses the original workout version. **Download full history (.csv)** to a private location; verify the file contains all saved sets, even if only the latest 15 sessions are shown on-screen.
 8. In **Tools**, download a JSON backup before changes. **Check saved data integrity** only verifies the current browser snapshot; actual file restore and offline use still require separate testing with disposable records.
 9. Confirm existing sound, rest timer, recovery journal, and manually set assignments still work.
 
-If the banner does not show V15.8, verify the link and cache version without clearing local storage. Stop and report unexpected changes to logged records, exercises, assignments or PT warnings.
+If the banner does not show V15.9, verify the link and cache version without clearing local storage. Stop and report unexpected changes to logged records, exercises, assignments or PT warnings.
 
 ## Known release boundaries
 
