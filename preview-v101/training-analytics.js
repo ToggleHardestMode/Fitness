@@ -49,6 +49,7 @@ export function weeklyTrainingAnalysis(state, monday) {
   const byMuscle = Object.create(null);
   let planned = 0, completed = 0, offPlan = 0, loadVolume = 0;
   const timedHolds = [];
+  const volumeEntries = [];
 
   for (const day of days) {
     const t = templates.get(day.templateId);
@@ -78,8 +79,10 @@ export function weeklyTrainingAnalysis(state, monday) {
     if (exercise.repUnit === 'seconds_per_side') {
       timedHolds.push({date: log.date, exercise: exercise.name, secondsPerSide: log.reps, muscle: exercise.muscle});
     } else if (Number.isFinite(log.kg) && Number.isFinite(log.reps)) {
-      loadVolume += log.kg * log.reps;
-      day.loadVolume += log.kg * log.reps;
+      const contribution = log.kg * log.reps;
+      loadVolume += contribution;
+      day.loadVolume += contribution;
+      volumeEntries.push({date:log.date, exercise:exercise.name, set:log.set, kg:log.kg, reps:log.reps, contribution});
     }
   }
   for (const day of days) {
@@ -94,6 +97,7 @@ export function weeklyTrainingAnalysis(state, monday) {
   return {
     planned, completed, assignedCompleted: days.reduce((n,d)=>n+d.assignedCompleted,0),
     offPlan, byMuscle: {...byMuscle}, days, timedHolds, loadVolume,
+    volumeEntries: volumeEntries.sort((a,b)=>a.date.localeCompare(b.date) || a.exercise.localeCompare(b.exercise) || a.set-b.set),
     caveat: 'Direct categories only. V10.1 biceps and triceps are separated by exact exercise names; legacy arms without explicit labels remain unclassified. No indirect credits. Logged unilateral sets count once. Untagged legacy logs are assumed working sets.'
   };
 }

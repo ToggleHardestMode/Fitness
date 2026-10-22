@@ -85,7 +85,14 @@ a,.eyebrow,.hero-kicker,.exercise-choice b,.side-tag {color:var(--lime);}
 .day-tile.active,.exercise-choice.active,.desktop-tabs .tab.active{background:#423653;border-color:#b99c74;}
 .day-tile strong,.day-tile span{color:#beb6c3}.day-tile.active strong{color:#ffe2a0}
 .bar{background:linear-gradient(180deg,#ffdf9e,#aa7982)}
-.day-slot .bar{flex:0 0 auto}
+.day-slot .bar{display:block;flex:0 0 auto}
+.volume-explanation{margin-top:14px;border-top:1px solid #554e63;padding-top:12px}
+.volume-explanation summary{cursor:pointer;color:#f5d89a;font-weight:650;padding:8px 0}
+.volume-detail-row,.volume-detail-total{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:8px 0;border-bottom:1px solid #554e6355;font-size:.85rem}
+.volume-detail-row span{min-width:0;color:#ccc6d0}
+.volume-detail-row strong,.volume-detail-total strong{font-variant-numeric:tabular-nums;text-align:right}
+.volume-detail-total{border-bottom:0;border-top:1px solid #6d5c70;margin-top:6px;padding-top:12px}
+@media(max-width:580px){.volume-detail-row{flex-direction:column;gap:2px}.volume-detail-row strong{text-align:left}}
 .day-slot .bar-zero{display:block;width:min(22px,100%);height:2px;flex:0 0 2px;background:#6f657d;border-radius:99px;}
 .progress-track{background:#353344;height:9px}.progress-fill{background:linear-gradient(90deg,#a58ac3,#e8bc7d)}
 .dot{background:#dbbb7d}
