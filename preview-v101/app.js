@@ -105,6 +105,14 @@ function selectFocusSet() {
   const next=exercise ? nextPendingSet(state.logs,activeDate,chosenTemplate,chosenExercise,exercise.sets) : -1;
   focusSet=next<0?0:next;
 }
+function mayLeaveFocusSet() {
+  const form=focusMode ? $('#sets-form') : null;
+  if(!form)return true;
+  const dirty=Array.from(form.querySelectorAll('input')).some(input=>
+    input.type==='checkbox' ? input.checked!==input.defaultChecked : input.value!==input.defaultValue
+  );
+  return !dirty || confirm('Discard your unsaved set changes?');
+}
 function train() {
   const day=weekdayOf(activeDate);
   const selected=chosenTemplate && state.templates.some(t=>t.id===chosenTemplate)?chosenTemplate:(state.assignments[day]||'');
@@ -193,12 +201,19 @@ async function readBackup(file) {
 
 document.addEventListener('click', event=>{
   const button=event.target.closest('[data-page],[data-exercise],[data-action],[data-rest],[data-focus-set]');if(!button)return;
-  if(button.dataset.page){goto(button.dataset.page);return;}
-  if(button.dataset.exercise!==undefined){chosenExercise=Number(button.dataset.exercise);selectFocusSet();render();return;}
+  if(button.dataset.page){if(button.dataset.page!==page&& !mayLeaveFocusSet())return;goto(button.dataset.page);return;}
+  if(button.dataset.exercise!==undefined){
+    const next=Number(button.dataset.exercise);
+    if(next!==chosenExercise && !mayLeaveFocusSet())return;
+    chosenExercise=next;selectFocusSet();render();return;
+  }
   if(button.dataset.focusSet!==undefined){
     const next=Number(button.dataset.focusSet);
     const ex=state.templates.find(t=>t.id===chosenTemplate)?.exercises[chosenExercise];
-    if(Number.isInteger(next)&&ex&&next>=0&&next<ex.sets){focusSet=next;render();}
+    if(Number.isInteger(next)&&ex&&next>=0&&next<ex.sets){
+      if(next!==focusSet && !mayLeaveFocusSet())return;
+      focusSet=next;render();
+    }
     return;
   }
   if(button.dataset.rest){tryAction(()=>{const seconds=intRange(button.dataset.rest,'Rest',1,600);timerEnd=Date.now()+seconds*1000;clearInterval(timerHandle);timerHandle=setInterval(timerTick,250);
@@ -207,6 +222,7 @@ document.addEventListener('click', event=>{
   const act=button.dataset.action;
   tryAction(()=>{
     if(act==='focus-toggle') {
+      if(!mayLeaveFocusSet())return;
       focusMode=!focusMode;
       if(focusMode) selectFocusSet();
       render();
@@ -246,8 +262,14 @@ document.addEventListener('click', event=>{
 
 document.addEventListener('change',event=>{
   const target=event.target;
-  if(target.id==='active-date'){tryAction(()=>{activeDate=target.value;chosenExercise=0;chosenTemplate=null;focusSet=0;render();});}
-  if(target.id==='active-workout'){chosenTemplate=target.value;chosenExercise=0;selectFocusSet();render();}
+  if(target.id==='active-date'){
+    if(!mayLeaveFocusSet()){target.value=activeDate;return;}
+    tryAction(()=>{activeDate=target.value;chosenExercise=0;chosenTemplate=null;focusSet=0;render();});
+  }
+  if(target.id==='active-workout'){
+    if(!mayLeaveFocusSet()){target.value=chosenTemplate||state.assignments[weekdayOf(activeDate)]||'';return;}
+    chosenTemplate=target.value;chosenExercise=0;selectFocusSet();render();
+  }
   if(target.id==='symptom-template'){
     const tmpl=state.templates.find(t=>t.id===target.value);
     const list=$('#symptom-exercise');
@@ -277,18 +299,21 @@ document.addEventListener('submit',event=>{
         ? focusEntries(exercise.sets,focusSet,{...shared,kg:form.elements[`kg${focusSet}`].value,reps:form.elements[`reps${focusSet}`].value,rpe:form.elements[`rpe${focusSet}`].value})
         : Array.from({length:exercise.sets},(_,i)=>({...shared,completed:form.elements[`done${i}`].checked,kg:form.elements[`kg${i}`].value,reps:form.elements[`reps${i}`].value,rpe:form.elements[`rpe${i}`].value}));
       const out=recordSets(state,{date:activeDate,templateId:chosenTemplate,exerciseIndex:chosenExercise,entries});
+      let following=null;
       if(focusMode) {
         const nextSet=nextPendingSet(out.state.logs,activeDate,chosenTemplate,chosenExercise,exercise.sets,focusSet);
-        if(nextSet>=0) focusSet=nextSet;
+        if(nextSet>=0) following={exercise:chosenExercise,set:nextSet};
         else {
           const nextExercise=nextPendingExercise(out.state.logs,activeDate,chosenTemplate,template.exercises,chosenExercise);
           if(nextExercise>=0) {
-            chosenExercise=nextExercise;
-            focusSet=nextPendingSet(out.state.logs,activeDate,chosenTemplate,chosenExercise,template.exercises[nextExercise].sets);
+            following={exercise:nextExercise,
+              set:nextPendingSet(out.state.logs,activeDate,chosenTemplate,nextExercise,template.exercises[nextExercise].sets)};
           }
         }
       }
+      // Navigate only after localStorage has accepted the saved record.
       commit(out.state,`${out.saved} set(s) saved for ${exercise.name}.`);
+      if(following){chosenExercise=following.exercise;focusSet=following.set;render();}
     }
     if(form.id==='symptom-form'){
       const draft={
