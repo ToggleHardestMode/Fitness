@@ -84,7 +84,9 @@ a,.eyebrow,.hero-kicker,.exercise-choice b,.side-tag {color:var(--lime);}
 .day-tile,.file-ico,.upload-card{background:#202638;border-color:#554e63;color:var(--text);}
 .day-tile.active,.exercise-choice.active,.desktop-tabs .tab.active{background:#423653;border-color:#b99c74;}
 .day-tile strong,.day-tile span{color:#beb6c3}.day-tile.active strong{color:#ffe2a0}
-.bar{background:linear-gradient(180deg,#ffdf9e,#aa7982)}.bar.empty{background:#353343;}
+.bar{background:linear-gradient(180deg,#ffdf9e,#aa7982)}
+.day-slot .bar{flex:0 0 auto}
+.day-slot .bar-zero{display:block;width:min(22px,100%);height:2px;flex:0 0 2px;background:#6f657d;border-radius:99px;}
 .progress-track{background:#353344;height:9px}.progress-fill{background:linear-gradient(90deg,#a58ac3,#e8bc7d)}
 .dot{background:#dbbb7d}
 .switcher{background:#242234;border:1px solid #554c62}
@@ -146,8 +148,8 @@ a,.eyebrow,.hero-kicker,.exercise-choice b,.side-tag {color:var(--lime);}
 @media (min-width:700px){
   .codex-quest{padding:30px 34px}.codex-quest .btn{width:auto;min-width:220px}
   .exercise-layout{grid-template-columns:260px minmax(0,1fr)}
-  .codex-exercises{flex-direction:column;overflow:visible;padding:0;scroll-snap-type:none}
-  .codex-exercises>.exercise-choice{min-width:0;max-width:none;width:100%;flex:auto;min-height:75px}
+  .codex-exercises{flex-direction:column;overflow:visible;padding:0;scroll-snap-type:none;align-self:start}
+  .codex-exercises>.exercise-choice{min-width:0;max-width:none;width:100%;flex:0 0 auto;min-height:75px}
 }
 @media (min-width:1100px){
   main{padding-top:38px}
