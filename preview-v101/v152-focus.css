@@ -13,3 +13,8 @@
 .v152-set-navigation{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 .v152-set-navigation .btn{flex:1}
 @media(max-width:420px){.v152-set-navigation{flex-direction:column}}
+.v156-repeat{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 8px}
+.v156-repeat .btn{min-height:42px}
+.v156-repeat .hint{margin:0;max-width:35ch;line-height:1.4}
+@media(max-width:420px){.v156-repeat{align-items:stretch;flex-direction:column}}
+
