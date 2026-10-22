@@ -4,6 +4,8 @@ import { initRoFeedback, isRoSoundEnabled } from './ro-feedback.js';
 import { symptomPanel } from './symptom-ui.js';
 import { addSymptomEntry } from './symptom-journal.js';
 import { V101_CSV, V101_VERSION, V101_EQUIPMENT } from './v101-data.js';
+import { V102_CSV, V102_VERSION, V102_EQUIPMENT } from './v102-data.js';
+import { v102OverlapPanel } from './v102-overlap-ui.js';
 import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.js';
 import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
 
@@ -86,6 +88,7 @@ function dashboard() {
   <div class="two-panels" style="margin-top:12px"><section class="card"><div class="card-head"><div><h2>Training volume</h2><p>See how much you've logged each day</p></div><span class="badge">7 DAYS</span></div><div class="day-bars" role="img" aria-label="Training volume by day: ${analysis.days.map((v,i)=>`${DAYS[i]} ${fmt(v.loadVolume)} kg·reps`).join('; ')}">${chart}</div><div class="inline-meta"><span class="dot"></span>Volume is based on saved sets only.</div></section>
   <section class="card"><div class="card-head"><div><h2>Your training week</h2><p>Workout assignments</p></div><button class="btn ghost small-btn" data-page="plan">Edit plan →</button></div><div class="day-calendar">${days}</div><div class="inline-meta">${analysis.days.filter(d=>d.assignedCompleted>0).length} assigned day(s) with logged sets · ${s.planned} scheduled. This is not a workout-completion score.</div></section></div>
   ${trainingAnalyticsPanel(state,s.dates[0],today())}
+  ${v102OverlapPanel(state,s.dates[0])}
   <div class="section-label"><h2>Insights</h2><span>Only real entries</span></div>
   <div class="two-panels"><section class="card"><div class="card-head"><div><h2>Daily check-ins</h2><p>Weekly averages</p></div><button class="btn ghost small-btn" data-page="train">Add →</button></div>${[['Protein',s.protein,'g'],['Calories',s.calories,'kcal'],['Sleep',s.sleep,'h'],['Recovery',s.recovery,'/ 5']].map(([label,value,unit])=>`<div class="data-row"><strong>${label}</strong><div class="score">${value==null?'Not recorded':`${fmt(value)} ${unit}`}</div></div>`).join('')}</section>
   <section class="card"><div class="card-head"><div><h2>Strongest sets</h2><p>Heaviest recorded weight by exercise</p></div></div>${best.length?best.map(l=>`<div class="data-row"><div><strong>${esc(l.exerciseName)}</strong><span>${nice(l.date)}</span></div><div class="score tinted">${fmt(l.kg)} kg × ${l.reps}</div></div>`).join(''):'<div class="empty"><strong>No lifts yet</strong>Your best sets will appear after you save them.</div>'}</section></div><p class="footer-hint">Weight for dumbbells is recorded exactly as entered; volume does not automatically double per-hand weights. Bodyweight moves logged at 0 kg count as sets but contribute 0 kg to volume.</p>`;
@@ -98,6 +101,19 @@ function rangeSummary(exercise) {
 const v101Templates = () => parseWorkouts(V101_CSV).map(w => ({
   ...w, sourceVersion: V101_VERSION, equipmentNote: V101_EQUIPMENT,
   requiresClinicalReview: !!w.requiresClinicalReview
+}));
+const V102_ARMS = {
+  'Incline DB Supinating Curl (SS1)': 'Biceps',
+  'Lying DB Triceps Extension (SS1)': 'Triceps',
+  'DB Hammer Curl (SS1)': 'Biceps',
+  'Supported DB Overhead Triceps Ext (SS1)': 'Triceps'
+};
+const v102Templates = () => parseWorkouts(V102_CSV).map(t => ({
+  ...t, sourceVersion: V102_VERSION, equipmentNote: V102_EQUIPMENT,
+  requiresClinicalReview: !!t.requiresClinicalReview,
+  exercises: t.exercises.map(e => ({
+    ...e, ...(V102_ARMS[e.name] ? {muscleDetail: V102_ARMS[e.name]} : {})
+  }))
 }));
 function isPTReview(t) { return !!t?.requiresClinicalReview || !!t?.name?.includes('[PT Review]'); }
 function selectFocusSet() {
@@ -157,7 +173,13 @@ function plan() {
   return `${shellHeading()}${heading('PLAN','Plan your training','Choose workouts, assign training days, and browse your saved templates. Saved sets remain unchanged.')}
   <div class="codex-waypoints" aria-label="Planning steps"><div><b>01</b><span>Add a workout to the library</span></div><div><b>02</b><span>Assign it to training days</span></div><div><b>03</b><span>Log real sets in Train</span></div></div>
   <section class="card codex-board"><div class="card-head"><div><div class="eyebrow">WEEKLY SCHEDULE</div><h2>Choose your training days</h2><p>${Object.keys(state.assignments).filter(k=>state.assignments[k]).length} days assigned · All changes take effect only when you save</p></div></div><form id="schedule-form">${rows}<div class="form-actions"><button class="btn" type="submit">Save weekly schedule</button></div></form></section>
-  <div class="section-label"><h2>Latest training program</h2><span>Import is optional</span></div>
+  <div class="section-label"><h2>Current recommended workout · V10.2</h2><span>Optional import</span></div>
+  <section class="card stack codex-program"><div class="eyebrow">V10.2 · OVERLAP-AWARE</div><h2>Adaptive Recovery UL — V10.2</h2>
+  <p class="subtle small">4 workouts · 24 exercises · 62 planned physical working sets (Mon 17 / Tue 13 / Thu 21 / Fri 11). Lat and upper-back emphasis with optional direct + estimated indirect muscle-set reporting. Importing does not change logs or assignments.</p>
+  <div class="notice warn"><strong>PT Review applies to Tuesday and Friday.</strong> Lower-body workouts are not cleared or assigned automatically. Missing journal entries never imply clearance.</div>
+  <p class="hint">Overlap estimates use approximate 0 / 0.5 / 1 coefficients, not measured growth or additional physical sets. V10.1 remains available below.</p>
+  <div class="quick-actions"><button class="btn" type="button" data-action="v102-add">Add V10.2 Home templates</button><button class="btn secondary" type="button" data-action="v102-csv">Download V10.2 CSV</button></div></section>
+  <div class="section-label"><h2>Previous workout version · V10.1</h2><span>Still available</span></div>
   <section class="card stack codex-program"><div class="eyebrow">RECOMMENDED PROGRAM</div><h2>Adaptive Recovery UL · V10.1</h2>
   <p class="subtle small">4 optional templates · 24 exercises · 62 prescribed working sets: Mon 17, Tue 13, Thu 21, Fri 11. Importing does not mark any sets completed or change the schedule. Tuesday and Friday are <strong>[PT Review]</strong> and are not medically cleared.</p>
   <div class="notice warn"><strong>Lower-body clinical review required.</strong> Ongoing or delayed radiating leg symptoms mean these lower-body templates must not be automatically activated. A missing symptom entry never implies medical clearance.</div>
@@ -234,6 +256,12 @@ document.addEventListener('click', event=>{
       render();
       return;
     }
+    if(act==='v102-add') {
+      const result=addWorkouts(state,v102Templates(),false);
+      if(result.added)commit(result.state,`Added ${result.added} V10.2 templates. Existing saved sets and schedule are unchanged.`);
+      else toast('V10.2 templates already in the test library.');
+    }
+    if(act==='v102-csv')download('V10.2_Home_FitnessPilot_Import.csv',V102_CSV,'text/csv;charset=utf-8');
     if(act==='v101-add') {
       const out=addWorkouts(state,v101Templates(),false);
       if(out.added)commit(out.state,`Added ${out.added} V10.1 templates. Your schedule and workout history are unchanged.`);
