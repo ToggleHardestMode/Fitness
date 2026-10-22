@@ -1,4 +1,3 @@
-import { parseCSV } from './core.js';
 import { V102_COEFFICIENTS_CSV, V102_VERSION } from './v102-data.js';
 
 export const V102_REGIONS = Object.freeze([
@@ -10,8 +9,49 @@ const key = (day, exercise) => `${day}\u0000${exercise}`;
 const blank = () => ({ direct: 0, indirect: 0, equivalents: 0 });
 const emptyRegions = () => Object.fromEntries(V102_REGIONS.map(region => [region, blank()]));
 
+// The workout parser requires workout-specific columns, so the coefficient CSV
+// has its own small, strict RFC-4180 reader (including quoted exercise names).
+function parseCoefficientRows(csv) {
+  if (typeof csv !== 'string' || csv.length > 1_000_000) throw Error('Invalid coefficient CSV size.');
+  const rows = [];
+  let row = [], value = '', quoted = false, finishedQuote = false;
+  csv = csv.replace(/^\uFEFF/, '');
+  for (let i = 0; i < csv.length; i++) {
+    const c = csv[i];
+    if (quoted) {
+      if (c === '"' && csv[i+1] === '"') { value += '"'; i++; }
+      else if (c === '"') { quoted = false; finishedQuote = true; }
+      else value += c;
+    } else if (c === ',' || c === '\n' || c === '\r') {
+      row.push(value); value = ''; finishedQuote = false;
+      if (c !== ',') {
+        if (row.some(x => x.trim() !== '')) rows.push(row);
+        row = [];
+        if (c === '\r' && csv[i+1] === '\n') i++;
+      }
+    } else if (c === '"' && value === '' && !finishedQuote) { quoted = true; }
+    else if (c === '"' || finishedQuote) throw Error('Malformed coefficient CSV quote.');
+    else value += c;
+  }
+  if (quoted) throw Error('Unterminated coefficient CSV quote.');
+  if (value || row.length) {
+    row.push(value);
+    if (row.some(x => x.trim() !== '')) rows.push(row);
+  }
+  if (rows.length < 2 || rows.length > 501) throw Error('Coefficient CSV must have a header and exercise rows.');
+  const header = rows.shift().map(x => x.trim());
+  if (new Set(header).size !== header.length) throw Error('Duplicate coefficient CSV header.');
+  for (const required of ['day','exercise','prescribed_sets',...V102_REGIONS,'PT_review']) {
+    if (!header.includes(required)) throw Error(`Coefficient CSV missing ${required} column.`);
+  }
+  return rows.map((values,i) => {
+    if (values.length !== header.length) throw Error(`Coefficient CSV row ${i+2} has wrong column count.`);
+    return Object.fromEntries(header.map((name,j) => [name, values[j].trim()]));
+  });
+}
+
 export function parseV102Coefficients(csv = V102_COEFFICIENTS_CSV) {
-  const rows = parseCSV(csv);
+  const rows = parseCoefficientRows(csv);
   const result = new Map();
   for (const [i, row] of rows.entries()) {
     const rowNo = i + 2;
