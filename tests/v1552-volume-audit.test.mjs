@@ -64,10 +64,10 @@ test('zero volume baseline is separate from positive visible columns', () => {
   assert.match(html,/height:111px/);
 });
 
-test('preview CSS displays actual volume bars as block elements', () => {
+test('preview CSS renders visible bars and retains auditable secondary load-volume details', () => {
   const css=readFileSync(new URL('../preview-v101/codex.css',import.meta.url),'utf8');
   assert.match(css,/\.day-slot\s+\.bar\s*\{\s*display:\s*block\s*;/);
   const app=readFileSync(new URL('../preview-v101/app.js',import.meta.url),'utf8');
   assert.match(app,/volumeEntries\.map\(entry\s*=>/);
-  assert.match(app,/Weight × reps total/);
+  assert.match(app,/Show calculation · weight × reps \(secondary\)/);
 });

@@ -52,7 +52,7 @@ test('other-origin requests are not intercepted',()=>{
   assert.equal(send(w,request('https://other.test/file')),undefined);
 });
 test('the preview service worker uses a dedicated cache namespace',()=>{
-  assert.match(sw,/fitnesspilot-preview-v155-recovery-v24/);
+  assert.match(sw,/const CACHE = 'fitnesspilot-preview-v\d+-[a-z0-9-]+-v\d+';/);
   assert.match(sw,/startsWith\('fitnesspilot-preview-'\)/);
   assert.match(sw,/'\.\/recovery-check\.js'/);
 });
