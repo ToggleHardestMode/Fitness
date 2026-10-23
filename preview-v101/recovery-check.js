@@ -5,6 +5,21 @@ import { validateBackup } from './core.js';
  * Proves JSON serialization/validation consistency of the currently saved snapshot.
  * Does NOT test whether a separately downloaded file is recoverable on an iPhone.
  */
+export function inspectBackupFileText(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) throw Error('Selected backup file is empty.');
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch { throw Error('Selected backup file is not valid JSON. Nothing was restored.'); }
+  const checked = validateBackup(parsed);
+  return {
+    templates: checked.templates.length,
+    sets: checked.logs.length,
+    checkins: checked.metrics.length,
+    symptoms: (checked.symptomLogs ?? []).length,
+    assignments: Object.values(checked.assignments).filter(Boolean).length
+  };
+}
+
 export function verifyLocalSnapshot(state, raw) {
   if (typeof raw !== 'string' || !raw.trim()) {
     throw Error('No saved browser snapshot found. Save a sample workout or check-in first.');
