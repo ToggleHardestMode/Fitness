@@ -97,7 +97,7 @@ export function weeklyTrainingAnalysis(state, monday) {
     if (!dates.has(log.date) || !working(log)) continue;
     const template = templates.get(log.templateId);
     const exercise = template?.exercises?.[log.exerciseIndex];
-    if (!exercise) continue; // Legacy corrupt references should never create invented totals.
+    if (!exercise || !Number.isInteger(log.set) || log.set < 1 || log.set > exercise.sets) continue; // Match lifetime saved-set validation.
     const key = `${log.date}|${log.templateId}|${log.exerciseIndex}|${log.set}`;
     if (keys.has(key)) continue;
     keys.add(key);
