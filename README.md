@@ -7,9 +7,9 @@ FitnessPilot is a browser-based, no-account workout tracker hosted on GitHub Pag
 | Edition | Link | What it is |
 | --- | --- | --- |
 | **Production (older app)** | [Open FitnessPilot](https://togglehardestmode.github.io/Fitness/) | Existing root application, kept separate from experimental features |
-| **V15.9 test preview** | [Open the V15.9 preview](https://togglehardestmode.github.io/Fitness/preview-v101/?v=30) | Most recent GitHub **source** version; preview-only workout features, not a production upgrade |
+| **V15.10 test preview** | [Open the V15.10 preview](https://togglehardestmode.github.io/Fitness/preview-v101/?v=31) | Most recent GitHub **source** version; preview-only workout features, not a production upgrade |
 
-**Release status (23 October 2026):** V15.9 preview prioritizes lifetime saved working sets and a weekly sets chart; the V15.8 logbook remains. GitHub source publication does **not** prove Pages delivery or device acceptance. Check for the **V15.9** banner; production root remains an older separate app.
+**Release status (23 October 2026):** V15.10 preview adds a read-only milestone band beside the lifetime saved working-set count and daily set chart; the V15.8 logbook remains. GitHub source publication does **not** prove Pages delivery or device acceptance. Check for the **V15.10** banner; production root remains an older separate app.
 
 Both editions are served from the same web origin but use different browser-storage keys:
 
@@ -28,16 +28,16 @@ The preview folder's historic name `preview-v101` is intentional; it does **not*
 
 Workout templates are **not** automatically assigned, completed or medically cleared when imported. Exercise history and weekly assignments are distinct.
 
-## V15.9 preview feature guide
+## V15.10 preview feature guide
 
 These features are implemented in `preview-v101/`. Their presence in GitHub is verified; individual device behavior still requires testing.
 
-| Area | Available in the V15.9 preview |
+| Area | Available in the V15.10 preview |
 | --- | --- |
 | **Plan** | Optional **V10.2 Home** 4-day workout import, earlier **V10.1 Home** templates, CSV template import, seven-day scheduling |
 | **Workout editor** | **Customize** an exercise and **Save as new workout version**; original template IDs and saved historical sets are preserved; new version is not scheduled automatically |
 | **Train** | Standard logging, Focus Mode, saved-set references, explicit **Copy saved set** for eligible upper-body sets, RPE entry, rest timer |
-| **Dashboard** | **Lifetime completed working sets** as the headline, daily set counts as the main chart, logged/planned weekly totals, secondary expandable kg × reps calculation, and **13-region V10.2** direct/estimated indirect overlap |
+| **Dashboard** | **Lifetime completed working sets** and a read-only next milestone (25, 50, 100, 250, 500, 1,000, then each 500), daily saved set chart, logged/planned weekly totals, secondary expandable kg × reps calculation, and **13-region V10.2** direct/estimated indirect overlap |
 | **Recovery** | Before/after/next-day symptom journal and **[PT Review]** warning for lower-body sessions; no automatic clinical clearance or loading progression |
 | **Progression review** | Read-only comparison with prior sets; any suggested target is optional and is **never** auto-filled or saved |
 | **Tools** | Full JSON export/guarded restore, local-data integrity check, calendar reminder export, **Workout Logbook**, full-history CSV export, sound preference |
@@ -95,7 +95,7 @@ The test command is `node --test tests/*.test.mjs` ([package.json](package.json)
 
 ## Project status and deferred ideas
 
-- **Current preview source:** V15.9; production remains a separate older application.
+- **Current preview source:** V15.10; production remains a separate older application.
 - **Pending release QA:** Native full test suite on a complete checkout, real Safari/iPhone walkthrough, offline test and export/restore using disposable data.
 - **KIV (not built):** Illustrated **Weight Trend Journey** chart with daily weigh-ins, a prominent 7-day trend, goal trajectory and milestone annotations; separate SATNA experiment.
 - **Future work:** Measured 30-set logging speed/error benchmark and optional UX improvements based on real device use.
