@@ -12,11 +12,11 @@ export function verifyPreviewAssets(root) {
   const manifest = JSON.parse(source(join(directory, 'manifest.webmanifest')));
   const worker = source(join(directory, 'sw.js'));
   const errors = [];
-  const banner = html.match(/FITNESSPILOT (V\d+\.\d+) PREVIEW/);
+  const banner = html.match(/FITNESSPILOT (V\d+\.\d+(?:\.\d+)*) PREVIEW/);
   if (!banner) errors.push('Preview HTML banner lacks a version.');
   else if (!manifest.name?.includes(banner[1])) errors.push('Manifest version differs from the HTML banner.');
   if (!worker.includes("fitnesspilot-preview-v")) errors.push('Service worker is not using a preview-scoped cache.');
-  if (banner && !worker.includes(`fitnesspilot-preview-${banner[1].toLowerCase().replace('.', '')}`)) {
+  if (banner && !worker.includes(`fitnesspilot-preview-${banner[1].toLowerCase().replaceAll('.', '')}`)) {
     errors.push('Service worker cache version differs from the HTML banner.');
   }
   if (!source(join(directory, 'core.js')).includes('fitnesspilot.preview.v101.v1')) {
