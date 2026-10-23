@@ -12,7 +12,7 @@
 ## Application status
 
 - **Production root** [FitnessPilot](https://togglehardestmode.github.io/Fitness/) is an older separate application.
-- **V15.9 preview** [FitnessPilot test app](https://togglehardestmode.github.io/Fitness/preview-v101/?v=30) already embeds V10.2 and also retains the V10.1 import option. To add V10.2 in the preview, use **Plan → Add V10.2 Home templates**. Imports are opt-in and do **not** change previously logged sets or auto-assign weekdays.
+- **V15.10 preview** [FitnessPilot test app](https://togglehardestmode.github.io/Fitness/preview-v101/?v=31) already embeds V10.2 and also retains the V10.1 import option. To add V10.2 in the preview, use **Plan → Add V10.2 Home templates**. Imports are opt-in and do **not** change previously logged sets or auto-assign weekdays.
 - The preview preserves exercise `sourceNote`, PT-review status and seconds-per-side holds. The older production parser does **not** preserve all the same metadata.
 - A **Custom** workout created with the V15.7+ versioned editor is separate from canonical V10.2; it must not silently reuse the original exercise's overlap coefficients.
 
@@ -20,6 +20,6 @@
 
 **Math:** 62 prescribed sets means 62 physical sets, *not* the sum of regional direct and weighted indirect set equivalents. The coefficients are approximate planning weights and do not measure hypertrophy directly.
 
-**Verification:** GitHub's merged V15.9 preview source is confirmed. Live Pages behavior, exported-file recovery, full native repository tests and real-device interactions are not confirmed by the source review. See the [root README](../README.md) and the [preview guide](../preview-v101/README.md).
+**Verification:** GitHub's merged V15.10 preview source is confirmed. Live Pages behavior, exported-file recovery, full native repository tests and real-device interactions are not confirmed by the source review. See the [root README](../README.md) and the [preview guide](../preview-v101/README.md).
 
 Do not publish personal logged weights, workout history, backups, private health data, credentials or connected-account details to this public repository.
