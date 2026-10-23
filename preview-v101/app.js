@@ -84,7 +84,7 @@ function gildedSummary(analysis, nextDay, lifetimeSets) {
   </section>`;
 }
 function inWeekCards(s, analysis) {return `<div class="kpis grid">
-  <div class="card"><div class="kpi-label">Days with logs</div><div class="kpi-value">${s.sessions}</div><div class="kpi-bottom">One logged set is not a completed workout</div></div>
+  <div class="card"><div class="kpi-label">Days with logs</div><div class="kpi-value">${analysis.days.filter(day=>day.completed>0).length}</div><div class="kpi-bottom">Days with saved working sets; not finished workouts</div></div>
   <div class="card"><div class="kpi-label">Logged sets</div><div class="kpi-value">${analysis.completed}</div><div class="kpi-bottom">Recorded working sets</div></div>
   <div class="card"><div class="kpi-label">Body weight</div><div class="kpi-value">${s.weight==null?'—':fmt(s.weight)} <small>${s.weight==null?'':'kg'}</small></div><div class="kpi-bottom">Weekly recorded average</div></div>
 </div>`;}
