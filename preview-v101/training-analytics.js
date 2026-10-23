@@ -52,7 +52,7 @@ export function setMilestoneProgress(total) {
   }
   const span = next - earned;
   const progress = total - earned;
-  return {earned, next, progress, span, percent: Math.round(progress * 100 / span)};
+  return {earned, next, progress, span, percent: Math.floor(progress * 100 / span)};
 }
 
 const blankCount = () => ({planned: 0, completed: 0});
