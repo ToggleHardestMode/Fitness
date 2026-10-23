@@ -1,4 +1,4 @@
-import { weeklyTrainingAnalysis, lifetimeTrainingSets } from './training-analytics.js';
+import { weeklyTrainingAnalysis, lifetimeTrainingSets, setMilestoneProgress } from './training-analytics.js';
 import { setsBarsMarkup } from './volume-bars.js';
 import { trainingAnalyticsPanel } from './training-analytics-ui.js';
 import { initRoFeedback, isRoSoundEnabled } from './ro-feedback.js';
@@ -57,6 +57,7 @@ function heading(kicker,title,subtitle='') {return `<div class="screen-intro"><d
 function shellHeading() {return `<div class="header-row"><div class="wordmark"><img src="./assets/icon.svg" alt=""><span>FitnessPilot</span></div><div class="date-pill">${new Date().toLocaleDateString('en-SG',{month:'short',day:'numeric',weekday:'short'})}</div></div>`;}
 function initialCard() {return `<section class="hero codex-quest"><div class="quest-topline"><span>✦ FITNESSPILOT</span><span class="quest-date">GET STARTED</span></div><h1>Set up your first workout plan.</h1><p class="quest-subtitle">Add reusable workout plans, assign training days, and record the sets you actually complete.</p><div class="quest-facts"><span>Private training journal</span><span>Offline-first</span></div><button class="btn" data-page="plan">Open Plan →</button></section>`;}
 function gildedSummary(analysis, nextDay, lifetimeSets) {
+  const milestone = setMilestoneProgress(lifetimeSets);
   const daysLogged = analysis.days.filter(day => day.completed > 0).length;
   // Off-plan sets are included in the logged total, but not in schedule completion.
   const completion = analysis.planned > 0
@@ -68,6 +69,11 @@ function gildedSummary(analysis, nextDay, lifetimeSets) {
     <div class="v151-gold-head"><span>YOUR TRAINING PROGRESS</span><span>Saved sets only</span></div>
     <div class="v151-gold-feature"><span>Total completed sets</span><strong>${fmt(lifetimeSets)}</strong>
       <small>All-time saved working sets, including bodyweight, timed holds and off-plan sessions</small></div>
+    <div class="v151-milestone" aria-label="Lifetime set milestone progress">
+      <div class="v151-milestone-top"><span>Next milestone <strong>${fmt(milestone.next)} sets</strong></span><span>${fmt(milestone.next-lifetimeSets)} remaining</span></div>
+      <div class="v151-milestone-track" role="progressbar" aria-label="Progress to next lifetime sets milestone" aria-valuemin="${milestone.earned}" aria-valuemax="${milestone.next}" aria-valuenow="${lifetimeSets}"><div class="v151-milestone-fill" style="width:${milestone.percent}%"></div></div>
+      <small>${milestone.earned ? `Last milestone reached: ${fmt(milestone.earned)} sets` : 'First milestone: 25 saved working sets'}. No deadline or extra sets required.</small>
+    </div>
     <div class="v151-gold-stats">
       <div><span>This week</span><strong>${analysis.completed} sets</strong></div><div><span>Planned sets</span><strong>${analysis.planned}</strong></div>
       <div><span>Schedule completion</span><strong>${completion}</strong></div>

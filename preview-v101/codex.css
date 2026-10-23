@@ -267,3 +267,12 @@ a,.eyebrow,.hero-kicker,.exercise-choice b,.side-tag {color:var(--lime);}
 .v158-session li span:last-of-type{font-variant-numeric:tabular-nums}
 .v158-session li small{flex-basis:100%;opacity:.85;overflow-wrap:anywhere}
 @media(max-width:520px){.v158-session li{flex-direction:column;align-items:flex-start;gap:3px}}
+
+/* V15.10: read-only lifetime set milestones beneath the gold count. */
+.v151-milestone{position:relative;display:grid;gap:8px;margin:-2px 0 17px;padding:11px 12px;border:1px solid #b7926370;background:#1e1f2ca8;border-radius:10px}
+.v151-milestone-top{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:5px 12px;color:#eed4a7;font-size:12px}
+.v151-milestone-top strong{font-variant-numeric:tabular-nums;color:#ffe5ad}
+.v151-milestone-track{height:10px;overflow:hidden;border-radius:999px;border:1px solid #96734d;background:#292536}
+.v151-milestone-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#b99150,#ffe4a6)}
+.v151-milestone>small{font-size:11px;line-height:1.4;color:#dbc9b2}
+@media(max-width:390px){.v151-milestone{padding:10px}.v151-milestone-top{font-size:11px}}

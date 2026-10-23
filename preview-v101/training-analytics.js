@@ -38,6 +38,23 @@ export function lifetimeTrainingSets(state) {
   return seen.size;
 }
 
+// Milestones celebrate accumulated logged work; they do not prescribe workout volume.
+export function setMilestoneProgress(total) {
+  if (!Number.isSafeInteger(total) || total < 0) throw Error('Completed sets must be a non-negative safe integer.');
+  const milestones = [25, 50, 100, 250, 500, 1000];
+  let earned = 0;
+  let next = milestones.find(mark => mark > total);
+  if (next === undefined) {
+    earned = 1000 + Math.floor((total - 1000) / 500) * 500;
+    next = earned + 500;
+  } else {
+    earned = milestones.filter(mark => mark <= total).at(-1) ?? 0;
+  }
+  const span = next - earned;
+  const progress = total - earned;
+  return {earned, next, progress, span, percent: Math.floor(progress * 100 / span)};
+}
+
 const blankCount = () => ({planned: 0, completed: 0});
 const addCount = (map, muscle, field) => {
   const category = typeof muscle === 'string' && muscle.trim() ? muscle.trim() : 'Unknown';
