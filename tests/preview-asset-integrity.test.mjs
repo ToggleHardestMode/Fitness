@@ -58,3 +58,14 @@ test('manifest and banner disagreeing fails', () => {
     assert.ok(verifyPreviewAssets(root).errors.some(s => s.includes('Manifest version differs')));
   });
 });
+
+test('three-part release banners and cache naming are accepted', () => {
+  fixture(({root,put}) => {
+    put('index.html', 'FITNESSPILOT V15.11.1 PREVIEW<link href="./theme.css"><script src="./app.js"></script>');
+    put('manifest.webmanifest', JSON.stringify({name:'FitnessPilot V15.11.1 Preview'}));
+    put('sw.js', "const CACHE = 'fitnesspilot-preview-v15111-test'; const ASSETS = ['./index.html', './theme.css', './app.js', './lib.js', './manifest.webmanifest', './core.js'];");
+    const result = verifyPreviewAssets(root);
+    assert.equal(result.ok, true, JSON.stringify(result.errors));
+    assert.equal(result.version, 'V15.11.1');
+  });
+});
