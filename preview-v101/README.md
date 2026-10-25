@@ -1,8 +1,14 @@
-# FitnessPilot V15.15 — test preview
+# FitnessPilot V15.15.1 — test preview
 
-**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=40
+**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=41
 
 The folder is still named `preview-v101` for continuity; the application banner and manifest currently identify **V15.14**. It is a separate preview application, **not** the production root upgrade.
+
+## V15.15.1 · Visible fallback and WebP verification
+
+Fixes operator-reported **blank walking character after Apply**. The prior Apply verified a WebP file's data-URL shape but did not verify that the browser could decode it. V15.15.1 decodes the selected WebP before saving the cosmetic preference, always paints the existing generic adventurer behind the private image, reveals the private image only when it loads, and displays an on-Dashboard status line (loaded / cannot display / Reduce Motion). No record, template or storage-key changes.
+
+On Safari, confirm V15.15.1 banner, Dashboard status and default adventurer visible. Tools → Walking avatar → Choose WebP → Apply; return to Dashboard and read the visible load status. If it says "cannot be displayed", do not clear Safari data; retain the fallback and inspect the file's format. Reduced Motion always displays the static default.
 
 ## V15.15 · Walking-in-place character on translucent Dashboard platform
 
@@ -46,7 +52,7 @@ The Dashboard's Daily check-ins section now shows how many dates contributed to 
 
 ## V15.11.2 · iPhone acceptance companion
 
-**New:** [Open the QA checklist](https://togglehardestmode.github.io/Fitness/preview-v101/qa.html?v=40) from Tools. It contains ten operator-scored checks (Pass / Fail / Blocked / Not run), retains answers in page memory only and exports a structured JSON report on explicit button press. It does not read or mutate workout records or transmit the report. Reloading loses unsaved checklist marks. Do not test restoration over your real records; mark Blocked if no empty disposable browser context is available.
+**New:** [Open the QA checklist](https://togglehardestmode.github.io/Fitness/preview-v101/qa.html?v=41) from Tools. It contains ten operator-scored checks (Pass / Fail / Blocked / Not run), retains answers in page memory only and exports a structured JSON report on explicit button press. It does not read or mutate workout records or transmit the report. Reloading loses unsaved checklist marks. Do not test restoration over your real records; mark Blocked if no empty disposable browser context is available.
 
 Workout and training behavior remains unchanged; V15.13 adds only a read-only breakdown of recorded daily inputs alongside the existing QA checklist. This is a proposed public Pages URL from the GitHub preview source; live served and on-device acceptance are still pending.
 

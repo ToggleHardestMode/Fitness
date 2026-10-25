@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FitnessPilot V15.15 Preview",
+  "name": "FitnessPilot V15.15.1 Preview",
   "short_name": "FP Preview",
-  "description": "Optional private on-device walking WebP over a translucent stationary Dashboard stage. Workout data unchanged.",
+  "description": "Visibility diagnostics and fallback for device-local walking avatar over the fixed translucent Dashboard layer.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
