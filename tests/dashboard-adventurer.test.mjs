@@ -41,10 +41,10 @@ test('versioned preview caches all new assets', () => {
   const worker = read('sw.js');
   const page = read('index.html');
   assert.match(page, /FITNESSPILOT V15\.15 PREVIEW/);
-  assert.match(worker, /fitnesspilot-preview-v1515-walker-v40/);
+  assert.match(worker, /fitnesspilot-preview-v15151-walker-fix-v41/);
   for (const file of ['adventurer-idle.svg','dashboard-walker.css']) {
     assert.match(worker, new RegExp("'\\./" + file.replaceAll('.', '\\.') + "'"));
   }
   assert.match(page, /href="\.\/dashboard-walker\.css"/);
-  assert.equal(JSON.parse(read('manifest.webmanifest')).name, 'FitnessPilot V15.15 Preview');
+  assert.equal(JSON.parse(read('manifest.webmanifest')).name, 'FitnessPilot V15.15.1 Preview');
 });
