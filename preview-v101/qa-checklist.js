@@ -1,6 +1,6 @@
 /* Disposable, operator-scored iPhone acceptance checklist. No workout-storage access. */
 export const CHECKS = Object.freeze([
-  {id:'version',title:'Preview version, navigation and averages',steps:'Open the app link in Safari. Confirm V15.13 in the banner, open Dashboard, Plan, Train and Tools. Under Dashboard Insights, expand the daily-average source dates.',expected:'Version and tabs are correct, and each recorded weekly average shows contributing dates and day count.'},
+  {id:'version',title:'Preview version, navigation and averages',steps:'Open the app link in Safari. Confirm V15.14, see the animated adventurer at the top of Dashboard without obscuring saved-set statistics, then open Plan, Train and Tools. Under Dashboard Insights, expand the daily-average source dates. Enable iOS Reduce Motion and confirm the character stops moving.',expected:'Version and tabs are correct; animated character stays in its own Dashboard banner, stops under Reduce Motion, and weekly averages retain their dated breakdown.'},
   {id:'plan',title:'V10.2 workout templates',steps:'In a disposable test-only browser context, import V10.2 Home in Plan and inspect the four workout templates.',expected:'4 workouts, 24 exercise entries, 62 planned physical sets; both lower workouts display [PT Review] and are not auto-assigned.'},
   {id:'set',title:'Saved-set counter and edit',steps:'In disposable data, opt in to Slime hit feedback in Tools, save a new upper-body set, then edit that saved set.',expected:'A new saved set gives one slime reaction if enabled; editing it gives no new reaction or set count. Disabling the visual effect produces no animation; the separate button-sound preference is unchanged.'},
   {id:'focus',title:'Focus Mode unsaved changes',steps:'In an upper-body Focus Mode set, change reps with +1/-1 and tap an RPE choice; try leaving without saving, then deliberately save.',expected:'Shortcuts edit inputs only; unsaved edits prompt on navigation, and next-set navigation happens only after a successful save.'},
@@ -25,7 +25,7 @@ export function makeReport(responses, at) {
   const counts=summarize(responses);
   return {
     schema:'fitnesspilot-qa-v1',
-    previewVersion:'V15.13',
+    previewVersion:'V15.14',
     checkedAt:at,
     results:CHECKS.map(check=>({
       id:check.id,
@@ -67,7 +67,7 @@ function mount() {
       const data=JSON.stringify(makeReport(responses,new Date().toISOString()),null,2);
       const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));
       const anchor=document.createElement('a');
-      anchor.href=url;anchor.download='fitnesspilot-v1513-qa.json';
+      anchor.href=url;anchor.download='fitnesspilot-v1514-qa.json';
       document.body.append(anchor);anchor.click();anchor.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
       feedback.textContent='Report download requested. Check Files/Downloads; no app records were changed.';

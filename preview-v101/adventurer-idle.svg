@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 150" role="img" aria-label="Original moustached fantasy adventurer">
+<defs><linearGradient id="coat"><stop stop-color="#86c8c8"/><stop offset="1" stop-color="#32658e"/></linearGradient></defs>
+<ellipse cx="64" cy="144" rx="37" ry="5" fill="#0e162a" opacity=".35"/>
+<path d="M42 88Q20 106 22 132L39 139L54 121L88 123L109 139L114 127Q107 98 88 87Z" fill="#ae5c72" stroke="#f0a897" stroke-width="2"/>
+<path d="M45 117L62 117L60 139L39 139ZM72 117L90 117L97 139L75 139Z" fill="#49415b" stroke="#c9a679" stroke-width="3"/>
+<path d="M44 84Q64 76 88 84L99 121Q64 135 32 121Z" fill="url(#coat)" stroke="#d6d6ba" stroke-width="3"/>
+<path d="M49 92L79 92L84 117L44 117Z" fill="#365070" stroke="#e8ca89" stroke-width="2"/>
+<path d="M38 89L25 105L33 115L46 101Z" fill="#5e9fb8"/><circle cx="31" cy="115" r="7" fill="#f4bd9e"/>
+<path d="M90 89L104 103L112 95L102 83Z" fill="#5e9fb8"/><circle cx="110" cy="97" r="7" fill="#f4bd9e"/>
+<path d="M106 28L114 31L114 100L105 108L100 99Z" fill="#e1eff5" stroke="#6a8196" stroke-width="2"/>
+<path d="M95 103L121 103" stroke="#d8b56c" stroke-width="6" stroke-linecap="round"/>
+<path d="M108 107L108 128" stroke="#55435e" stroke-width="7" stroke-linecap="round"/>
+<ellipse cx="64" cy="58" rx="34" ry="39" fill="#f4c4a1" stroke="#996d70" stroke-width="2"/>
+<path d="M30 54Q26 24 48 17Q72 2 92 23L98 55Q76 43 61 45Q45 53 30 54Z" fill="#3c3d62"/>
+<g class="eyes"><circle cx="51" cy="60" r="3.5" fill="#323149"/><circle cx="78" cy="60" r="3.5" fill="#323149"/></g>
+<path d="M62 75Q53 66 46 75Q41 80 38 75Q45 89 59 81Q63 78 67 81Q82 90 91 75Q87 80 82 75Q75 66 62 75Z" fill="#594158"/>
+<path d="M58 86Q64 90 70 86" fill="none" stroke="#b67b7a" stroke-width="2"/>
+<path d="M29 46Q27 18 62 12Q94 12 99 45L104 51Q65 62 25 51Z" fill="#47618e" stroke="#aec9d9" stroke-width="3"/>
+<path d="M77 18Q91 -2 108 10L92 38Z" fill="#e9d5a6" stroke="#af9272" stroke-width="2"/>
+<path d="M59 23L65 16L71 23L65 30Z" fill="#f5ce7b"/>
+<style>.eyes{transform-box:fill-box;transform-origin:center;animation:blink 5s infinite}@keyframes blink{0%,44%,48%,100%{transform:scaleY(1)}46%{transform:scaleY(.08)}}@media(prefers-reduced-motion:reduce){.eyes{animation:none}}</style>
+</svg>
