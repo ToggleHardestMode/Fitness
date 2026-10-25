@@ -1,4 +1,5 @@
 import { weeklyTrainingAnalysis, lifetimeTrainingSets, setMilestoneProgress } from './training-analytics.js';
+import { resetTrackingData } from './tracking-reset.js';
 import { METRIC_FIELDS, weeklyMetricSources } from './metric-breakdown.js';
 import { setsBarsMarkup } from './volume-bars.js';
 import { trainingAnalyticsPanel } from './training-analytics-ui.js';
@@ -31,6 +32,7 @@ const svg = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name]}<
 const navItems = [['dashboard','Dashboard'],['train','Train'],['plan','Plan'],['tools','Tools']];
 
 let state, storageError = null;
+let resetBackupReady = false;
 try {
   const saved = localStorage.getItem(STORAGE_KEY);
   state = saved ? validateBackup(JSON.parse(saved)) : emptyState();
@@ -49,7 +51,7 @@ function commit(next,message) {
   const clean=validateBackup(next);
   try {localStorage.setItem(STORAGE_KEY,JSON.stringify(clean));}
   catch(error) {throw Error(`Could not save locally (${error.name}). Check available device storage; the old records were left untouched.`);}
-  state=clean; render(); if(message)toast(message);
+  state=clean; resetBackupReady=false; render(); if(message)toast(message);
 }
 function tryAction(fn) {try {fn();}catch(error){toast(error.message||'Operation failed.',true);}}
 function goto(next) {page=next;render();$('#main').focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}
@@ -255,6 +257,14 @@ function tools() {
   return `${shellHeading()}${heading('ADVENTURER\'S KIT','Tools & data','Back up your progress first, then customize sounds, rest times and calendar reminders.')}
   <div class="codex-utility-intro"><strong>Keep your journey safe</strong><span>Your logs stay on this device. Download a backup before testing restores or changing devices.</span></div>
   <div class="section-label"><h2>Data vault</h2><span>Local to this browser</span></div><section class="card stack codex-vault"><div class="notice"><strong>Saved on this device only.</strong> Your sets and templates stay in this browser's local storage. They are not sent to us or synced to another device. Clearing website data, deleting the Home Screen app, or switching devices can remove access to them.</div><div class="quick-actions"><button class="btn" data-action="backup-export">Download full backup (.json)</button><button class="btn secondary" data-action="backup-verify">Check saved data integrity</button><button class="btn secondary" data-action="backup-file-check">Check downloaded backup (.json) — no restore</button><button class="btn secondary" data-action="backup-pick">Restore backup</button></div>${backupInfo}<p class="hint">Export a backup after every important training week. Keep the JSON file in iCloud Drive or another place you control. Restoring is destructive, so this app will preview the file and require an explicit confirmation. The saved-data check reads browser storage. The downloaded-backup check reads a chosen file without restoring it; separate-device restore still needs acceptance testing.</p></section>
+  <div class="section-label"><h2>Reset tracking records</h2><span>Keep uploaded workouts</span></div>
+  <section class="card stack"><div class="notice warn"><strong>Destructive reset — no automatic undo.</strong> Remove saved working sets, daily weight/nutrition/sleep/recovery check-ins and symptom observations from this preview. Preserve all uploaded workout templates, exercise targets, weekday assignments and reminder settings.</div>
+    <p class="hint">Preview: ${resetTrackingData(state).counts.setsRemoved} saved sets, ${resetTrackingData(state).counts.checkinsRemoved} daily check-ins and ${resetTrackingData(state).counts.symptomsRemoved} symptom observations would be erased. ${resetTrackingData(state).counts.templatesKept} workout templates and ${resetTrackingData(state).counts.assignmentsKept} weekday assignments will be kept.</p>
+    <p class="hint"><strong>Before resetting:</strong> use Download full backup (.json), then Check downloaded backup (.json) above and select the file you just saved. It must match the current records exactly. Verify that your file is accessible in Files. ${resetBackupReady?'<strong>Current backup file matches.</strong>':'<strong>No matching backup verified yet.</strong>'}</p>
+    <label><input type="checkbox" id="tracking-reset-ack"> I saved and checked my full backup, and understand the recorded data will be deleted.</label>
+    <label><span class="form-label">Type RESET LOGS to confirm</span><input id="tracking-reset-word" class="field" type="text" autocomplete="off" placeholder="RESET LOGS"></label>
+    <div class="form-actions"><button class="btn danger" type="button" data-action="tracking-reset-apply">Reset recorded data (keep workouts)</button></div>
+  </section>
   <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=35" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
   <div class="section-label"><h2>Workout logbook</h2><span>Saved set history</span></div>
   <section class="card stack v158-logbook"><div class="card-head"><div><h2>Your training archive</h2><p>Past workout versions and their actual logged sets</p></div><button type="button" class="btn secondary small-btn" data-action="logbook-export">Download full history (.csv)</button></div>
@@ -372,6 +382,20 @@ document.addEventListener('click', event=>{
     }
     if(act==='unified-ul-csv')download('Recovery-Optimized-UL-Unified.csv',UNIFIED_UL_CSV+'\r\n','text/csv;charset=utf-8');
     if(act==='example-csv')download('UpperLower-4-Day.csv',STARTER_CSV+'\r\n','text/csv;charset=utf-8');
+    if(act==='tracking-reset-apply'){
+      if(storageError)throw Error('Stored data is locked; do not reset it.');
+      if(!resetBackupReady)throw Error('First download and check a matching current backup in Tools.');
+      if(!$('#tracking-reset-ack')?.checked)throw Error('Confirm that the backup was saved and checked.');
+      if($('#tracking-reset-word')?.value!=='RESET LOGS')throw Error('Type RESET LOGS exactly to confirm.');
+      if(localStorage.getItem(STORAGE_KEY)!==JSON.stringify(state))throw Error('Saved data changed since it was loaded. Reload and verify another backup before resetting.');
+      const preview=resetTrackingData(state);
+      if(!confirm(`Permanently remove ${preview.counts.setsRemoved} recorded sets, ${preview.counts.checkinsRemoved} daily check-ins and ${preview.counts.symptomsRemoved} symptom entries? Keep ${preview.counts.templatesKept} workout templates and weekday assignments? This cannot be undone without a backup.`))return;
+      const applied=resetTrackingData(state,{apply:true});
+      commit(applied.nextState,'Recorded training and check-in history reset. Workout templates and schedules kept.');
+      pendingBackup=null;
+      render();
+      return;
+    }
     if(act==='backup-verify'){
       const report=verifyLocalSnapshot(state,localStorage.getItem(STORAGE_KEY));
       toast(`Saved data checked: ${report.templates} templates, ${report.sets} sets, ${report.symptoms} symptom observations. No data changed.`);
@@ -407,10 +431,20 @@ document.addEventListener('change',event=>{
   if(target.id==='backup-check-file'){
     const file=target.files?.[0];target.value='';
     if(file) (async()=>{
+      resetBackupReady=false;
       if(file.size>8_000_000 || !/\.json$/i.test(file.name))throw Error('Choose a .json backup smaller than 8 MB.');
-      const summary=inspectBackupFileText(await file.text());
-      toast(`File valid: ${summary.templates} templates, ${summary.sets} saved sets. Nothing restored.`);
-    })().catch(error=>toast(error.message,true));
+      resetBackupReady=false;
+      const raw=await file.text();
+      const summary=inspectBackupFileText(raw);
+      const current=JSON.stringify(state);
+      const checked=JSON.stringify(validateBackup(JSON.parse(raw)));
+      resetBackupReady=!storageError && checked===current && localStorage.getItem(STORAGE_KEY)===current;
+      render();
+      toast(resetBackupReady
+        ? `Matching full backup verified: ${summary.templates} templates and ${summary.sets} recorded sets. Nothing restored.`
+        : `Backup file valid but does not match current browser records. Nothing restored; a matching backup is required to reset.`);
+
+    })().catch(error=>{resetBackupReady=false;render();toast(error.message,true);});
   }
 });
 
