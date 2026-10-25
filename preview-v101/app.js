@@ -306,7 +306,7 @@ function tools() {
     <label><span class="form-label">Type RESET LOGS to confirm</span><input id="tracking-reset-word" class="field" type="text" autocomplete="off" placeholder="RESET LOGS"></label>
     <div class="form-actions"><button class="btn danger" type="button" data-action="tracking-reset-apply">Reset recorded data (keep workouts)</button></div>
   </section>
-  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=39" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
+  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=40" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
   <div class="section-label"><h2>Workout logbook</h2><span>Saved set history</span></div>
   <section class="card stack v158-logbook"><div class="card-head"><div><h2>Your training archive</h2><p>Past workout versions and their actual logged sets</p></div><button type="button" class="btn secondary small-btn" data-action="logbook-export">Download full history (.csv)</button></div>
     <p class="hint">All records stay on this device. Downloading CSV creates a local file containing your workout details and notes. It does not change your saved workouts.</p>
@@ -480,6 +480,16 @@ document.addEventListener('click', event=>{
 
 document.addEventListener('change',event=>{
   const target=event.target;
+  if(target.id==='walker-file'){
+    const file=target.files?.[0];target.value='';
+    if(!file)return;
+    try{
+      pendingWalkerFile=validateWalkerFile(file);
+      const status=$('#walker-status');
+      if(status)status.textContent='Selected '+file.name+'. Tap Apply selected avatar.';
+    }catch(error){pendingWalkerFile=null;toast(error.message,true);}
+    return;
+  }
   if(target.id==='slime-hit-enabled'){
     try {
       localStorage.setItem(SLIME_HIT_SETTING,target.checked?'on':'off');
