@@ -1,7 +1,7 @@
 import { WALKER_KEY, validateWalkerFile, validateWalkerDataUrl } from './dashboard-walker.js';
 
 // Called only from an explicit Apply button; no workout state is involved.
-export async function applyWalkerFile(file, storage, readFile) {
+export async function applyWalkerFile(file, storage, readFile, decodeImage) {
   validateWalkerFile(file);
   const raw = await readFile(file);
   const data = validateWalkerDataUrl(raw);
