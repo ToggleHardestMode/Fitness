@@ -335,7 +335,25 @@ function inspectWalkerDisplay(){
   };
   image.addEventListener('load',update,{once:true});
   image.addEventListener('error',update,{once:true});
-  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){update();return;}
+  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
+    image.classList.remove('is-ready');
+    if(!walkerDataUrl){
+      status.textContent='Reduce Motion is on: default adventurer shown.';
+      return;
+    }
+    const still=$('.fp-walker-still');
+    const selected=walkerDataUrl;
+    status.textContent='Reduce Motion is on: preparing your personal still image…';
+    createWalkerStill(selected).then(png=>{
+      if(!still?.isConnected || walkerDataUrl!==selected)return;
+      still.src=png;
+      status.textContent='Your character (still frame). To see walking, enable Animation effects in device accessibility settings.';
+    }).catch(()=>{
+      if(!status.isConnected)return;
+      status.textContent='Could not show your personal still; default adventurer shown.';
+    });
+    return;
+  }
   image.src=walkerDataUrl||'./adventurer-idle.svg';
   if(image.complete)update();
 }
