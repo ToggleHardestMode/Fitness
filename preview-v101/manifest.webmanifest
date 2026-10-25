@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FitnessPilot V15.14 Preview",
+  "name": "FitnessPilot V15.15 Preview",
   "short_name": "FP Preview",
-  "description": "iPhone-first workout tracker with original animated dashboard adventurer, existing opt-in slime reaction and local-only training data.",
+  "description": "Optional private on-device walking WebP over a translucent stationary Dashboard stage. Workout data unchanged.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
