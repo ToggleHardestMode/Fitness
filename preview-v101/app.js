@@ -36,6 +36,12 @@ const navItems = [['dashboard','Dashboard'],['train','Train'],['plan','Plan'],['
 
 let state, storageError = null;
 let resetBackupReady = false;
+let walkerDataUrl=null, pendingWalkerFile=null;
+try{
+  const savedWalker=localStorage.getItem(WALKER_KEY);
+  if(savedWalker)walkerDataUrl=validateWalkerDataUrl(savedWalker);
+}catch{/* Cosmetic avatar falls back; workout records stay untouched. */}
+
 try {
   const saved = localStorage.getItem(STORAGE_KEY);
   state = saved ? validateBackup(JSON.parse(saved)) : emptyState();
