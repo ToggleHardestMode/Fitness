@@ -2,7 +2,7 @@
 
 **Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=42
 
-The folder is still named `preview-v101` for continuity; the application banner and manifest currently identify **V15.14**. It is a separate preview application, **not** the production root upgrade.
+The folder is still named `preview-v101` for continuity; the application banner and manifest currently identify **V15.15.2**. It is a separate preview application, **not** the production root upgrade.
 
 ## V15.15.2 · Show your avatar even with Reduce Motion
 
