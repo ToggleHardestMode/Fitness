@@ -10,6 +10,7 @@ import { V101_CSV, V101_VERSION, V101_EQUIPMENT } from './v101-data.js';
 import { V102_CSV, V102_VERSION, V102_EQUIPMENT } from './v102-data.js';
 import { v102OverlapPanel } from './v102-overlap-ui.js';
 import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.js';
+import { newlyRecordedSets } from './slime-hit.js';
 import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
