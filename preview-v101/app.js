@@ -13,6 +13,7 @@ import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.
 import { newlyRecordedSets } from './slime-hit.js';
 import { WALKER_KEY, validateWalkerFile, validateWalkerDataUrl, dashboardWalkerBanner } from './dashboard-walker.js';
 import { applyWalkerFile, checkWalkerImage, readWalkerDataUrl } from './dashboard-walker-apply.js';
+import { createWalkerStill } from './walker-still.js';
 import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
