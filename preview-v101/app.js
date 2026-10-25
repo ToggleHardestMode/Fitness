@@ -12,6 +12,7 @@ import { v102OverlapPanel } from './v102-overlap-ui.js';
 import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.js';
 import { newlyRecordedSets } from './slime-hit.js';
 import { WALKER_KEY, validateWalkerFile, validateWalkerDataUrl, dashboardWalkerBanner } from './dashboard-walker.js';
+import { applyWalkerFile, readWalkerDataUrl } from './dashboard-walker-apply.js';
 import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
