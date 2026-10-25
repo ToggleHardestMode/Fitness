@@ -334,6 +334,8 @@ function inspectWalkerDisplay(){
   };
   image.addEventListener('load',update,{once:true});
   image.addEventListener('error',update,{once:true});
+  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){update();return;}
+  image.src=walkerDataUrl||'./adventurer-idle.svg';
   if(image.complete)update();
 }
 function render(){const markup=navMarkup();$('.bottom-tabs').innerHTML=markup;$('.desktop-tabs').innerHTML=markup;$('#main').innerHTML=`${storageError?`<div class="error-strip" role="alert">${esc(storageError)}</div>`:''}${page==='dashboard'?dashboard():page==='train'?train():page==='plan'?plan():tools()}`;inspectWalkerDisplay();timerTick();}
