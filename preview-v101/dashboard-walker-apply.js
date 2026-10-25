@@ -5,6 +5,7 @@ export async function applyWalkerFile(file, storage, readFile, decodeImage) {
   validateWalkerFile(file);
   const raw = await readFile(file);
   const data = validateWalkerDataUrl(raw);
+  await decodeImage(data);
   storage.setItem(WALKER_KEY, data);
   return data;
 }
