@@ -23,7 +23,7 @@ test('report exports only canonical test cases without raw workout data', () => 
   const at='2026-10-25T05:10:00.000Z';
   const report=makeReport(results,at);
   assert.equal(report.schema,'fitnesspilot-qa-v1');
-  assert.equal(report.previewVersion,'V15.11.3');
+  assert.equal(report.previewVersion,'V15.11.4');
   assert.equal(report.checkedAt,at);
   assert.equal(report.results.length,10);
   assert.equal(report.results[0].status,'pass');
