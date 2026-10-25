@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#101827">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./qa.css">
+  <title>FitnessPilot V15.11.2 · iPhone QA</title>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">FITNESSPILOT · V15.11.2 PREVIEW</div>
+      <h1>iPhone acceptance checklist</h1>
+      <p>Run each check using disposable test data and mark Pass, Fail or Blocked. These observations are yours, not automated test results.</p>
+      <p><a class="action" href="./?v=34" target="_blank" rel="noopener noreferrer">Open the workout preview in another tab</a></p>
+    </header>
+    <aside class="notice">
+      <strong>No data is uploaded or restored by this checklist.</strong>
+      Answers stay only in this open page until you download the report; refreshing loses the marks. Never clear Safari website data or restore over real workout records to complete a check. If a test needs an empty context you do not have, mark <strong>Blocked</strong>.
+    </aside>
+    <section aria-label="Manual test cases" id="checks"></section>
+    <footer>
+      <p id="counts" role="status" aria-live="polite">Loading checks…</p>
+      <button id="download-report" type="button">Download QA report (.json)</button>
+      <p id="export-status" role="status" aria-live="polite"></p>
+      <p class="fine">Only status, optional notes, preview version and export time enter the JSON report. No saved workouts, health logs or browser identifiers are read. Export deliberately—there is no auto-save.</p>
+      <p><a href="./?v=34">Return to FitnessPilot preview</a></p>
+    </footer>
+  </main>
+  <script type="module" src="./qa-checklist.js"></script>
+</body>
+</html>

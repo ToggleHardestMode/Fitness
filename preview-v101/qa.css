@@ -1,0 +1,19 @@
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#101827;color:#f7efe0}
+*{box-sizing:border-box}
+body{margin:0;line-height:1.48}
+main{width:min(780px,100%);margin:0 auto;padding:18px 15px 48px}
+header,.notice,.check,footer{background:#1e2938;border:1px solid #856b40;border-radius:15px;padding:17px;margin-bottom:15px}
+header{border-color:#b49a62;background:linear-gradient(145deg,#302c30,#172335)}
+.eyebrow{letter-spacing:.12em;color:#ead39c;font-size:.75rem;font-weight:800}
+h1{font-size:1.6rem;margin:.5em 0}h2{font-size:1.1rem;margin:.1em 0 .5em;color:#f4daa7}
+p{margin:.5em 0 1em}a{color:#f5d58d}a.action{display:inline-block;border-radius:12px;padding:12px 16px;background:#8e6a36;color:#fff;font-weight:750;text-decoration:none}
+.notice{border-color:#ba8a47;background:#322a26} .check{border-color:#52637a}
+.expected{font-weight:650;color:#e1c992}
+label{display:block;font-weight:700;margin-top:12px}
+select,textarea,button{font:inherit;border-radius:10px;width:100%;min-height:44px;margin-top:8px}
+select,textarea{background:#101c2c;color:#fff;border:1px solid #8390a7;padding:9px}
+textarea{resize:vertical;min-height:65px}button{border:1px solid #ffdc8a;background:#977139;color:#fff;font-weight:800;cursor:pointer;padding:10px}
+button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #f5d58d;outline-offset:3px}
+#counts{font-weight:800;color:#f3dca4}
+.fine{font-size:.88rem;color:#c2ceda}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
