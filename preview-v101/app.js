@@ -10,6 +10,7 @@ import { V101_CSV, V101_VERSION, V101_EQUIPMENT } from './v101-data.js';
 import { V102_CSV, V102_VERSION, V102_EQUIPMENT } from './v102-data.js';
 import { v102OverlapPanel } from './v102-overlap-ui.js';
 import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.js';
+import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
 import { workoutLogbookHtml, workoutLogbookCsv } from './workout-logbook.js';
@@ -185,7 +186,12 @@ function train() {
     }).join('');
     const repeatChoice=focusMode?repeatLastSessionSet(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise,set:focusSet+1}):null;
     const repeatButton=repeatChoice?`<div class="v156-repeat"><button class="btn secondary small-btn" type="button" data-action="focus-repeat">↻ Copy saved set ${repeatChoice.sourceSet}</button><span class="hint">${esc(repeatChoice.kg)} kg × ${esc(repeatChoice.reps)} reps. Copies only kg/reps; RPE is entered separately. Review before saving.</span></div>`:'';
-    const selectedOld=current.find(l=>l.set===focusSet+1);
+    const quickControls=focusMode?`<div class="v1512-quick" aria-label="Optional form-only quick entry">
+       <div class="v1512-quick-row"><span>Reps</span><button class="btn secondary small-btn" type="button" data-action="quick-reps-minus" aria-label="Decrease reps by one">−1</button><button class="btn secondary small-btn" type="button" data-action="quick-reps-plus" aria-label="Increase reps by one">+1</button></div>
+       <div class="v1512-quick-row"><span>RPE</span>${QUICK_RPE.map(value=>`<button class="btn secondary small-btn" type="button" data-action="quick-rpe" data-quick-rpe="${value}" aria-label="Set RPE to ${value}">${value}</button>`).join('')}</div>
+       <p class="hint">Shortcuts only edit these fields. Review values and press Save this set to record; nothing saves automatically.</p>
+     </div>`:'';
+     const selectedOld=current.find(l=>l.set===focusSet+1);
     const selectedPrior=previous.find(l=>l.set===focusSet+1);
     const focusIntro=focusMode?`<div class="v152-focus-header"><strong>Set ${focusSet+1} of ${ex.sets}</strong><span>${selectedOld?'Editing a saved set':'Not logged yet'}</span></div><p class="v152-history">${selectedOld?'Saved today — values below are editable.':selectedPrior?`Previous: ${esc(selectedPrior.kg)} kg × ${esc(selectedPrior.reps)} ${ex.repUnit==='seconds_per_side'?'seconds/side':'reps'} (${esc(selectedPrior.date)}). Review before saving.`:'No earlier set recorded. Enter actual values before saving.'}</p>`:'';
     const focusNavigation=focusMode?`<div class="v152-set-navigation"><button class="btn secondary small-btn" data-focus-set="${focusSet-1}" type="button" ${focusSet===0?'disabled':''}>← Previous set</button><button class="btn secondary small-btn" data-focus-set="${focusSet+1}" type="button" ${focusSet===ex.sets-1?'disabled':''}>Next set →</button></div><p class="hint">Only the displayed set will be saved. Change the values to match what you actually completed; no weights are increased automatically.</p>`:'';
@@ -196,7 +202,7 @@ function train() {
     ${workout.equipmentNote?`<div class="hint"><strong>Equipment:</strong> ${esc(workout.equipmentNote)}</div>`:''}
     ${ex.sourceNote?`<div class="notice"><strong>Exercise instructions:</strong> ${esc(ex.sourceNote)}</div>`:''}
     ${focusMode?manualProgressionPanel(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise,set:focusSet+1}):''}
-    <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">RPE</span><span class="micro">✓</span></div>${setFields}${repeatButton}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">${ex.rest}s rest timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
+    <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">RPE</span><span class="micro">✓</span></div>${setFields}${repeatButton}${quickControls}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">${ex.rest}s rest timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
   } else {exMarkup=`<div class="card empty"><strong>${state.templates.length?'No workout selected':'No templates yet'}</strong>${state.templates.length?'Choose any workout above or assign a day in Plan.':'Go to Dashboard and load the example plan, or import your own CSV in Plan.'}</div>`;}
   return `${shellHeading()}${heading('TRAINING','One set at a time','Choose an exercise, record your completed sets, then rest before the next one.')}
   <div class="card"><div class="two-panels"><label><span class="form-label" style="margin-top:0">Workout date</span><input class="field" type="date" id="active-date" value="${activeDate}"></label><label><span class="form-label" style="margin-top:0">Workout for this date</span><select class="field" id="active-workout">${options}</select></label></div><div class="inline-meta"><span class="dot"></span>${DAY_NAMES[day]} · ${state.logs.filter(l=>l.date===activeDate).length} set(s) saved</div></div>
@@ -266,7 +272,7 @@ function tools() {
     <label><span class="form-label">Type RESET LOGS to confirm</span><input id="tracking-reset-word" class="field" type="text" autocomplete="off" placeholder="RESET LOGS"></label>
     <div class="form-actions"><button class="btn danger" type="button" data-action="tracking-reset-apply">Reset recorded data (keep workouts)</button></div>
   </section>
-  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=36" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
+  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=37" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
   <div class="section-label"><h2>Workout logbook</h2><span>Saved set history</span></div>
   <section class="card stack v158-logbook"><div class="card-head"><div><h2>Your training archive</h2><p>Past workout versions and their actual logged sets</p></div><button type="button" class="btn secondary small-btn" data-action="logbook-export">Download full history (.csv)</button></div>
     <p class="hint">All records stay on this device. Downloading CSV creates a local file containing your workout details and notes. It does not change your saved workouts.</p>
@@ -332,6 +338,21 @@ document.addEventListener('click', event=>{
   const act=button.dataset.action;
   tryAction(()=>{
     if(act==='cancel-customize'){customizing=null;render();return;}
+    if(act==='quick-reps-minus' || act==='quick-reps-plus' || act==='quick-rpe') {
+      if(!focusMode)throw Error('Switch to Focus Mode for quick entry.');
+      const form=$('#sets-form');
+      if(!form)throw Error('The current set form is unavailable.');
+      if(act==='quick-rpe') {
+        const input=form.elements[`rpe${focusSet}`];
+        if(!input)throw Error('The current RPE field is unavailable.');
+        input.value=chooseRpe(button.dataset.quickRpe);
+      } else {
+        const input=form.elements[`reps${focusSet}`];
+        if(!input)throw Error('The current reps field is unavailable.');
+        input.value=stepReps(input.value,act==='quick-reps-plus'?1:-1);
+      }
+      return; // No commit; the existing Save this set is still required.
+    }
     if(act==='focus-repeat') {
       if(!focusMode)throw Error('Switch to Focus Mode first.');
       const choice=repeatLastSessionSet(state,{date:activeDate,templateId:chosenTemplate,exerciseIndex:chosenExercise,set:focusSet+1});
