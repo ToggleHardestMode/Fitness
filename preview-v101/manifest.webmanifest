@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FitnessPilot V15.11.2 Preview",
+  "name": "FitnessPilot V15.11.3 Preview",
   "short_name": "FP Preview",
-  "description": "Preview-only operator iPhone QA checklist with explicit Pass, Fail and Blocked outcomes and local JSON report export; retains V15.11.1 training/backup behavior and V10.2 workouts.",
+  "description": "Preview-only weekly-average source breakdown and operator iPhone QA checklist; retains V10.2 workouts and local-first training behavior.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
