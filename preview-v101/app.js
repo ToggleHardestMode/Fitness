@@ -82,14 +82,8 @@ function navMarkup() {return navItems.map(([id,label])=>`<button type="button" c
 function heading(kicker,title,subtitle='') {return `<div class="screen-intro"><div class="eyebrow">${esc(kicker)}</div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div>`;}
 function shellHeading() {return `<div class="header-row"><div class="wordmark"><img src="./assets/icon.svg" alt=""><span>FitnessPilot</span></div><div class="date-pill">${new Date().toLocaleDateString('en-SG',{month:'short',day:'numeric',weekday:'short'})}</div></div>`;}
 function initialCard() {return `<section class="hero codex-quest"><div class="quest-topline"><span>✦ FITNESSPILOT</span><span class="quest-date">GET STARTED</span></div><h1>Set up your first workout plan.</h1><p class="quest-subtitle">Add reusable workout plans, assign training days, and record the sets you actually complete.</p><div class="quest-facts"><span>Private training journal</span><span>Offline-first</span></div><button class="btn" data-page="plan">Open Plan →</button></section>`;}
-function dashboardAdventurer() {
-  return '<section class="fp-adventurer" aria-label="Your decorative fantasy adventurer">' +
-    '<div class="fp-adventurer-copy"><span class="fp-adventurer-label">Your adventurer</span>' +
-    '<h2 class="fp-adventurer-title">Ready for the journey</h2>' +
-    '<p class="fp-adventurer-note">A little companion for your training days.</p></div>' +
-    '<img class="fp-adventurer-art" src="./adventurer-idle.svg" alt="" width="126" height="137" aria-hidden="true">' +
-    '</section>';
-}
+function dashboardAdventurer(){return dashboardWalkerBanner(walkerDataUrl);}
+
 function gildedSummary(analysis, nextDay, lifetimeSets) {
   const milestone = setMilestoneProgress(lifetimeSets);
   const daysLogged = analysis.days.filter(day => day.completed > 0).length;
