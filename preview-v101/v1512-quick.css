@@ -1,0 +1,6 @@
+/* Optional quick entry controls for one Focus Mode set. */
+.v1512-quick{display:grid;gap:8px;margin-top:12px}
+.v1512-quick-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.v1512-quick-row>span{min-width:54px;font-size:.84rem;font-weight:700;color:#ead6ae}
+.v1512-quick-row .btn{min-width:50px;min-height:44px;padding:9px 12px}
+.v1512-quick .hint{margin:0;font-size:.82rem}
