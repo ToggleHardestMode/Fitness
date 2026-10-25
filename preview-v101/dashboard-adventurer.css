@@ -1,0 +1,10 @@
+/* Decorative original idle character above Dashboard progress. */
+.fp-adventurer{position:relative;isolation:isolate;display:flex;align-items:center;overflow:hidden;min-height:124px;padding:17px 145px 17px 18px;margin:3px 0 14px;border:1px solid #b3976e;border-radius:17px;background:radial-gradient(circle at 84% 35%,#587c9860,transparent 42%),linear-gradient(120deg,#2a293b,#1a2635);box-shadow:0 9px 25px #0005}
+.fp-adventurer-copy{position:relative;z-index:1;min-width:0}
+.fp-adventurer-label{display:block;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.13em;color:#ead1a2;text-transform:uppercase}
+.fp-adventurer-title{margin:0;font-family:Georgia,serif;font-weight:700;font-size:clamp(19px,4vw,25px);line-height:1.18;color:#fff0d0}
+.fp-adventurer-note{margin:6px 0 0;color:#d6cbca;font-size:12px;line-height:1.4}
+.fp-adventurer-art{position:absolute;right:12px;bottom:0;width:126px;height:137px;object-fit:contain;pointer-events:none;filter:drop-shadow(0 4px 5px #0006);animation:fp-adventurer-idle 3.1s ease-in-out infinite}
+@keyframes fp-adventurer-idle{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-6px) rotate(1deg)}}
+@media(max-width:390px){.fp-adventurer{padding-right:116px;padding-left:13px;min-height:115px}.fp-adventurer-art{right:1px;width:112px;height:123px}.fp-adventurer-title{font-size:18px}.fp-adventurer-note{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.fp-adventurer-art{animation:none}}
