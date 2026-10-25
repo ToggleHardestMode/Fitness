@@ -14,37 +14,37 @@ test('adventurer appears before progress only on Dashboard', () => {
   assert.ok(start >= 0 && dashboard > start);
   assert.match(app, /return `\$\{shellHeading\(\)\}\$\{dashboardAdventurer\(\)\}\$\{gildedSummary/);
   assert.equal((app.match(/\$\{dashboardAdventurer\(\)\}/g) ?? []).length, 1);
-  assert.match(app.slice(start, dashboard), /adventurer-idle\.svg/);
+  assert.match(app.slice(start, dashboard), /dashboardWalkerBanner\(walkerDataUrl\)/);
 });
 
 test('graphic is accessible, internal, and cannot capture touch controls', () => {
   const art = read('adventurer-idle.svg');
-  const css = read('dashboard-adventurer.css');
+  const css = read('dashboard-walker.css');
   const app = read('app.js');
   assert.match(art, /<svg[^>]+viewBox=/);
   assert.match(art, /moustached fantasy adventurer/);
   assert.doesNotMatch(art, /<script|(?:href|src)=["']https?:\/\//i);
   assert.match(css, /pointer-events:none/);
-  assert.match(app, /alt="" width="126" height="137" aria-hidden="true"/);
+  assert.match(read('dashboard-walker.js'), /fp-walker-stage/);
 });
 
 test('small iPhone and reduced-motion users retain a stable banner', () => {
-  const css = read('dashboard-adventurer.css');
+  const css = read('dashboard-walker.css');
   const art = read('adventurer-idle.svg');
   assert.match(css, /@media\(max-width:390px\)/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
-  assert.match(css, /\.fp-adventurer-art\{animation:none\}/);
+  assert.match(css, /\.fp-walker-sprite\{display:none\}/);
   assert.match(art, /prefers-reduced-motion:reduce/);
 });
 
 test('versioned preview caches all new assets', () => {
   const worker = read('sw.js');
   const page = read('index.html');
-  assert.match(page, /FITNESSPILOT V15\.14 PREVIEW/);
-  assert.match(worker, /fitnesspilot-preview-v1514-adventurer-v39/);
-  for (const file of ['adventurer-idle.svg','dashboard-adventurer.css']) {
+  assert.match(page, /FITNESSPILOT V15\.15 PREVIEW/);
+  assert.match(worker, /fitnesspilot-preview-v1515-walker-v40/);
+  for (const file of ['adventurer-idle.svg','dashboard-walker.css']) {
     assert.match(worker, new RegExp("'\\./" + file.replaceAll('.', '\\.') + "'"));
   }
-  assert.match(page, /href="\.\/dashboard-adventurer\.css"/);
-  assert.equal(JSON.parse(read('manifest.webmanifest')).name, 'FitnessPilot V15.14 Preview');
+  assert.match(page, /href="\.\/dashboard-walker\.css"/);
+  assert.equal(JSON.parse(read('manifest.webmanifest')).name, 'FitnessPilot V15.15 Preview');
 });
