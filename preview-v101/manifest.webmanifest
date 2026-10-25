@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FitnessPilot V15.13 Preview",
+  "name": "FitnessPilot V15.14 Preview",
   "short_name": "FP Preview",
-  "description": "Optional, silent visual slime reaction for newly saved workout sets, with existing training records and preview storage preserved.",
+  "description": "iPhone-first workout tracker with original animated dashboard adventurer, existing opt-in slime reaction and local-only training data.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
