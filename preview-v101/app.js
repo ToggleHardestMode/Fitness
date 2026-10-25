@@ -443,6 +443,15 @@ document.addEventListener('click', event=>{
       render();
       return;
     }
+    if(act==='walker-pick'){$('#walker-file').click();return;}
+    if(act==='walker-remove'){
+      if(!walkerDataUrl){toast('No private walking avatar to remove.');return;}
+      if(!confirm('Remove the private walking picture? Saved workouts remain unchanged.'))return;
+      try{localStorage.removeItem(WALKER_KEY);}
+      catch{throw Error('Could not remove the avatar; no changes made.');}
+      walkerDataUrl=null;pendingWalkerFile=null;render();toast('Private avatar removed.');
+      return;
+    }
     if(act==='backup-verify'){
       const report=verifyLocalSnapshot(state,localStorage.getItem(STORAGE_KEY));
       toast(`Saved data checked: ${report.templates} templates, ${report.sets} sets, ${report.symptoms} symptom observations. No data changed.`);
