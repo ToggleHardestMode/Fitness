@@ -320,6 +320,22 @@ function tools() {
 }
 function timerRemaining(){if(!timerEnd)return '00:00';const n=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));return `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;}
 function timerTick() {const display=$('#timer-display');if(display)display.textContent=timerRemaining();if(timerEnd && timerEnd<=Date.now()){timerEnd=null;clearInterval(timerHandle);timerHandle=null;try{if(audioContext){const osc=audioContext.createOscillator();const gain=audioContext.createGain();osc.connect(gain);gain.connect(audioContext.destination);osc.frequency.value=740;gain.gain.value=.15;osc.start();osc.stop(audioContext.currentTime+.35);}}catch{}toast('Rest timer finished. Time for your next set!');}}
+function inspectWalkerDisplay(){
+  const image=$('.fp-walker-sprite');
+  const status=$('#walker-render-status');
+  if(!image||!status)return;
+  const update=()=>{
+    const ready=image.complete&&image.naturalWidth>0;
+    image.classList.toggle('is-ready',ready);
+    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    status.textContent=reduced?'Reduce Motion: static adventurer shown':
+      !ready?'Character could not be displayed; fallback shown':
+      walkerDataUrl?'Personal walker loaded on Dashboard':'Default adventurer loaded';
+  };
+  image.addEventListener('load',update,{once:true});
+  image.addEventListener('error',update,{once:true});
+  if(image.complete)update();
+}
 function render(){const markup=navMarkup();$('.bottom-tabs').innerHTML=markup;$('.desktop-tabs').innerHTML=markup;$('#main').innerHTML=`${storageError?`<div class="error-strip" role="alert">${esc(storageError)}</div>`:''}${page==='dashboard'?dashboard():page==='train'?train():page==='plan'?plan():tools()}`;inspectWalkerDisplay();timerTick();}
 function download(filename,content,mime){const url=URL.createObjectURL(new Blob([content],{type:mime}));const a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}
 async function readCSV(file) {
