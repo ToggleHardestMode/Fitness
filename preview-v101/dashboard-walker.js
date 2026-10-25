@@ -19,14 +19,14 @@ export function validateWalkerDataUrl(value) {
 
 export function dashboardWalkerBanner(dataUrl = null) {
   const hasAvatar = dataUrl != null;
-  const src = hasAvatar ? validateWalkerDataUrl(dataUrl) : './adventurer-idle.svg';
+  if (hasAvatar) validateWalkerDataUrl(dataUrl);
   return `<section class="fp-walker-banner" aria-label="Decorative walking character">
     <div class="fp-walker-copy"><span class="fp-walker-label">Your adventurer</span>
     <h2 class="fp-walker-title">Walking beside your progress</h2>
     <p class="fp-walker-note">${hasAvatar ? 'Walking in place on your private stage.' : 'To use your personal walking sprite, open Tools and import the WebP.'}</p><span class="fp-walker-status" id="walker-render-status" role="status">${hasAvatar?'Checking character display…':'Default adventurer'}</span></div>
     <div class="fp-walker-stage" aria-hidden="true">
       <div class="fp-walker-platform"></div>
-      <img class="fp-walker-sprite" src="${src}" alt="" width="144" height="320">
+      <img class="fp-walker-sprite" alt="" width="144" height="320">
       <img class="fp-walker-still" src="./adventurer-idle.svg" alt="">
     </div>
   </section>`;
