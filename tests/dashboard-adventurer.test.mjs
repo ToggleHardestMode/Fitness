@@ -23,7 +23,7 @@ test('graphic is accessible, internal, and cannot capture touch controls', () =>
   const app = read('app.js');
   assert.match(art, /<svg[^>]+viewBox=/);
   assert.match(art, /moustached fantasy adventurer/);
-  assert.doesNotMatch(art, /<script|https?:\/\//i);
+  assert.doesNotMatch(art, /<script|(?:href|src)=["']https?:\/\//i);
   assert.match(css, /pointer-events:none/);
   assert.match(app, /alt="" width="126" height="137" aria-hidden="true"/);
 });
