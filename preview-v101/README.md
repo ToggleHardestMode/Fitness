@@ -1,20 +1,24 @@
-# FitnessPilot V15.11.2 — test preview
+# FitnessPilot V15.11.3 — test preview
 
-**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=34
+**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=35
 
-The folder is still named `preview-v101` for continuity; the application banner and manifest currently identify **V15.11.2**. It is a separate preview application, **not** the production root upgrade.
+The folder is still named `preview-v101` for continuity; the application banner and manifest currently identify **V15.11.3**. It is a separate preview application, **not** the production root upgrade.
 
-## V15.11.2 · iPhone acceptance companion
+## V15.11.3 · Weekly averages audit (read-only)
 
-**New:** [Open the QA checklist](https://togglehardestmode.github.io/Fitness/preview-v101/qa.html?v=34) from Tools. It contains ten operator-scored checks (Pass / Fail / Blocked / Not run), retains answers in page memory only and exports a structured JSON report on explicit button press. It does not read or mutate workout records or transmit the report. Reloading loses unsaved checklist marks. Do not test restoration over your real records; mark Blocked if no empty disposable browser context is available.
+The Dashboard's Daily check-ins section now shows how many dates contributed to each weekly average. Expand **Which dates contribute to these averages?** to inspect saved values by date for protein, calories, sleep, and recovery. This is a transparency fix: averages still use recorded values from the current Monday–Sunday week, and existing saved measurements are neither reset nor migrated. To correct a mistaken entry, open **Train**, select that date, change its check-in and save. Do not delete Safari site storage to fix a number. Physical Safari and actual saved-data checks are pending.
 
-The core training features are unchanged from V15.11.1; the new version exists to collect actual iPhone release acceptance. This is a proposed public Pages URL from the GitHub preview source; live served and on-device acceptance are still pending.
+## V15.11.3 · iPhone acceptance companion
+
+**New:** [Open the QA checklist](https://togglehardestmode.github.io/Fitness/preview-v101/qa.html?v=35) from Tools. It contains ten operator-scored checks (Pass / Fail / Blocked / Not run), retains answers in page memory only and exports a structured JSON report on explicit button press. It does not read or mutate workout records or transmit the report. Reloading loses unsaved checklist marks. Do not test restoration over your real records; mark Blocked if no empty disposable browser context is available.
+
+Workout and training behavior remains unchanged; V15.11.3 adds only a read-only breakdown of recorded daily inputs alongside the existing QA checklist. This is a proposed public Pages URL from the GitHub preview source; live served and on-device acceptance are still pending.
 
 ## Quick acceptance walkthrough
 
 Use disposable example data and **do not clear browser website data**:
 
-1. Confirm the preview banner shows **V15.11.2**.
+1. Confirm the preview banner shows **V15.11.3**.
 2. Under **Plan**, choose **Add V10.2 Home templates** and verify four sessions/24 exercise entries/62 prescribed weekly sets. An additional **V10.1 Home** import remains available.
 3. Confirm that both lower workouts retain **[PT Review]**, and that importing never assigns them to weekdays automatically.
 4. Under **Train**, log a sample upper-body set. Verify the gold **Total completed sets** and weekly total rise once, the daily chart updates, and **Next milestone** updates by one. Editing the same set must not add another. Milestones are 25, 50, 100, 250, 500, 1,000 and then every 500; they do not prescribe more training. Weight × reps remains secondary under **Show calculation**. Timed holds count as sets but not kg × reps.
@@ -24,11 +28,11 @@ Use disposable example data and **do not clear browser website data**:
 8. In **Tools**, download a JSON backup before changes. Select **Check downloaded backup (.json) — no restore** to validate the selected file and see set/template counts without changing any saved data. **Check saved data integrity** only verifies the current browser snapshot; actual file restore and offline use still require separate testing with disposable records.
 9. Confirm existing sound, rest timer, recovery journal, and manually set assignments still work.
 
-If the banner does not show V15.11.2, verify the link and cache version without clearing local storage. Stop and report unexpected changes to logged records, exercises, assignments or PT warnings.
+If the banner does not show V15.11.3, verify the link and cache version without clearing local storage. Stop and report unexpected changes to logged records, exercises, assignments or PT warnings.
 
 ## Known release boundaries
 
-- The historical logbook was merged through [PR #28](https://github.com/ToggleHardestMode/Fitness/pull/28). V15.11.2 also enforces valid weekly set numbers and aligns both Dashboard day counters with saved working sets. A GitHub merge **does not** prove the latest GitHub Pages response has been fetched by every browser.
+- The historical logbook was merged through [PR #28](https://github.com/ToggleHardestMode/Fitness/pull/28). V15.11.3 also enforces valid weekly set numbers and aligns both Dashboard day counters with saved working sets. A GitHub merge **does not** prove the latest GitHub Pages response has been fetched by every browser.
 - The preview uses localStorage key `fitnesspilot.preview.v101.v1`; the older root production uses `fitnesspilot.web.v1`. Both share a host origin but use separate app data keys.
 - Lower-body physiotherapist review remains required. Symptom observations and overlap coefficients are **not** medical clearance.
 - No remote sync, live workout upload or guaranteed closed-app notification is implemented.

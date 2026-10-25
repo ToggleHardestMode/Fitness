@@ -1,6 +1,6 @@
 /* Disposable, operator-scored iPhone acceptance checklist. No workout-storage access. */
 export const CHECKS = Object.freeze([
-  {id:'version',title:'Preview version and navigation',steps:'Open the app link in Safari. Confirm V15.11.2 in the banner, then open Dashboard, Plan, Train and Tools.',expected:'Version and all four tabs are correct; no unexpected blank page.'},
+  {id:'version',title:'Preview version, navigation and averages',steps:'Open the app link in Safari. Confirm V15.11.3 in the banner, open Dashboard, Plan, Train and Tools. Under Dashboard Insights, expand the daily-average source dates.',expected:'Version and tabs are correct, and each recorded weekly average shows contributing dates and day count.'},
   {id:'plan',title:'V10.2 workout templates',steps:'In a disposable test-only browser context, import V10.2 Home in Plan and inspect the four workout templates.',expected:'4 workouts, 24 exercise entries, 62 planned physical sets; both lower workouts display [PT Review] and are not auto-assigned.'},
   {id:'set',title:'Saved-set counter and edit',steps:'In disposable data, save one upper-body working set; edit that same saved set without creating another.',expected:'Lifetime and weekly completed counts rise by one on save and stay unchanged after editing the same set.'},
   {id:'focus',title:'Focus Mode unsaved changes',steps:'Start an eligible upper-body Focus Mode set, change weight or reps, try leaving without saving; then save deliberately.',expected:'Unsaved edits are not silently discarded, and the app moves to the next set only after save succeeds.'},
@@ -25,7 +25,7 @@ export function makeReport(responses, at) {
   const counts=summarize(responses);
   return {
     schema:'fitnesspilot-qa-v1',
-    previewVersion:'V15.11.2',
+    previewVersion:'V15.11.3',
     checkedAt:at,
     results:CHECKS.map(check=>({
       id:check.id,
@@ -67,7 +67,7 @@ function mount() {
       const data=JSON.stringify(makeReport(responses,new Date().toISOString()),null,2);
       const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));
       const anchor=document.createElement('a');
-      anchor.href=url;anchor.download='fitnesspilot-v15112-qa.json';
+      anchor.href=url;anchor.download='fitnesspilot-v15113-qa.json';
       document.body.append(anchor);anchor.click();anchor.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
       feedback.textContent='Report download requested. Check Files/Downloads; no app records were changed.';

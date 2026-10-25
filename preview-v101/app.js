@@ -1,4 +1,5 @@
 import { weeklyTrainingAnalysis, lifetimeTrainingSets, setMilestoneProgress } from './training-analytics.js';
+import { METRIC_FIELDS, weeklyMetricSources } from './metric-breakdown.js';
 import { setsBarsMarkup } from './volume-bars.js';
 import { trainingAnalyticsPanel } from './training-analytics-ui.js';
 import { initRoFeedback, isRoSoundEnabled } from './ro-feedback.js';
@@ -88,6 +89,18 @@ function inWeekCards(s, analysis) {return `<div class="kpis grid">
   <div class="card"><div class="kpi-label">Logged sets</div><div class="kpi-value">${analysis.completed}</div><div class="kpi-bottom">Recorded working sets</div></div>
   <div class="card"><div class="kpi-label">Body weight</div><div class="kpi-value">${s.weight==null?'—':fmt(s.weight)} <small>${s.weight==null?'':'kg'}</small></div><div class="kpi-bottom">Weekly recorded average</div></div>
 </div>`;}
+function dailyAverageRows(s) {
+  const sources = weeklyMetricSources(state.metrics, s.dates);
+  const rows = METRIC_FIELDS.map(([label, key, unit]) => {
+    const count = sources[key].length;
+    return `<div class="data-row"><strong>${label}</strong><div><div class="score">${s[key] == null ? 'Not recorded' : `${fmt(s[key])} ${unit}`}</div><small class="hint">${count} recorded ${count === 1 ? 'day' : 'days'}</small></div></div>`;
+  }).join('');
+  const dates = METRIC_FIELDS.map(([label, key, unit]) => {
+    const entries = sources[key];
+    return `<div class="checkin-sources"><strong>${label}</strong>${entries.length ? entries.map(({date, value}) => `<div class="data-row"><span>${esc(nice(date))}</span><span>${fmt(value)} ${unit}</span></div>`).join('') : '<p class="hint">No recorded values this week.</p>'}</div>`;
+  }).join('');
+  return `${rows}<details class="volume-explanation"><summary>Which dates contribute to these averages?</summary><p class="hint">Only recorded dates in the displayed Monday–Sunday week count. Each measurement has its own number of days. Earlier weeks are excluded. To correct an entry, open Train, choose its workout date, and save the daily check-in again.</p>${dates}</details>`;
+}
 function dashboard() {
   const s=weeklyStats(state,today()), analysis=weeklyTrainingAnalysis(state,s.dates[0]);
   const best=bestSets(state).filter(log=>state.templates.find(t=>t.id===log.templateId)?.exercises[log.exerciseIndex]?.repUnit!=='seconds_per_side').slice(0,4);
@@ -105,7 +118,7 @@ function dashboard() {
   ${trainingAnalyticsPanel(state,s.dates[0],today())}
   ${v102OverlapPanel(state,s.dates[0])}
   <div class="section-label"><h2>Insights</h2><span>Only real entries</span></div>
-  <div class="two-panels"><section class="card"><div class="card-head"><div><h2>Daily check-ins</h2><p>Weekly averages</p></div><button class="btn ghost small-btn" data-page="train">Add →</button></div>${[['Protein',s.protein,'g'],['Calories',s.calories,'kcal'],['Sleep',s.sleep,'h'],['Recovery',s.recovery,'/ 5']].map(([label,value,unit])=>`<div class="data-row"><strong>${label}</strong><div class="score">${value==null?'Not recorded':`${fmt(value)} ${unit}`}</div></div>`).join('')}</section>
+  <div class="two-panels"><section class="card"><div class="card-head"><div><h2>Daily check-ins</h2><p>Weekly averages</p></div><button class="btn ghost small-btn" data-page="train">Add →</button></div>${dailyAverageRows(s)}</section>
   <section class="card"><div class="card-head"><div><h2>Strongest sets</h2><p>Heaviest recorded weight by exercise</p></div></div>${best.length?best.map(l=>`<div class="data-row"><div><strong>${esc(l.exerciseName)}</strong><span>${nice(l.date)}</span></div><div class="score tinted">${fmt(l.kg)} kg × ${l.reps}</div></div>`).join(''):'<div class="empty"><strong>No lifts yet</strong>Your best sets will appear after you save them.</div>'}</section></div><p class="footer-hint">Weight for dumbbells is recorded exactly as entered; volume does not automatically double per-hand weights. Bodyweight moves logged at 0 kg count as sets but contribute 0 kg to volume.</p>`;
 }
 function rangeSummary(exercise) {
@@ -242,7 +255,7 @@ function tools() {
   return `${shellHeading()}${heading('ADVENTURER\'S KIT','Tools & data','Back up your progress first, then customize sounds, rest times and calendar reminders.')}
   <div class="codex-utility-intro"><strong>Keep your journey safe</strong><span>Your logs stay on this device. Download a backup before testing restores or changing devices.</span></div>
   <div class="section-label"><h2>Data vault</h2><span>Local to this browser</span></div><section class="card stack codex-vault"><div class="notice"><strong>Saved on this device only.</strong> Your sets and templates stay in this browser's local storage. They are not sent to us or synced to another device. Clearing website data, deleting the Home Screen app, or switching devices can remove access to them.</div><div class="quick-actions"><button class="btn" data-action="backup-export">Download full backup (.json)</button><button class="btn secondary" data-action="backup-verify">Check saved data integrity</button><button class="btn secondary" data-action="backup-file-check">Check downloaded backup (.json) — no restore</button><button class="btn secondary" data-action="backup-pick">Restore backup</button></div>${backupInfo}<p class="hint">Export a backup after every important training week. Keep the JSON file in iCloud Drive or another place you control. Restoring is destructive, so this app will preview the file and require an explicit confirmation. The saved-data check reads browser storage. The downloaded-backup check reads a chosen file without restoring it; separate-device restore still needs acceptance testing.</p></section>
-  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=34" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
+  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=35" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
   <div class="section-label"><h2>Workout logbook</h2><span>Saved set history</span></div>
   <section class="card stack v158-logbook"><div class="card-head"><div><h2>Your training archive</h2><p>Past workout versions and their actual logged sets</p></div><button type="button" class="btn secondary small-btn" data-action="logbook-export">Download full history (.csv)</button></div>
     <p class="hint">All records stay on this device. Downloading CSV creates a local file containing your workout details and notes. It does not change your saved workouts.</p>
