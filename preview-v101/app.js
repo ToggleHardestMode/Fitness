@@ -445,6 +445,7 @@ document.addEventListener('click', event=>{
       return;
     }
     if(act==='walker-pick'){$('#walker-file').click();return;}
+    if(act==='walker-apply'){startWalkerApply();return;}
     if(act==='walker-remove'){
       if(!walkerDataUrl){toast('No private walking avatar to remove.');return;}
       if(!confirm('Remove the private walking picture? Saved workouts remain unchanged.'))return;
