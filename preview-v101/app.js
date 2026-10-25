@@ -83,6 +83,15 @@ function navMarkup() {return navItems.map(([id,label])=>`<button type="button" c
 function heading(kicker,title,subtitle='') {return `<div class="screen-intro"><div class="eyebrow">${esc(kicker)}</div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div>`;}
 function shellHeading() {return `<div class="header-row"><div class="wordmark"><img src="./assets/icon.svg" alt=""><span>FitnessPilot</span></div><div class="date-pill">${new Date().toLocaleDateString('en-SG',{month:'short',day:'numeric',weekday:'short'})}</div></div>`;}
 function initialCard() {return `<section class="hero codex-quest"><div class="quest-topline"><span>✦ FITNESSPILOT</span><span class="quest-date">GET STARTED</span></div><h1>Set up your first workout plan.</h1><p class="quest-subtitle">Add reusable workout plans, assign training days, and record the sets you actually complete.</p><div class="quest-facts"><span>Private training journal</span><span>Offline-first</span></div><button class="btn" data-page="plan">Open Plan →</button></section>`;}
+function startWalkerApply(){
+  if(!pendingWalkerFile)throw Error('Choose a WebP file first.');
+  const file=validateWalkerFile(pendingWalkerFile);
+  if(!confirm('Apply this character on this device?'))return;
+  applyWalkerFile(file,localStorage,readWalkerDataUrl).then(data=>{
+    walkerDataUrl=data;pendingWalkerFile=null;render();
+    toast('Walking avatar applied.');
+  }).catch(error=>toast(error.message,true));
+}
 function dashboardAdventurer(){return dashboardWalkerBanner(walkerDataUrl);}
 
 function gildedSummary(analysis, nextDay, lifetimeSets) {
