@@ -44,6 +44,20 @@ try {
 let page='dashboard', activeDate=today(), chosenTemplate=null, chosenExercise=0, pendingWorkouts=null, pendingBackup=null;
 let focusMode=false, focusSet=0, customizing=null;
 let timerEnd=null,timerHandle=null, audioContext=null, toastHandle=null;
+const SLIME_HIT_SETTING='fitnesspilot.preview.v101.ui.slime-hit.v1';
+let slimeHitEnabled=false,slimeHitTimer=null;
+try { slimeHitEnabled=localStorage.getItem(SLIME_HIT_SETTING)==='on'; } catch { /* optional visual feedback stays off */ }
+function showSlimeHit() {
+  if(!slimeHitEnabled) return;
+  const host=$('#slime-hit-root');
+  if(!host) return;
+  const effect=document.createElement('div');
+  effect.className='slime-hit-card';
+  effect.innerHTML='<img class="slime-hit-art" src="./slime-hit.svg" alt=""><span class="slime-hit-spark" aria-hidden="true">✦</span><span><strong class="slime-hit-title">Slime hit!</strong><small class="slime-hit-note">New working set saved</small></span>';
+  clearTimeout(slimeHitTimer);
+  host.replaceChildren(effect);
+  slimeHitTimer=setTimeout(()=>{if(effect.parentNode===host)effect.remove();},1500);
+}
 function toast(msg,error=false) {
   const el=$('#toast'); el.textContent=msg; el.classList.toggle('error',error);el.classList.add('on');
   clearTimeout(toastHandle);toastHandle=setTimeout(()=>el.classList.remove('on'),3600);
