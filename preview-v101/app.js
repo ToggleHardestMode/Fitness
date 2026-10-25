@@ -87,7 +87,7 @@ function startWalkerApply(){
   if(!pendingWalkerFile)throw Error('Choose a WebP file first.');
   const file=validateWalkerFile(pendingWalkerFile);
   if(!confirm('Apply this character on this device?'))return;
-  applyWalkerFile(file,localStorage,readWalkerDataUrl).then(data=>{
+  applyWalkerFile(file,localStorage,readWalkerDataUrl,checkWalkerImage).then(data=>{
     walkerDataUrl=data;pendingWalkerFile=null;render();
     toast('Walking avatar applied.');
   }).catch(error=>toast(error.message,true));
