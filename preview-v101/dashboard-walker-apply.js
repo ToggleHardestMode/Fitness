@@ -8,3 +8,12 @@ export async function applyWalkerFile(file, storage, readFile) {
   storage.setItem(WALKER_KEY, data);
   return data;
 }
+
+export function readWalkerDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(Error('The chosen WebP could not be read.'));
+    reader.readAsDataURL(file);
+  });
+}
