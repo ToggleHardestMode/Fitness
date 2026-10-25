@@ -15,3 +15,12 @@ test('dashboard emits useful avatar status for a decoding failure',()=>{
   assert.match(app,/Character could not be displayed; fallback shown/);
   assert.match(read('dashboard-walker.js'),/id="walker-render-status"/);
 });
+
+test('Reduce Motion retains a personal still image without triggering the animated layer',()=>{
+  const app=read('app.js');
+  const css=read('dashboard-walker.css');
+  assert.match(app,/createWalkerStill\(selected\)\.then\(png=>/);
+  assert.match(app,/still\.src=png/);
+  assert.match(app,/Your character \(still frame\)/);
+  assert.match(css,/\.fp-walker-sprite\{display:none\}/);
+});
