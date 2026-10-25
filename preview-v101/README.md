@@ -1,8 +1,16 @@
-# FitnessPilot V15.13 — test preview
+# FitnessPilot V15.14 — test preview
 
-**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=38
+**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=39
 
-The folder is still named `preview-v101` for continuity; the application banner and manifest currently identify **V15.13**. It is a separate preview application, **not** the production root upgrade.
+The folder is still named `preview-v101` for continuity; the application banner and manifest currently identify **V15.14**. It is a separate preview application, **not** the production root upgrade.
+
+## V15.14 · Animated adventurer on the Dashboard
+
+An **original moustached fantasy adventurer** now idles at the top-right of a compact Dashboard banner, above saved-set analytics. The animation is visual-only (gentle float and occasional blink), not an exercise reward, physique prediction or medical signal. Artwork is an internal SVG; no external images, added third-party scripts, account, server or personal data writes.
+
+Small iPhone layouts keep the character within the banner so progress cards remain readable; `prefers-reduced-motion` stops both the outer motion and eyes. The artwork does not intercept taps or appear on Train, Plan or Tools. Existing V15.13 optional post-save slime remains a separate feature.
+
+**Acceptance:** Open the V15.14 preview in Safari; inspect the character at the top of Dashboard and legibility of the first progress card. Visit Train, Plan and Tools to ensure no banner. Enable iOS Reduce Motion and reopen the preview; the idle motion and blink should stop. No test workout data is required.
 
 ## V15.13 · Optional slime save reaction
 
@@ -30,7 +38,7 @@ The Dashboard's Daily check-ins section now shows how many dates contributed to 
 
 ## V15.11.2 · iPhone acceptance companion
 
-**New:** [Open the QA checklist](https://togglehardestmode.github.io/Fitness/preview-v101/qa.html?v=38) from Tools. It contains ten operator-scored checks (Pass / Fail / Blocked / Not run), retains answers in page memory only and exports a structured JSON report on explicit button press. It does not read or mutate workout records or transmit the report. Reloading loses unsaved checklist marks. Do not test restoration over your real records; mark Blocked if no empty disposable browser context is available.
+**New:** [Open the QA checklist](https://togglehardestmode.github.io/Fitness/preview-v101/qa.html?v=39) from Tools. It contains ten operator-scored checks (Pass / Fail / Blocked / Not run), retains answers in page memory only and exports a structured JSON report on explicit button press. It does not read or mutate workout records or transmit the report. Reloading loses unsaved checklist marks. Do not test restoration over your real records; mark Blocked if no empty disposable browser context is available.
 
 Workout and training behavior remains unchanged; V15.13 adds only a read-only breakdown of recorded daily inputs alongside the existing QA checklist. This is a proposed public Pages URL from the GitHub preview source; live served and on-device acceptance are still pending.
 
