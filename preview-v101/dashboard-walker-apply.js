@@ -10,6 +10,16 @@ export async function applyWalkerFile(file, storage, readFile, decodeImage) {
   return data;
 }
 
+export function checkWalkerImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => img.naturalWidth && img.naturalHeight
+      ? resolve() : reject(Error('WebP image is empty.'));
+    img.onerror = () => reject(Error('This WebP cannot be displayed by your browser.'));
+    img.src = dataUrl;
+  });
+}
+
 export function readWalkerDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
