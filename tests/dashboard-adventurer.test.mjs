@@ -40,7 +40,7 @@ test('small iPhone and reduced-motion users retain a stable banner', () => {
 test('versioned preview caches all new assets', () => {
   const worker = read('sw.js');
   const page = read('index.html');
-  assert.match(page, /FITNESSPILOT V15\.15 PREVIEW/);
+  assert.match(page, /FITNESSPILOT V15\.15\.1 PREVIEW/);
   assert.match(worker, /fitnesspilot-preview-v15151-walker-fix-v41/);
   for (const file of ['adventurer-idle.svg','dashboard-walker.css']) {
     assert.match(worker, new RegExp("'\\./" + file.replaceAll('.', '\\.') + "'"));
