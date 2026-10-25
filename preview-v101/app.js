@@ -543,6 +543,7 @@ document.addEventListener('submit',event=>{
       // Navigate only after localStorage has accepted the saved record.
       commit(out.state,`${out.saved} set(s) saved for ${exercise.name}.`);
       if(following){chosenExercise=following.exercise;focusSet=following.set;render();}
+      if(freshSets>0)showSlimeHit();
     }
     if(form.id==='symptom-form'){
       const draft={
