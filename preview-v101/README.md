@@ -10,13 +10,13 @@ The folder is still named `preview-v101` for continuity; the application banner 
 
 The independent visual preference is stored in a preview-only local setting (not part of full workout JSON exports); no new workout schema or storage-key migration. Motion is disabled under `prefers-reduced-motion`. On-device preview check: verify the banner, enable the option in Tools, record a genuinely intended new set, edit it and confirm there is no second hit. In an isolated disposable context, also test save failure and preference off. Do not generate fake workouts in real training history.
 
-## V15.13 · Faster Focus Mode set entry
+## V15.12 · Faster Focus Mode set entry
 
 Focus Mode now includes **−1 / +1 rep** buttons and **RPE 6 / 7 / 8 / 9** quick choices beside the editable numeric fields. Buttons only update unsaved input values. Manual typing still supports other RPE values and weights. No new saves, auto weight progression, exercise changes or RPG rewards are triggered. Blank or out-of-range repetition values produce a visible error instead of filling automatically. All existing Focus Mode dirty-form prompts, save validation, next-unsaved-set navigation and `[PT Review]` limitations remain unchanged.
 
 **On-device check:** Open Train, select a workout/date and Focus Mode. For an existing or previous-value rep input, tap +1 then −1. Tap RPE 8, then navigate away: if the form differs from its loaded values, discarding must ask for confirmation. Return and explicitly save. The saved set count should rise only once; editing it should not create another log. Compare the effort required over 30 sets and record errors, not just tap count. Test without creating fake personal training data.
 
-## V15.13 · Clear tracking history, keep uploaded workouts
+## V15.11.4 · Clear tracking history, keep uploaded workouts
 
 In **Tools → Data vault**, download **Full backup (.json)** and ensure the file is saved in Files/iCloud Drive. Select that same file with **Check downloaded backup (.json) — no restore**. Only an exact match to the currently stored data unlocks reset.
 
@@ -24,11 +24,11 @@ Scroll to **Reset tracking records**. Review the counts, tick acknowledgement, t
 
 If the backup does not match, the session changed after validation, or current storage changed in another tab, reset is blocked. Restore of the backup is a separate full-replacement operation; no automatic rollback. Test on disposable records before using real data; current iPhone implementation remains unverified.
 
-## V15.13 · Weekly averages audit (read-only)
+## V15.11.3 · Weekly averages audit (read-only)
 
 The Dashboard's Daily check-ins section now shows how many dates contributed to each weekly average. Expand **Which dates contribute to these averages?** to inspect saved values by date for protein, calories, sleep, and recovery. This is a transparency fix: averages still use recorded values from the current Monday–Sunday week, and existing saved measurements are neither reset nor migrated. To correct a mistaken entry, open **Train**, select that date, change its check-in and save. Do not delete Safari site storage to fix a number. Physical Safari and actual saved-data checks are pending.
 
-## V15.13 · iPhone acceptance companion
+## V15.11.2 · iPhone acceptance companion
 
 **New:** [Open the QA checklist](https://togglehardestmode.github.io/Fitness/preview-v101/qa.html?v=38) from Tools. It contains ten operator-scored checks (Pass / Fail / Blocked / Not run), retains answers in page memory only and exports a structured JSON report on explicit button press. It does not read or mutate workout records or transmit the report. Reloading loses unsaved checklist marks. Do not test restoration over your real records; mark Blocked if no empty disposable browser context is available.
 
