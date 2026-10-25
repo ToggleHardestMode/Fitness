@@ -307,7 +307,7 @@ function tools() {
     <label><span class="form-label">Type RESET LOGS to confirm</span><input id="tracking-reset-word" class="field" type="text" autocomplete="off" placeholder="RESET LOGS"></label>
     <div class="form-actions"><button class="btn danger" type="button" data-action="tracking-reset-apply">Reset recorded data (keep workouts)</button></div>
   </section>
-  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=42" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
+  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=43" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
   <div class="section-label"><h2>Workout logbook</h2><span>Saved set history</span></div>
   <section class="card stack v158-logbook"><div class="card-head"><div><h2>Your training archive</h2><p>Past workout versions and their actual logged sets</p></div><button type="button" class="btn secondary small-btn" data-action="logbook-export">Download full history (.csv)</button></div>
     <p class="hint">All records stay on this device. Downloading CSV creates a local file containing your workout details and notes. It does not change your saved workouts.</p>
@@ -325,37 +325,50 @@ function inspectWalkerDisplay(){
   const image=$('.fp-walker-sprite');
   const status=$('#walker-render-status');
   if(!image||!status)return;
-  const update=()=>{
-    const ready=image.complete&&image.naturalWidth>0;
-    image.classList.toggle('is-ready',ready);
-    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    status.textContent=reduced?'Reduce Motion: static adventurer shown':
-      !ready?'Character could not be displayed; fallback shown':
-      walkerDataUrl?'Personal walker loaded on Dashboard':'Default adventurer loaded';
-  };
-  image.addEventListener('load',update,{once:true});
-  image.addEventListener('error',update,{once:true});
-  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
-    image.classList.remove('is-ready');
-    if(!walkerDataUrl){
-      status.textContent='Reduce Motion is on: default adventurer shown.';
-      return;
-    }
-    const still=$('.fp-walker-still');
-    const selected=walkerDataUrl;
-    status.textContent='Reduce Motion is on: preparing your personal still image…';
+  const generic='./adventurer-idle.svg';
+  const selected=walkerDataUrl;
+  const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches===true;
+  // Exactly one visible <img>. Preload replacement off-DOM; never stack a second body.
+  function useAvatar(src,successLabel){
+    const probe=new Image();
+    const current=()=>image.isConnected && walkerDataUrl===selected;
+    probe.onload=()=>{
+      if(!current())return;
+      image.onload=()=>{if(current())status.textContent=successLabel;};
+      image.onerror=()=>{
+        if(!current())return;
+        image.onload=null;image.onerror=null;
+        image.src=generic;
+        status.textContent='Personal image could not be displayed; default character shown.';
+      };
+      image.src=src;
+      if(image.complete&&image.naturalWidth>0)status.textContent=successLabel;
+    };
+    probe.onerror=()=>{
+      if(!current())return;
+      image.src=generic;
+      status.textContent='Personal image could not be displayed; default character shown.';
+    };
+    probe.src=src;
+  }
+  if(!selected){
+    status.textContent='Default adventurer displayed';
+    return;
+  }
+  if(reduced){
+    status.textContent='Reduce Motion: preparing one still frame of your character…';
     createWalkerStill(selected).then(png=>{
-      if(!still?.isConnected || walkerDataUrl!==selected)return;
-      still.src=png;
-      status.textContent='Your character (still frame). To see walking, enable Animation effects in device accessibility settings.';
+      if(!image.isConnected || walkerDataUrl!==selected)return;
+      useAvatar(png,'Your character (still frame). Turn on animations to see walking.');
     }).catch(()=>{
-      if(!status.isConnected)return;
-      status.textContent='Could not show your personal still; default adventurer shown.';
+      if(!image.isConnected || walkerDataUrl!==selected)return;
+      image.src=generic;
+      status.textContent='Personal still could not be created; default character shown.';
     });
     return;
   }
-  image.src=walkerDataUrl||'./adventurer-idle.svg';
-  if(image.complete)update();
+  status.textContent='Loading one walking character…';
+  useAvatar(selected,'Personal walker loaded: walking in place toward the right.');
 }
 function render(){const markup=navMarkup();$('.bottom-tabs').innerHTML=markup;$('.desktop-tabs').innerHTML=markup;$('#main').innerHTML=`${storageError?`<div class="error-strip" role="alert">${esc(storageError)}</div>`:''}${page==='dashboard'?dashboard():page==='train'?train():page==='plan'?plan():tools()}`;inspectWalkerDisplay();timerTick();}
 function download(filename,content,mime){const url=URL.createObjectURL(new Blob([content],{type:mime}));const a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}

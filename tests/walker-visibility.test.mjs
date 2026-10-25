@@ -3,24 +3,26 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const read = name => readFileSync(new URL('../preview-v101/'+name, import.meta.url),'utf8');
 
-test('fallback is visible until avatar successfully loads',()=>{
-  const css=read('dashboard-walker.css');
-  assert.match(css,/\.fp-walker-still\{display:block/);
-  assert.match(css,/\.fp-walker-sprite\.is-ready\{opacity:1\}/);
+test('Dashboard has exactly one character image and a separate platform',()=>{
+  const markup=read('dashboard-walker.js');
+  assert.equal((markup.match(/<img /g)||[]).length,1);
+  assert.match(markup,/src="\.\/adventurer-idle\.svg"/);
+  assert.match(markup,/fp-walker-platform/);
+  assert.doesNotMatch(markup,/fp-walker-still/);
 });
-test('dashboard emits useful avatar status for a decoding failure',()=>{
+test('replace same image after preload, fallback on decode failure',()=>{
   const app=read('app.js');
   assert.match(app,/function inspectWalkerDisplay\(\)/);
-  assert.match(app,/image\.naturalWidth>0/);
-  assert.match(app,/Character could not be displayed; fallback shown/);
-  assert.match(read('dashboard-walker.js'),/id="walker-render-status"/);
+  assert.match(app,/const probe=new Image\(\)/);
+  assert.match(app,/image\.src=src/);
+  assert.match(app,/image\.src=generic/);
+  assert.match(app,/Personal image could not be displayed/);
+  assert.doesNotMatch(app,/\.fp-walker-still/);
 });
-
-test('Reduce Motion retains a personal still image without triggering the animated layer',()=>{
-  const app=read('app.js');
-  const css=read('dashboard-walker.css');
+test('Reduce Motion uses the same image with a private still PNG',()=>{
+  const app=read('app.js'),css=read('dashboard-walker.css');
   assert.match(app,/createWalkerStill\(selected\)\.then\(png=>/);
-  assert.match(app,/still\.src=png/);
-  assert.match(app,/Your character \(still frame\)/);
-  assert.match(css,/\.fp-walker-sprite\{display:none\}/);
+  assert.match(app,/useAvatar\(png,/);
+  assert.doesNotMatch(css,/fp-walker-still/);
+  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
 });

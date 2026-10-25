@@ -26,8 +26,7 @@ export function dashboardWalkerBanner(dataUrl = null) {
     <p class="fp-walker-note">${hasAvatar ? 'Walking in place on your private stage.' : 'To use your personal walking sprite, open Tools and import the WebP.'}</p><span class="fp-walker-status" id="walker-render-status" role="status">${hasAvatar?'Checking character display…':'Default adventurer'}</span></div>
     <div class="fp-walker-stage" aria-hidden="true">
       <div class="fp-walker-platform"></div>
-      <img class="fp-walker-sprite" alt="" width="144" height="320">
-      <img class="fp-walker-still" src="./adventurer-idle.svg" alt="">
+      <img class="fp-walker-sprite" src="./adventurer-idle.svg" alt="" width="205" height="279">
     </div>
   </section>`;
 }

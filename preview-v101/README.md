@@ -1,8 +1,16 @@
-# FitnessPilot V15.15.2 — test preview
+# FitnessPilot V15.15.3 — test preview
 
-**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=42
+**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=43
 
 The folder is still named `preview-v101` for continuity; the application banner and manifest currently identify **V15.15.2**. It is a separate preview application, **not** the production root upgrade.
+
+## V15.15.3 · One character layer and isolated walking frames
+
+The user reported two overlapping bodies and a backwards-looking walk. The old Dashboard markup used *two* on-screen character images: private WebP and generic fallback. V15.15.3 replaces both with one image element that swaps sources after preload; on reduced motion it displays a private still on the same element. Loading failures keep the original fallback. Only a single image can occupy the translucent platform; no training/storage schema changes.
+
+The private replacement file `FitnessPilot_walk_v3_clean.webp` is provided directly to the operator and **not** committed to GitHub. It is assembled from the supplied right-facing sprite sheet: one largest connected human silhouette per frame, eight aligned frames with no horizontal mirroring or inter-frame compositing, 125ms per frame, WebP below the app's 600KB cap. Source poses remain limited for a fully articulated opposite-leg gait; subjective perception still requires review.
+
+**Acceptance:** Confirm V15.15.3 in Safari, inspect default single character, download replacement WebP privately, Tools → Walking avatar → Choose WebP → Apply, and return to Dashboard. Confirm no second body, fixed location, and visible rightward-facing movement. Reduce Motion must show one still, never stack images. Existing workout records are untouched.
 
 ## V15.15.2 · Show your avatar even with Reduce Motion
 
@@ -58,7 +66,7 @@ The Dashboard's Daily check-ins section now shows how many dates contributed to 
 
 ## V15.11.2 · iPhone acceptance companion
 
-**New:** [Open the QA checklist](https://togglehardestmode.github.io/Fitness/preview-v101/qa.html?v=42) from Tools. It contains ten operator-scored checks (Pass / Fail / Blocked / Not run), retains answers in page memory only and exports a structured JSON report on explicit button press. It does not read or mutate workout records or transmit the report. Reloading loses unsaved checklist marks. Do not test restoration over your real records; mark Blocked if no empty disposable browser context is available.
+**New:** [Open the QA checklist](https://togglehardestmode.github.io/Fitness/preview-v101/qa.html?v=43) from Tools. It contains ten operator-scored checks (Pass / Fail / Blocked / Not run), retains answers in page memory only and exports a structured JSON report on explicit button press. It does not read or mutate workout records or transmit the report. Reloading loses unsaved checklist marks. Do not test restoration over your real records; mark Blocked if no empty disposable browser context is available.
 
 Workout and training behavior remains unchanged; V15.13 adds only a read-only breakdown of recorded daily inputs alongside the existing QA checklist. This is a proposed public Pages URL from the GitHub preview source; live served and on-device acceptance are still pending.
 

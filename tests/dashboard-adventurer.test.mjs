@@ -33,18 +33,18 @@ test('small iPhone and reduced-motion users retain a stable banner', () => {
   const art = read('adventurer-idle.svg');
   assert.match(css, /@media\(max-width:390px\)/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
-  assert.match(css, /\.fp-walker-sprite\{display:none\}/);
+  assert.doesNotMatch(css, /\.fp-walker-sprite\{display:none\}/);
   assert.match(art, /prefers-reduced-motion:reduce/);
 });
 
 test('versioned preview caches all new assets', () => {
   const worker = read('sw.js');
   const page = read('index.html');
-  assert.match(page, /FITNESSPILOT V15\.15\.2 PREVIEW/);
-  assert.match(worker, /fitnesspilot-preview-v15151-walker-fix-v41/);
+  assert.match(page, /FITNESSPILOT V15\.15\.3 PREVIEW/);
+  assert.match(worker, /fitnesspilot-preview-v15153-singlelayer-v43/);
   for (const file of ['adventurer-idle.svg','dashboard-walker.css']) {
     assert.match(worker, new RegExp("'\\./" + file.replaceAll('.', '\\.') + "'"));
   }
   assert.match(page, /href="\.\/dashboard-walker\.css"/);
-  assert.equal(JSON.parse(read('manifest.webmanifest')).name, 'FitnessPilot V15.15.1 Preview');
+  assert.equal(JSON.parse(read('manifest.webmanifest')).name, 'FitnessPilot V15.15.3 Preview');
 });
