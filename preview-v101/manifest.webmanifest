@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FitnessPilot V15.12 Preview",
+  "name": "FitnessPilot V15.13 Preview",
   "short_name": "FP Preview",
-  "description": "Preview-only Focus Mode one-tap rep adjustments and RPE choices, with explicit saving and existing data preserved.",
+  "description": "Optional, silent visual slime reaction for newly saved workout sets, with existing training records and preview storage preserved.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

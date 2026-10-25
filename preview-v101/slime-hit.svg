@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 90" role="img" aria-label="Happy blue slime">
+<defs><linearGradient id="body" x1="0" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="#cbf5f5"/><stop offset=".55" stop-color="#76bfd4"/><stop offset="1" stop-color="#4288ae"/></linearGradient></defs>
+<ellipse cx="50" cy="80" rx="39" ry="6" fill="#051a2b" opacity=".45"/>
+<path d="M11 64Q8 51 20 43Q32 34 43 18Q48 9 53 18Q65 37 79 45Q96 57 88 69Q79 83 50 83Q22 82 11 64Z" fill="url(#body)" stroke="#d0f7ff" stroke-width="2"/>
+<path d="M23 49Q35 38 43 28" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".58"/>
+<ellipse cx="35" cy="59" rx="4" ry="6" fill="#193753"/><ellipse cx="64" cy="59" rx="4" ry="6" fill="#193753"/>
+<path d="M43 69Q50 76 57 69" fill="none" stroke="#193753" stroke-width="2.5" stroke-linecap="round"/>
+<ellipse cx="25" cy="68" rx="7" ry="3" fill="#f7a4c1" opacity=".52"/><ellipse cx="74" cy="68" rx="7" ry="3" fill="#f7a4c1" opacity=".52"/>
+</svg>

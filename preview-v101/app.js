@@ -10,6 +10,7 @@ import { V101_CSV, V101_VERSION, V101_EQUIPMENT } from './v101-data.js';
 import { V102_CSV, V102_VERSION, V102_EQUIPMENT } from './v102-data.js';
 import { v102OverlapPanel } from './v102-overlap-ui.js';
 import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.js';
+import { newlyRecordedSets } from './slime-hit.js';
 import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
@@ -43,6 +44,20 @@ try {
 let page='dashboard', activeDate=today(), chosenTemplate=null, chosenExercise=0, pendingWorkouts=null, pendingBackup=null;
 let focusMode=false, focusSet=0, customizing=null;
 let timerEnd=null,timerHandle=null, audioContext=null, toastHandle=null;
+const SLIME_HIT_SETTING='fitnesspilot.preview.v101.ui.slime-hit.v1';
+let slimeHitEnabled=false,slimeHitTimer=null;
+try { slimeHitEnabled=localStorage.getItem(SLIME_HIT_SETTING)==='on'; } catch { /* optional visual feedback stays off */ }
+function showSlimeHit() {
+  if(!slimeHitEnabled) return;
+  const host=$('#slime-hit-root');
+  if(!host) return;
+  const effect=document.createElement('div');
+  effect.className='slime-hit-card';
+  effect.innerHTML='<img class="slime-hit-art" src="./slime-hit.svg" alt=""><span class="slime-hit-spark" aria-hidden="true">✦</span><span><strong class="slime-hit-title">Slime hit!</strong><small class="slime-hit-note">New working set saved</small></span>';
+  clearTimeout(slimeHitTimer);
+  host.replaceChildren(effect);
+  slimeHitTimer=setTimeout(()=>{if(effect.parentNode===host)effect.remove();},1500);
+}
 function toast(msg,error=false) {
   const el=$('#toast'); el.textContent=msg; el.classList.toggle('error',error);el.classList.add('on');
   clearTimeout(toastHandle);toastHandle=setTimeout(()=>el.classList.remove('on'),3600);
@@ -272,12 +287,13 @@ function tools() {
     <label><span class="form-label">Type RESET LOGS to confirm</span><input id="tracking-reset-word" class="field" type="text" autocomplete="off" placeholder="RESET LOGS"></label>
     <div class="form-actions"><button class="btn danger" type="button" data-action="tracking-reset-apply">Reset recorded data (keep workouts)</button></div>
   </section>
-  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=37" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
+  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=38" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
   <div class="section-label"><h2>Workout logbook</h2><span>Saved set history</span></div>
   <section class="card stack v158-logbook"><div class="card-head"><div><h2>Your training archive</h2><p>Past workout versions and their actual logged sets</p></div><button type="button" class="btn secondary small-btn" data-action="logbook-export">Download full history (.csv)</button></div>
     <p class="hint">All records stay on this device. Downloading CSV creates a local file containing your workout details and notes. It does not change your saved workouts.</p>
     ${workoutLogbookHtml(state)}</section>
   <div class="section-label"><h2>Button sound</h2></div><section class="card codex-sound"><label class="ro-sound-switch"><input type="checkbox" id="ro-click-sound" ${isRoSoundEnabled()?'checked':''}> Slime squish sound</label><p id="ro-sound-status" role="status" class="hint">Switch on to test the sound immediately, then tap any button. Check iPhone volume if it stays silent.</p></section>
+  <div class="section-label"><h2>Slime hit</h2></div><section class="card codex-sound"><label class="ro-sound-switch"><input id="slime-hit-enabled" type="checkbox" ${slimeHitEnabled?'checked':''}> Show slime reaction after new saved sets</label><p class="hint">Silent and optional. No hits for edits or failed saves, and no XP or loot. This cosmetic preview preference is separate from workout JSON backups.</p></section>
   <div class="section-label"><h2>Rest clock</h2><span>Runs while app is open</span></div><section class="card codex-timer"><div id="timer-display" class="rest-timer">${timerRemaining()}</div><p class="subtle small">An optional countdown for time between sets. iPhone may pause it in the background.</p><div class="form-actions"><button class="btn secondary" data-rest="60">1 minute</button><button class="btn secondary" data-rest="90">90 seconds</button><button class="btn secondary" data-rest="120">2 minutes</button><button class="btn ghost" data-action="stop-timer">Stop</button></div></section>
   <div class="section-label"><h2>Calendar reminders</h2><span>Optional</span></div>
   <section class="card codex-reminders"><div class="card-head"><div><h2>Workout reminders</h2><p>Uses your iPhone Calendar — even when FitnessPilot is closed</p></div><span class="badge">CALENDAR</span></div><form id="reminder-form"><div class="metrics-grid"><label><span class="form-label">Workout time</span><input class="field" type="time" name="time" required value="${time}"></label><label><span class="form-label">Alert ahead of time</span><select class="field" name="lead"><option value="0" ${reminder.lead===0?'selected':''}>At workout time</option><option value="5" ${reminder.lead===5?'selected':''}>5 minutes before</option><option value="15" ${reminder.lead===15?'selected':''}>15 minutes before</option><option value="30" ${reminder.lead===30?'selected':''}>30 minutes before</option><option value="60" ${reminder.lead===60?'selected':''}>1 hour before</option></select></label></div><div class="form-actions"><button class="btn" type="submit">Save alert settings</button><button class="btn secondary" type="button" data-action="calendar">Export Calendar reminders (.ics)</button></div></form><p class="hint" style="margin-top:14px">First save your settings, then export the .ics file. Import it into a calendar that supports .ics events and alarms. Some iPhone import paths may require emailing the file to yourself or using a computer calendar. Check the alert in Apple Calendar after import. If you change the schedule, remove previous imported events and export again to avoid duplicate alerts.</p><div class="notice warn"><strong>Not a Clock alarm.</strong> This web app cannot force a loud full-screen ring while closed. Calendar notifications depend on your phone's notification, Focus and Silent settings. Use the iPhone Clock app if an audible alarm is essential.</div></section>
@@ -435,6 +451,17 @@ document.addEventListener('click', event=>{
 
 document.addEventListener('change',event=>{
   const target=event.target;
+  if(target.id==='slime-hit-enabled'){
+    try {
+      localStorage.setItem(SLIME_HIT_SETTING,target.checked?'on':'off');
+      slimeHitEnabled=target.checked;
+      toast(slimeHitEnabled?'Slime reaction enabled.':'Slime reaction disabled.');
+    } catch {
+      target.checked=slimeHitEnabled;
+      toast('Could not save slime setting; no change made.',true);
+    }
+    return;
+  }
   if(target.id==='active-date'){
     if(!mayLeaveFocusSet()){target.value=activeDate;return;}
     tryAction(()=>{activeDate=target.value;chosenExercise=0;chosenTemplate=null;focusSet=0;render();});
@@ -500,6 +527,7 @@ document.addEventListener('submit',event=>{
         ? focusEntries(exercise.sets,focusSet,{...shared,kg:form.elements[`kg${focusSet}`].value,reps:form.elements[`reps${focusSet}`].value,rpe:form.elements[`rpe${focusSet}`].value})
         : Array.from({length:exercise.sets},(_,i)=>({...shared,completed:form.elements[`done${i}`].checked,kg:form.elements[`kg${i}`].value,reps:form.elements[`reps${i}`].value,rpe:form.elements[`rpe${i}`].value}));
       const out=recordSets(state,{date:activeDate,templateId:chosenTemplate,exerciseIndex:chosenExercise,entries});
+      const freshSets=newlyRecordedSets(state,out.state,{date:activeDate,templateId:chosenTemplate,exerciseIndex:chosenExercise});
       let following=null;
       if(focusMode) {
         const nextSet=nextPendingSet(out.state.logs,activeDate,chosenTemplate,chosenExercise,exercise.sets,focusSet);
@@ -515,6 +543,7 @@ document.addEventListener('submit',event=>{
       // Navigate only after localStorage has accepted the saved record.
       commit(out.state,`${out.saved} set(s) saved for ${exercise.name}.`);
       if(following){chosenExercise=following.exercise;focusSet=following.set;render();}
+      if(freshSets>0)showSlimeHit();
     }
     if(form.id==='symptom-form'){
       const draft={
