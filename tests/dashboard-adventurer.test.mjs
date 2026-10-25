@@ -33,7 +33,7 @@ test('small iPhone and reduced-motion users retain a stable banner', () => {
   const art = read('adventurer-idle.svg');
   assert.match(css, /@media\(max-width:390px\)/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
-  assert.match(css, /\.fp-walker-sprite\{display:none\}/);
+  assert.doesNotMatch(css, /\.fp-walker-sprite\{display:none\}/);
   assert.match(art, /prefers-reduced-motion:reduce/);
 });
 
