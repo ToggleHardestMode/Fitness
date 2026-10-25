@@ -451,6 +451,17 @@ document.addEventListener('click', event=>{
 
 document.addEventListener('change',event=>{
   const target=event.target;
+  if(target.id==='slime-hit-enabled'){
+    try {
+      localStorage.setItem(SLIME_HIT_SETTING,target.checked?'on':'off');
+      slimeHitEnabled=target.checked;
+      toast(slimeHitEnabled?'Slime reaction enabled.':'Slime reaction disabled.');
+    } catch {
+      target.checked=slimeHitEnabled;
+      toast('Could not save slime setting; no change made.',true);
+    }
+    return;
+  }
   if(target.id==='active-date'){
     if(!mayLeaveFocusSet()){target.value=activeDate;return;}
     tryAction(()=>{activeDate=target.value;chosenExercise=0;chosenTemplate=null;focusSet=0;render();});
