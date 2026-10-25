@@ -1,8 +1,16 @@
-# FitnessPilot V15.14 — test preview
+# FitnessPilot V15.15 — test preview
 
-**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=39
+**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=40
 
 The folder is still named `preview-v101` for continuity; the application banner and manifest currently identify **V15.14**. It is a separate preview application, **not** the production root upgrade.
+
+## V15.15 · Walking-in-place character on translucent Dashboard platform
+
+On Dashboard the decorative character stays at one fixed right-side position and loops in place on a translucent platform. It does not walk across the screen. The original V15.14 character is the fallback until the operator imports their own WebP.
+
+Privacy-first import: download the 6-frame animated WebP supplied privately in chat to iPhone Files. Open **Tools → Walking avatar → Choose WebP**, select the file (max 600 KB), then tap **Apply selected avatar** and accept the confirmation. The WebP is saved under the separate `fitnesspilot.preview.v101.ui.walker.v1` localStorage preference on that device. It does not modify the workout-state key, upload the image, include personal art in GitHub, or embed the avatar in workout backups. **Remove avatar** explicitly deletes only this preference. Browser website-data clearing deletes it too.
+
+The character is decorative with `pointer-events:none`. Under iOS Reduce Motion the static public illustration replaces the moving WebP. Check Safari support for animated WebP and the top banner's narrow-screen layout; neither is yet accepted on-device. No changes to training analytics, PT Review, sound, slime-hit feedback or production-root.
 
 ## V15.14 · Animated adventurer on the Dashboard
 
@@ -38,7 +46,7 @@ The Dashboard's Daily check-ins section now shows how many dates contributed to 
 
 ## V15.11.2 · iPhone acceptance companion
 
-**New:** [Open the QA checklist](https://togglehardestmode.github.io/Fitness/preview-v101/qa.html?v=39) from Tools. It contains ten operator-scored checks (Pass / Fail / Blocked / Not run), retains answers in page memory only and exports a structured JSON report on explicit button press. It does not read or mutate workout records or transmit the report. Reloading loses unsaved checklist marks. Do not test restoration over your real records; mark Blocked if no empty disposable browser context is available.
+**New:** [Open the QA checklist](https://togglehardestmode.github.io/Fitness/preview-v101/qa.html?v=40) from Tools. It contains ten operator-scored checks (Pass / Fail / Blocked / Not run), retains answers in page memory only and exports a structured JSON report on explicit button press. It does not read or mutate workout records or transmit the report. Reloading loses unsaved checklist marks. Do not test restoration over your real records; mark Blocked if no empty disposable browser context is available.
 
 Workout and training behavior remains unchanged; V15.13 adds only a read-only breakdown of recorded daily inputs alongside the existing QA checklist. This is a proposed public Pages URL from the GitHub preview source; live served and on-device acceptance are still pending.
 
