@@ -11,6 +11,8 @@ import { V102_CSV, V102_VERSION, V102_EQUIPMENT } from './v102-data.js';
 import { v102OverlapPanel } from './v102-overlap-ui.js';
 import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.js';
 import { newlyRecordedSets } from './slime-hit.js';
+import { WALKER_KEY, validateWalkerFile, validateWalkerDataUrl, dashboardWalkerBanner } from './dashboard-walker.js';
+import { applyWalkerFile, readWalkerDataUrl } from './dashboard-walker-apply.js';
 import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
@@ -35,6 +37,12 @@ const navItems = [['dashboard','Dashboard'],['train','Train'],['plan','Plan'],['
 
 let state, storageError = null;
 let resetBackupReady = false;
+let walkerDataUrl=null, pendingWalkerFile=null;
+try{
+  const savedWalker=localStorage.getItem(WALKER_KEY);
+  if(savedWalker)walkerDataUrl=validateWalkerDataUrl(savedWalker);
+}catch{/* Cosmetic avatar falls back; workout records stay untouched. */}
+
 try {
   const saved = localStorage.getItem(STORAGE_KEY);
   state = saved ? validateBackup(JSON.parse(saved)) : emptyState();
@@ -75,14 +83,17 @@ function navMarkup() {return navItems.map(([id,label])=>`<button type="button" c
 function heading(kicker,title,subtitle='') {return `<div class="screen-intro"><div class="eyebrow">${esc(kicker)}</div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div>`;}
 function shellHeading() {return `<div class="header-row"><div class="wordmark"><img src="./assets/icon.svg" alt=""><span>FitnessPilot</span></div><div class="date-pill">${new Date().toLocaleDateString('en-SG',{month:'short',day:'numeric',weekday:'short'})}</div></div>`;}
 function initialCard() {return `<section class="hero codex-quest"><div class="quest-topline"><span>✦ FITNESSPILOT</span><span class="quest-date">GET STARTED</span></div><h1>Set up your first workout plan.</h1><p class="quest-subtitle">Add reusable workout plans, assign training days, and record the sets you actually complete.</p><div class="quest-facts"><span>Private training journal</span><span>Offline-first</span></div><button class="btn" data-page="plan">Open Plan →</button></section>`;}
-function dashboardAdventurer() {
-  return '<section class="fp-adventurer" aria-label="Your decorative fantasy adventurer">' +
-    '<div class="fp-adventurer-copy"><span class="fp-adventurer-label">Your adventurer</span>' +
-    '<h2 class="fp-adventurer-title">Ready for the journey</h2>' +
-    '<p class="fp-adventurer-note">A little companion for your training days.</p></div>' +
-    '<img class="fp-adventurer-art" src="./adventurer-idle.svg" alt="" width="126" height="137" aria-hidden="true">' +
-    '</section>';
+function startWalkerApply(){
+  if(!pendingWalkerFile)throw Error('Choose a WebP file first.');
+  const file=validateWalkerFile(pendingWalkerFile);
+  if(!confirm('Apply this character on this device?'))return;
+  applyWalkerFile(file,localStorage,readWalkerDataUrl).then(data=>{
+    walkerDataUrl=data;pendingWalkerFile=null;render();
+    toast('Walking avatar applied.');
+  }).catch(error=>toast(error.message,true));
 }
+function dashboardAdventurer(){return dashboardWalkerBanner(walkerDataUrl);}
+
 function gildedSummary(analysis, nextDay, lifetimeSets) {
   const milestone = setMilestoneProgress(lifetimeSets);
   const daysLogged = analysis.days.filter(day => day.completed > 0).length;
@@ -295,13 +306,13 @@ function tools() {
     <label><span class="form-label">Type RESET LOGS to confirm</span><input id="tracking-reset-word" class="field" type="text" autocomplete="off" placeholder="RESET LOGS"></label>
     <div class="form-actions"><button class="btn danger" type="button" data-action="tracking-reset-apply">Reset recorded data (keep workouts)</button></div>
   </section>
-  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=39" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
+  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=40" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
   <div class="section-label"><h2>Workout logbook</h2><span>Saved set history</span></div>
   <section class="card stack v158-logbook"><div class="card-head"><div><h2>Your training archive</h2><p>Past workout versions and their actual logged sets</p></div><button type="button" class="btn secondary small-btn" data-action="logbook-export">Download full history (.csv)</button></div>
     <p class="hint">All records stay on this device. Downloading CSV creates a local file containing your workout details and notes. It does not change your saved workouts.</p>
     ${workoutLogbookHtml(state)}</section>
   <div class="section-label"><h2>Button sound</h2></div><section class="card codex-sound"><label class="ro-sound-switch"><input type="checkbox" id="ro-click-sound" ${isRoSoundEnabled()?'checked':''}> Slime squish sound</label><p id="ro-sound-status" role="status" class="hint">Switch on to test the sound immediately, then tap any button. Check iPhone volume if it stays silent.</p></section>
-  <div class="section-label"><h2>Slime hit</h2></div><section class="card codex-sound"><label class="ro-sound-switch"><input id="slime-hit-enabled" type="checkbox" ${slimeHitEnabled?'checked':''}> Show slime reaction after new saved sets</label><p class="hint">Silent and optional. No hits for edits or failed saves, and no XP or loot. This cosmetic preview preference is separate from workout JSON backups.</p></section>
+  <div class="section-label"><h2>Walking avatar</h2></div><section class="card stack"><p class="hint">Local WebP only (max 600 KB). Walks in place over a translucent stage on Dashboard.</p><div class="form-actions"><button class="btn secondary" data-action="walker-pick">Choose WebP</button><button class="btn" data-action="walker-apply">Apply selected avatar</button><button class="btn ghost" data-action="walker-remove">Remove avatar</button></div><p class="hint" id="walker-status">Select a WebP first; no changes until Apply.</p></section><div class="section-label"><h2>Slime hit</h2></div><section class="card codex-sound"><label class="ro-sound-switch"><input id="slime-hit-enabled" type="checkbox" ${slimeHitEnabled?'checked':''}> Show slime reaction after new saved sets</label><p class="hint">Silent and optional. No hits for edits or failed saves, and no XP or loot. This cosmetic preview preference is separate from workout JSON backups.</p></section>
   <div class="section-label"><h2>Rest clock</h2><span>Runs while app is open</span></div><section class="card codex-timer"><div id="timer-display" class="rest-timer">${timerRemaining()}</div><p class="subtle small">An optional countdown for time between sets. iPhone may pause it in the background.</p><div class="form-actions"><button class="btn secondary" data-rest="60">1 minute</button><button class="btn secondary" data-rest="90">90 seconds</button><button class="btn secondary" data-rest="120">2 minutes</button><button class="btn ghost" data-action="stop-timer">Stop</button></div></section>
   <div class="section-label"><h2>Calendar reminders</h2><span>Optional</span></div>
   <section class="card codex-reminders"><div class="card-head"><div><h2>Workout reminders</h2><p>Uses your iPhone Calendar — even when FitnessPilot is closed</p></div><span class="badge">CALENDAR</span></div><form id="reminder-form"><div class="metrics-grid"><label><span class="form-label">Workout time</span><input class="field" type="time" name="time" required value="${time}"></label><label><span class="form-label">Alert ahead of time</span><select class="field" name="lead"><option value="0" ${reminder.lead===0?'selected':''}>At workout time</option><option value="5" ${reminder.lead===5?'selected':''}>5 minutes before</option><option value="15" ${reminder.lead===15?'selected':''}>15 minutes before</option><option value="30" ${reminder.lead===30?'selected':''}>30 minutes before</option><option value="60" ${reminder.lead===60?'selected':''}>1 hour before</option></select></label></div><div class="form-actions"><button class="btn" type="submit">Save alert settings</button><button class="btn secondary" type="button" data-action="calendar">Export Calendar reminders (.ics)</button></div></form><p class="hint" style="margin-top:14px">First save your settings, then export the .ics file. Import it into a calendar that supports .ics events and alarms. Some iPhone import paths may require emailing the file to yourself or using a computer calendar. Check the alert in Apple Calendar after import. If you change the schedule, remove previous imported events and export again to avoid duplicate alerts.</p><div class="notice warn"><strong>Not a Clock alarm.</strong> This web app cannot force a loud full-screen ring while closed. Calendar notifications depend on your phone's notification, Focus and Silent settings. Use the iPhone Clock app if an audible alarm is essential.</div></section>
@@ -442,6 +453,16 @@ document.addEventListener('click', event=>{
       render();
       return;
     }
+    if(act==='walker-pick'){$('#walker-file').click();return;}
+    if(act==='walker-apply'){startWalkerApply();return;}
+    if(act==='walker-remove'){
+      if(!walkerDataUrl){toast('No private walking avatar to remove.');return;}
+      if(!confirm('Remove the private walking picture? Saved workouts remain unchanged.'))return;
+      try{localStorage.removeItem(WALKER_KEY);}
+      catch{throw Error('Could not remove the avatar; no changes made.');}
+      walkerDataUrl=null;pendingWalkerFile=null;render();toast('Private avatar removed.');
+      return;
+    }
     if(act==='backup-verify'){
       const report=verifyLocalSnapshot(state,localStorage.getItem(STORAGE_KEY));
       toast(`Saved data checked: ${report.templates} templates, ${report.sets} sets, ${report.symptoms} symptom observations. No data changed.`);
@@ -459,6 +480,16 @@ document.addEventListener('click', event=>{
 
 document.addEventListener('change',event=>{
   const target=event.target;
+  if(target.id==='walker-file'){
+    const file=target.files?.[0];target.value='';
+    if(!file)return;
+    try{
+      pendingWalkerFile=validateWalkerFile(file);
+      const status=$('#walker-status');
+      if(status)status.textContent='Selected '+file.name+'. Tap Apply selected avatar.';
+    }catch(error){pendingWalkerFile=null;toast(error.message,true);}
+    return;
+  }
   if(target.id==='slime-hit-enabled'){
     try {
       localStorage.setItem(SLIME_HIT_SETTING,target.checked?'on':'off');
