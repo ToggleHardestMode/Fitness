@@ -527,6 +527,7 @@ document.addEventListener('submit',event=>{
         ? focusEntries(exercise.sets,focusSet,{...shared,kg:form.elements[`kg${focusSet}`].value,reps:form.elements[`reps${focusSet}`].value,rpe:form.elements[`rpe${focusSet}`].value})
         : Array.from({length:exercise.sets},(_,i)=>({...shared,completed:form.elements[`done${i}`].checked,kg:form.elements[`kg${i}`].value,reps:form.elements[`reps${i}`].value,rpe:form.elements[`rpe${i}`].value}));
       const out=recordSets(state,{date:activeDate,templateId:chosenTemplate,exerciseIndex:chosenExercise,entries});
+      const freshSets=newlyRecordedSets(state,out.state,{date:activeDate,templateId:chosenTemplate,exerciseIndex:chosenExercise});
       let following=null;
       if(focusMode) {
         const nextSet=nextPendingSet(out.state.logs,activeDate,chosenTemplate,chosenExercise,exercise.sets,focusSet);
