@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FitnessPilot V15.15.1 Preview",
+  "name": "FitnessPilot V15.15.2 Preview",
   "short_name": "FP Preview",
-  "description": "Visibility diagnostics and fallback for device-local walking avatar over the fixed translucent Dashboard layer.",
+  "description": "The private Dashboard walking avatar stays visible as a still frame under Reduce Motion; workout records unchanged.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

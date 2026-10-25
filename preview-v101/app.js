@@ -13,6 +13,7 @@ import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.
 import { newlyRecordedSets } from './slime-hit.js';
 import { WALKER_KEY, validateWalkerFile, validateWalkerDataUrl, dashboardWalkerBanner } from './dashboard-walker.js';
 import { applyWalkerFile, checkWalkerImage, readWalkerDataUrl } from './dashboard-walker-apply.js';
+import { createWalkerStill } from './walker-still.js';
 import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
@@ -306,13 +307,13 @@ function tools() {
     <label><span class="form-label">Type RESET LOGS to confirm</span><input id="tracking-reset-word" class="field" type="text" autocomplete="off" placeholder="RESET LOGS"></label>
     <div class="form-actions"><button class="btn danger" type="button" data-action="tracking-reset-apply">Reset recorded data (keep workouts)</button></div>
   </section>
-  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=41" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
+  <div class="section-label"><h2>iPhone QA · preview only</h2></div><section class="card stack"><strong>Check this test build before using real records.</strong><p class="hint">Open the manual acceptance checklist in another tab. Mark Pass, Fail or Blocked, then download a JSON report. The checklist does not inspect or change your saved workouts.</p><p><a class="btn secondary" href="./qa.html?v=42" target="_blank" rel="noopener noreferrer">Open iPhone QA checklist</a></p></section>
   <div class="section-label"><h2>Workout logbook</h2><span>Saved set history</span></div>
   <section class="card stack v158-logbook"><div class="card-head"><div><h2>Your training archive</h2><p>Past workout versions and their actual logged sets</p></div><button type="button" class="btn secondary small-btn" data-action="logbook-export">Download full history (.csv)</button></div>
     <p class="hint">All records stay on this device. Downloading CSV creates a local file containing your workout details and notes. It does not change your saved workouts.</p>
     ${workoutLogbookHtml(state)}</section>
   <div class="section-label"><h2>Button sound</h2></div><section class="card codex-sound"><label class="ro-sound-switch"><input type="checkbox" id="ro-click-sound" ${isRoSoundEnabled()?'checked':''}> Slime squish sound</label><p id="ro-sound-status" role="status" class="hint">Switch on to test the sound immediately, then tap any button. Check iPhone volume if it stays silent.</p></section>
-  <div class="section-label"><h2>Walking avatar</h2></div><section class="card stack"><p class="hint">Local WebP only (max 600 KB). Walks in place over a translucent stage on Dashboard.</p><div class="form-actions"><button class="btn secondary" data-action="walker-pick">Choose WebP</button><button class="btn" data-action="walker-apply">Apply selected avatar</button><button class="btn ghost" data-action="walker-remove">Remove avatar</button></div><p class="hint" id="walker-status">${walkerDataUrl?'Private WebP saved. Check Dashboard for the image display status.':'No private WebP saved; choose one to preview.'}</p></section><div class="section-label"><h2>Slime hit</h2></div><section class="card codex-sound"><label class="ro-sound-switch"><input id="slime-hit-enabled" type="checkbox" ${slimeHitEnabled?'checked':''}> Show slime reaction after new saved sets</label><p class="hint">Silent and optional. No hits for edits or failed saves, and no XP or loot. This cosmetic preview preference is separate from workout JSON backups.</p></section>
+  <div class="section-label"><h2>Walking avatar</h2></div><section class="card stack"><p class="hint">Local WebP only (max 600 KB). Walks in place over a translucent stage on Dashboard.</p><div class="form-actions"><button class="btn secondary" data-action="walker-pick">Choose WebP</button><button class="btn" data-action="walker-apply">Apply selected avatar</button><button class="btn ghost" data-action="walker-remove">Remove avatar</button></div><p class="hint" id="walker-status">${walkerDataUrl?'Private WebP saved. If Reduce Motion is enabled, Dashboard shows a still of your character. For walking motion, enable Animation effects in device accessibility settings.':'No private WebP saved; choose one to preview.'}</p></section><div class="section-label"><h2>Slime hit</h2></div><section class="card codex-sound"><label class="ro-sound-switch"><input id="slime-hit-enabled" type="checkbox" ${slimeHitEnabled?'checked':''}> Show slime reaction after new saved sets</label><p class="hint">Silent and optional. No hits for edits or failed saves, and no XP or loot. This cosmetic preview preference is separate from workout JSON backups.</p></section>
   <div class="section-label"><h2>Rest clock</h2><span>Runs while app is open</span></div><section class="card codex-timer"><div id="timer-display" class="rest-timer">${timerRemaining()}</div><p class="subtle small">An optional countdown for time between sets. iPhone may pause it in the background.</p><div class="form-actions"><button class="btn secondary" data-rest="60">1 minute</button><button class="btn secondary" data-rest="90">90 seconds</button><button class="btn secondary" data-rest="120">2 minutes</button><button class="btn ghost" data-action="stop-timer">Stop</button></div></section>
   <div class="section-label"><h2>Calendar reminders</h2><span>Optional</span></div>
   <section class="card codex-reminders"><div class="card-head"><div><h2>Workout reminders</h2><p>Uses your iPhone Calendar — even when FitnessPilot is closed</p></div><span class="badge">CALENDAR</span></div><form id="reminder-form"><div class="metrics-grid"><label><span class="form-label">Workout time</span><input class="field" type="time" name="time" required value="${time}"></label><label><span class="form-label">Alert ahead of time</span><select class="field" name="lead"><option value="0" ${reminder.lead===0?'selected':''}>At workout time</option><option value="5" ${reminder.lead===5?'selected':''}>5 minutes before</option><option value="15" ${reminder.lead===15?'selected':''}>15 minutes before</option><option value="30" ${reminder.lead===30?'selected':''}>30 minutes before</option><option value="60" ${reminder.lead===60?'selected':''}>1 hour before</option></select></label></div><div class="form-actions"><button class="btn" type="submit">Save alert settings</button><button class="btn secondary" type="button" data-action="calendar">Export Calendar reminders (.ics)</button></div></form><p class="hint" style="margin-top:14px">First save your settings, then export the .ics file. Import it into a calendar that supports .ics events and alarms. Some iPhone import paths may require emailing the file to yourself or using a computer calendar. Check the alert in Apple Calendar after import. If you change the schedule, remove previous imported events and export again to avoid duplicate alerts.</p><div class="notice warn"><strong>Not a Clock alarm.</strong> This web app cannot force a loud full-screen ring while closed. Calendar notifications depend on your phone's notification, Focus and Silent settings. Use the iPhone Clock app if an audible alarm is essential.</div></section>
@@ -334,7 +335,25 @@ function inspectWalkerDisplay(){
   };
   image.addEventListener('load',update,{once:true});
   image.addEventListener('error',update,{once:true});
-  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){update();return;}
+  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
+    image.classList.remove('is-ready');
+    if(!walkerDataUrl){
+      status.textContent='Reduce Motion is on: default adventurer shown.';
+      return;
+    }
+    const still=$('.fp-walker-still');
+    const selected=walkerDataUrl;
+    status.textContent='Reduce Motion is on: preparing your personal still image…';
+    createWalkerStill(selected).then(png=>{
+      if(!still?.isConnected || walkerDataUrl!==selected)return;
+      still.src=png;
+      status.textContent='Your character (still frame). To see walking, enable Animation effects in device accessibility settings.';
+    }).catch(()=>{
+      if(!status.isConnected)return;
+      status.textContent='Could not show your personal still; default adventurer shown.';
+    });
+    return;
+  }
   image.src=walkerDataUrl||'./adventurer-idle.svg';
   if(image.complete)update();
 }
