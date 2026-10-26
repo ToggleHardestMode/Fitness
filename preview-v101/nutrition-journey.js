@@ -1,4 +1,5 @@
 import { STORAGE_KEY, validateBackup, weekDates, dateKey } from './core.js';
+import { targetsText, referenceCardMarkup } from './nutrition-reference-cards.js';
 
 const isoDay = key => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) throw Error('Invalid ISO date.');
@@ -72,7 +73,6 @@ export function weightJourney(metrics, anchor, days = 28) {
 
 const safe = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => n === null ? 'Not recorded' : Number(n).toLocaleString('en-SG', { maximumFractionDigits: 1 });
-const targetsText = (actual, target, unit) => actual === null ? 'Not recorded' : `${fmt(actual)} ${unit}${target === null ? '' : ` · ${actual >= target ? '+' : ''}${fmt(actual - target)} vs reference`}`;
 
 function weightChart(report) {
   const measured = report.points.map((p, i) => ({ ...p, i })).filter(p => p.weight !== null);
@@ -90,7 +90,8 @@ export function renderJourney(metrics, anchor, targets, mode) {
   const calories = compare.calories.count ? `${fmt(compare.calories.value)} kcal / ${compare.calories.count} recorded day(s)` : 'Not recorded';
   const protein = compare.protein.count ? `${fmt(compare.protein.value)} g / ${compare.protein.count} recorded day(s)` : 'Not recorded';
   const changes = weight.change === null ? 'Insufficient readings to compare two weeks' : `${weight.change > 0 ? '+' : ''}${fmt(weight.change)} kg compared with previous 7 days`;
-  return `<div class="nj-grid"><section class="nj-panel"><h2>Nutrition this week</h2>
+  const missing = !compare.calories.count && !compare.protein.count ? '<section class="nj-panel"><h2>No recorded nutrition check-ins this week</h2><p class="hint">A target file contains reference numbers only. To record calories and protein, use Train → Daily check-in in this preview. Production and preview have separate browser data.</p></section>' : '';
+  return `${referenceCardMarkup(targets, mode)}${missing}<div class="nj-grid"><section class="nj-panel"><h2>Nutrition this week</h2>
     <p class="hint">${safe(compare.dates[0])}–${safe(compare.dates[6])} · Recorded days only · ${targets ? `${mode === 'cycle' ? 'Weekday/weekend' : 'Flat daily'} reference` : 'No reference file selected'}</p>
     <div class="nj-stats"><div><small>Calories · recorded average</small><strong>${calories}</strong></div><div><small>Protein · recorded average</small><strong>${protein}</strong></div></div>
     <div class="nj-table-scroll"><table><thead><tr><th>Date</th><th>Calories</th><th>Protein</th></tr></thead><tbody>${compare.days.map(row => `<tr><td>${safe(row.date)}</td><td>${targetsText(row.calories, row.targetCalories, 'kcal')}</td><td>${targetsText(row.protein, row.targetProtein, 'g')}</td></tr>`).join('')}</tbody></table></div>
@@ -107,6 +108,7 @@ export function initJourney(documentRef = document, storage = localStorage) {
   const status = documentRef.getElementById('journey-status');
   const selection = documentRef.getElementById('nutrition-reference');
   const mode = documentRef.getElementById('nutrition-mode');
+  const example = documentRef.getElementById('nutrition-example');
   let targets = null;
   let state;
   try {
@@ -120,6 +122,19 @@ export function initJourney(documentRef = document, storage = localStorage) {
   }
   const refresh = () => { result.innerHTML = renderJourney(state.metrics, dateKey(new Date()), targets, mode.value); };
   mode.addEventListener('change', refresh);
+  example?.addEventListener('click', async () => {
+    status.textContent = 'Loading public example…';
+    targets = null;
+    try {
+      const response = await fetch('./nutrition_targets.json', { cache: 'no-store' });
+      if (!response.ok) throw Error('Public example could not be fetched.');
+      targets = readTargets(await response.json());
+      status.textContent = 'Reference loaded. Target cards are shown below; no meal records were added.';
+    } catch (error) {
+      status.textContent = `Could not load public example: ${error.message}`;
+    }
+    refresh();
+  });
   selection.addEventListener('change', async () => {
     const file = selection.files?.[0];
     if (!file) return;
@@ -128,7 +143,7 @@ export function initJourney(documentRef = document, storage = localStorage) {
     try {
       if (file.size > 100_000) throw Error('Nutrition reference must be under 100 KB.');
       targets = readTargets(JSON.parse(await file.text()));
-      status.textContent = 'Nutrition v1.1 reference loaded into this page only. Provisional, not activated or saved.';
+      status.textContent = 'Reference loaded. Target cards are shown below; no meal records were added.';
     } catch (error) { status.textContent = error.message; }
     selection.value = '';
     refresh();

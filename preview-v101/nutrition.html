@@ -12,9 +12,9 @@
   <title>FitnessPilot · Nutrition & Weight Journey Preview</title>
 </head>
 <body>
-  <div class="preview-banner">FITNESSPILOT V15.16 PREVIEW · BATCH 3A · READ-ONLY</div>
+  <div class="preview-banner">FITNESSPILOT V15.16.1 PREVIEW · BATCH 3A · READ-ONLY</div>
   <main class="nj-main">
-    <nav><a class="btn secondary" href="./index.html">← Back to Dashboard</a></nav>
+    <nav class="nj-shortcuts"><a class="btn secondary" href="./index.html">← Back to Dashboard</a><a class="btn secondary" href="./nutrition-cheatsheet.html">Nutrition cheatsheet →</a></nav>
     <header class="nj-header">
       <div class="eyebrow">Nutrition & Physique · Preview</div>
       <h1>Your recorded progress</h1>
@@ -22,8 +22,8 @@
     </header>
     <section class="nj-panel nj-controls" aria-label="Optional nutrition reference">
       <h2>Nutrition v1.1 reference</h2>
-      <p class="hint">Optionally select your private <code>nutrition_targets.json</code> file from Files. It is processed in this browser tab only: not uploaded, persisted or activated. The profile and targets in that report are provisional.</p>
-      <p class="hint"><a href="./nutrition_targets.json" download="nutrition_targets.json">Download public example JSON</a> (illustrative values only; no personal profile). Save it to Files, then select it below.</p>
+      <p class="hint">Load public example targets or select your own Nutrition v1.1 JSON from Files. References stay in this browser tab only and are never saved or activated. A target file does not contain recorded meals.</p>
+      <div class="nj-shortcuts"><button class="btn" type="button" id="nutrition-example">Load public example</button><a class="btn secondary" href="./nutrition-cheatsheet.html">Open cheatsheet</a></div><p class="hint">No file upload needed for the example. Targets appear even if no food has been logged.</p>
       <div class="nj-fields">
         <label><span class="form-label">Select reference JSON</span><input class="field" id="nutrition-reference" type="file" accept=".json,application/json"></label>
         <label><span class="form-label">Reference display mode</span><select class="field" id="nutrition-mode"><option value="flat">Flat daily</option><option value="cycle">Weekday / weekend</option></select></label>
