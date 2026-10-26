@@ -4,14 +4,14 @@ import {readTargets,weekComparison,weightJourney,renderJourney,initJourney} from
 
 const ref={
   schema_version:1,reference_revision:'1.1',status:'reference_only_not_activated_in_fitnesspilot',
-  daily_flat:{calories_kcal:{value:2250},protein_g:{value:170}},
-  calorie_cycling:{days:{weekday:{target_kcal_rounded:2050,protein_g:170},weekend:{target_kcal_rounded:2750,protein_g:170}}},
+  daily_flat:{calories_kcal:{value:2100},protein_g:{value:120}},
+  calorie_cycling:{days:{weekday:{target_kcal_rounded:2000,protein_g:120},weekend:{target_kcal_rounded:2400,protein_g:120}}},
   adjustment_rules_R0_to_R6:{activate_automatically:false}
 };
 test('v1.1 read-only reference accepts valid values and rejects activation',()=>{
   const t=readTargets(ref);
-  assert.equal(t.flat.calories,2250);
-  assert.equal(t.weekend.calories,2750);
+  assert.equal(t.flat.calories,2100);
+  assert.equal(t.weekend.calories,2400);
   assert.throws(()=>readTargets({...ref,adjustment_rules_R0_to_R6:{activate_automatically:true}}),/disabled/);
   assert.throws(()=>readTargets({...ref,status:'activated'}),/unchanged/);
 });
@@ -24,8 +24,8 @@ test('calendar cycles weekend budgets and keeps unknown days null',()=>{
   assert.equal(flat.calories.count,2);
   assert.equal(flat.protein.count,1);
   const cycle=weekComparison(records,'2026-10-28',t,'cycle');
-  assert.equal(cycle.days[0].targetCalories,2050);
-  assert.equal(cycle.days[6].targetCalories,2750);
+  assert.equal(cycle.days[0].targetCalories,2000);
+  assert.equal(cycle.days[6].targetCalories,2400);
 });
 test('weight trend compares actual recorded weeks without filling missing dates',()=>{
   const records=[{date:'2026-10-16',weight:90},{date:'2026-10-17',weight:88},
