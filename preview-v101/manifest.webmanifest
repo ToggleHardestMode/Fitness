@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FitnessPilot V15.16 Preview",
+  "name": "FitnessPilot V15.17 Preview",
   "short_name": "FP Preview",
-  "description": "Read-only Nutrition and Weight Journey alongside the isolated workout preview.",
+  "description": "Food Diary and Nutrition Journey alongside the isolated workout preview.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
