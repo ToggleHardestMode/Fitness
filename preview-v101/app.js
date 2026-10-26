@@ -1,6 +1,7 @@
 import { weeklyTrainingAnalysis, lifetimeTrainingSets, setMilestoneProgress } from './training-analytics.js';
 import { resetTrackingData } from './tracking-reset.js';
 import { METRIC_FIELDS, weeklyMetricSources } from './metric-breakdown.js';
+import { readFoodDiaryChart } from './food-diary-chart.js';
 import { setsBarsMarkup } from './volume-bars.js';
 import { trainingAnalyticsPanel } from './training-analytics-ui.js';
 import { initRoFeedback, isRoSoundEnabled } from './ro-feedback.js';
@@ -156,8 +157,9 @@ function dashboard() {
   ${trainingAnalyticsPanel(state,s.dates[0],today())}
   ${v102OverlapPanel(state,s.dates[0])}
   <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>Nutrition & Weight Journey</h2><p>Record meals and derive daily calories/protein/carbs/fat in a separate diary. Existing check-ins are unchanged.</p></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><a class="btn" href="./food-diary.html">Open Food Diary →</a><a class="btn secondary" href="./nutrition.html">Nutrition trends →</a></div></section>
+  ${readFoodDiaryChart(localStorage,today())}
   <div class="section-label"><h2>Insights</h2><span>Only real entries</span></div>
-  <div class="two-panels"><section class="card"><div class="card-head"><div><h2>Daily check-ins</h2><p>Weekly averages</p></div><button class="btn ghost small-btn" data-page="train">Add →</button></div>${dailyAverageRows(s)}</section>
+  <div class="two-panels"><section class="card"><div class="card-head"><div><h2>Manual daily check-ins</h2><p>Weekly averages · not derived from Food Diary</p></div><button class="btn ghost small-btn" data-page="train">Add →</button></div>${dailyAverageRows(s)}</section>
   <section class="card"><div class="card-head"><div><h2>Strongest sets</h2><p>Heaviest recorded weight by exercise</p></div></div>${best.length?best.map(l=>`<div class="data-row"><div><strong>${esc(l.exerciseName)}</strong><span>${nice(l.date)}</span></div><div class="score tinted">${fmt(l.kg)} kg × ${l.reps}</div></div>`).join(''):'<div class="empty"><strong>No lifts yet</strong>Your best sets will appear after you save them.</div>'}</section></div><p class="footer-hint">Weight for dumbbells is recorded exactly as entered; volume does not automatically double per-hand weights. Bodyweight moves logged at 0 kg count as sets but contribute 0 kg to volume.</p>`;
 }
 function rangeSummary(exercise) {

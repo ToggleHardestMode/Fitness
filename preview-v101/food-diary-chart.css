@@ -1,0 +1,13 @@
+.fd-chart-panel{margin-top:16px}
+.fd-chart-panel .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.fd-chart-panel .card-head h2{margin-bottom:5px}
+.fd-chart-summary{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+.fd-chart-summary span{background:#211e2c;border:1px solid #745e51;border-radius:10px;color:#cfc3b2;padding:10px 12px;font-size:12px}
+.fd-chart-summary strong{color:#f1d39b}
+.fd-chart-scroll{overflow-x:auto;max-width:100%;border:1px solid #62545d;border-radius:12px;background:#171a28}
+.fd-chart-svg{display:block;min-width:720px;width:100%;height:auto;max-height:235px}
+.fd-chart-note{margin:12px 0;line-height:1.7}
+.fd-chart-table-scroll{max-height:240px;overflow:auto;margin-top:12px}
+.fd-chart-table-scroll table{border-collapse:collapse;width:100%;font-size:12px}
+.fd-chart-table-scroll th,.fd-chart-table-scroll td{padding:8px;border-bottom:1px solid #ffffff27;text-align:left}
+.fd-chart-scroll:focus-visible{outline:3px solid #e9c789;outline-offset:2px}
