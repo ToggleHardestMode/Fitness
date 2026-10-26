@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "reference_revision": "1.1",
+  "status": "reference_only_not_activated_in_fitnesspilot",
+  "basis": "Public illustrative calorie/protein reference for import testing; not personal advice or activated settings.",
+  "daily_flat": {
+    "calories_kcal": {
+      "value": 2250,
+      "direction": "target"
+    },
+    "protein_g": {
+      "value": 170,
+      "acceptable_range_g": [
+        160,
+        180
+      ],
+      "direction": "target"
+    }
+  },
+  "calorie_cycling": {
+    "status": "optional_alternative_to_flat",
+    "days": {
+      "weekday": {
+        "day_numbers_iso": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_kcal_rounded": 2050,
+        "protein_g": 170
+      },
+      "weekend": {
+        "day_numbers_iso": [
+          6,
+          7
+        ],
+        "target_kcal_rounded": 2750,
+        "protein_g": 170
+      }
+    }
+  },
+  "adjustment_rules_R0_to_R6": {
+    "status": "manual_advisory_only",
+    "activate_automatically": false
+  }
+}
