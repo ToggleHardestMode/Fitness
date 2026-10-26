@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FitnessPilot V15.15.3 Preview",
+  "name": "FitnessPilot V15.16 Preview",
   "short_name": "FP Preview",
-  "description": "One avatar layer over a translucent stationary Dashboard platform, with a personal still under reduced motion.",
+  "description": "Read-only Nutrition and Weight Journey alongside the isolated workout preview.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
