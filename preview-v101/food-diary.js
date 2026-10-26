@@ -1,4 +1,5 @@
 import {FOOD_KEY,EMPTY_DIARY,NUTRIENTS,validateDiary,saveEntry,deleteEntry,totalsForDate,emptyOnlyRestore} from './food-diary-core.js';
+import { initSgFoodLookup } from './sg-food-lookup.js';
 const $=id=>document.getElementById(id);
 const number=value=>Number(value).toLocaleString('en-SG',{maximumFractionDigits:1});
 const numeric=value=>value===''?null:Number(value);
@@ -98,6 +99,6 @@ export function initFoodDiary(storage=localStorage){
       persist(imported);undo=null;reset();render();inform('Diary restored from backup.');
     }catch(error){inform(error.message,true);}
   });
-  reset();render();inform('Food Diary is saved only in this preview browser. Export a backup regularly.');
+  reset();render();initSgFoodLookup();inform('Food Diary is saved only in this preview browser. Export a backup regularly.');
 }
 if(typeof document!=='undefined'&&document.getElementById('fd-form'))initFoodDiary();
