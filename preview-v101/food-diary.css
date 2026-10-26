@@ -1,0 +1,14 @@
+.fd-date-label{display:grid;gap:6px;max-width:320px;color:#e9d3a7}
+.fd-entry{display:grid;gap:8px;padding:14px 0;border-bottom:1px solid #ffffff30}
+.fd-entry:last-child{border-bottom:0}
+.fd-entry-main{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;color:#ffe4b4}
+.fd-entry-main strong{overflow-wrap:anywhere}
+.fd-detail{font-size:12px;color:#d0c0b9;line-height:1.7;overflow-wrap:anywhere}
+.fd-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.fd-small{font-size:12px;padding:9px 13px}
+.fd-import{position:relative;display:inline-flex;align-items:center;cursor:pointer}
+.fd-import input{position:absolute;width:1px;height:1px;opacity:0}
+.fd-error{color:#ffbbaa!important}
+.fd-totals strong{font-size:20px}
+.fd-macros{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+.fd-entry button:focus-visible,.fd-import:focus-within{outline:3px solid #f1c77d;outline-offset:3px}
