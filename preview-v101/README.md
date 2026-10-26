@@ -1,3 +1,18 @@
+# FitnessPilot V15.16 — Batch 3A nutrition and weight preview
+
+**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=44
+**Read-only Nutrition & Weight Journey:** https://togglehardestmode.github.io/Fitness/preview-v101/nutrition.html?v=44
+
+Batch 3 has been prioritized ahead of the remaining roadmap. This first implementation slice provides an isolated read-only page. It reads existing preview daily metrics from `fitnesspilot.preview.v101.v1`, displays observed calories/protein for the current week and an honest 28-day recorded-weight plot. Optionally select your private Nutrition v1.1 `nutrition_targets.json` file from iPhone Files to compare recorded data with flat or weekday/weekend reference targets. The file and targets live in tab memory only. Nothing writes to saved state or changes targets. If source storage is unreadable, the page does not replace it. Carbs, fats, fibre, waist and physique media are not yet in the persisted schema.
+
+Manual iPhone acceptance: (1) confirm V15.16 banner on Dashboard, (2) open Nutrition & Weight Journey, (3) check that existing Daily check-ins appear, (4) select the private reference JSON, (5) change flat/cycle, (6) confirm missing dates show Not recorded, (7) navigate back and confirm workouts/records unchanged, (8) reload the journey and confirm reference is no longer selected, (9) test with disposable exported data if possible. Do not clear site data to refresh.
+
+Native focused check: `node --test tests/nutrition-journey.test.mjs`. Full suite: `npm test`; source/asset graph: `node scripts/verify-preview-assets.mjs`.
+
+**Not yet implemented:** manual carb/fat/fibre logging and migration, R0–R6 advisory display, nutrition export, strength/waist/photo histories, physical transformation stages. Continue in separate bounded Batch 3 steps following operator device acceptance. No production-root update.
+
+---
+
 # FitnessPilot V15.15.3 — test preview
 
 **Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=43
