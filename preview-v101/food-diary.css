@@ -12,3 +12,8 @@
 .fd-totals strong{font-size:20px}
 .fd-macros{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
 .fd-entry button:focus-visible,.fd-import:focus-within{outline:3px solid #f1c77d;outline-offset:3px}
+.sg-food-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));max-height:270px;overflow:auto;gap:8px;margin:12px 0}
+.sg-food-option{display:grid;gap:6px;padding:12px 13px;min-height:68px;text-align:left;background:#282438;border:1px solid #70605f;border-radius:13px;color:#f6e4c0;cursor:pointer;font:inherit}
+.sg-food-option:hover,.sg-food-option:focus-visible{border-color:#efd292;background:#373044;outline-offset:2px}
+.sg-food-option strong{font-size:14px;font-weight:750}
+.sg-food-option .fd-detail{font-size:11px}
