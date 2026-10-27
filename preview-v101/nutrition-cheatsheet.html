@@ -10,9 +10,10 @@
   <link rel="stylesheet" href="./codex.css">
   <link rel="stylesheet" href="./nutrition.css">
   <title>FitnessPilot · Nutrition Cheatsheet</title>
+<link rel="stylesheet" href="./fp39-dark-fantasy.css">
 </head>
 <body>
-  <div class="preview-banner">FITNESSPILOT V15.19.1 PREVIEW · NUTRITION CHEATSHEET</div>
+  <div class="preview-banner">FITNESSPILOT V15.20.0 PREVIEW · NUTRITION CHEATSHEET</div>
   <main class="nj-main">
     <nav class="nj-shortcuts"><a class="btn secondary" href="./nutrition.html">← Nutrition</a><a class="btn secondary" href="./index.html">Dashboard</a><a class="btn secondary" href="./food-diary.html">Food Diary</a></nav>
     <header class="nj-header"><div class="eyebrow">Reference · Nutrition v1.1</div>
@@ -42,27 +43,45 @@
         <tr><th>Hydration</th><td>Regular fluids, more in heat or after sweating</td></tr>
       </tbody></table></div>
     </section>
-    <section class="nj-panel"><h2>Vitamins and minerals</h2>
-      <div class="nj-table-scroll"><table><thead><tr><th>Nutrient</th><th>Daily reference</th><th>Food sources</th></tr></thead><tbody>
-        <tr><th>Vitamin A</th><td>900 µg RAE (US)</td><td>Carrots, spinach, eggs</td></tr>
-        <tr><th>B1 / thiamin</th><td>1.16 mg (SG)</td><td>Wholegrains, pork, beans</td></tr>
-        <tr><th>B2 / riboflavin</th><td>1.74 mg (SG)</td><td>Milk, eggs, dairy</td></tr>
-        <tr><th>B3 / niacin</th><td>19.1 mg NE (SG)</td><td>Chicken, fish</td></tr>
-        <tr><th>B6</th><td>1.3 mg (SG)</td><td>Fish, poultry, potatoes</td></tr>
-        <tr><th>Folate / B9</th><td>400 µg DFE (US)</td><td>Greens, lentils</td></tr>
-        <tr><th>B12</th><td>2.4 µg (SG)</td><td>Meat, fish, dairy</td></tr>
-        <tr><th>Vitamin C</th><td>105 mg (SG)</td><td>Guava, oranges, capsicum</td></tr>
-        <tr><th>Vitamin D</th><td>15 µg (US)</td><td>Fatty fish, fortified dairy</td></tr>
-        <tr><th>Vitamin E</th><td>15 mg (US)</td><td>Seeds, nuts, oils</td></tr>
-        <tr><th>Vitamin K</th><td>120 µg (US AI)</td><td>Leafy greens</td></tr>
-        <tr><th>Calcium</th><td>1,000 mg (US)</td><td>Dairy, calcium-set tofu</td></tr>
-        <tr><th>Magnesium</th><td>420 mg (US)</td><td>Nuts, beans, wholegrains</td></tr>
-        <tr><th>Potassium</th><td>3,400 mg (US AI)</td><td>Fruit, potatoes, beans</td></tr>
-        <tr><th>Sodium</th><td>Below 2,000 mg (SG guidance)</td><td>Limit sauces and soups</td></tr>
-        <tr><th>Saturated fat</th><td>Below 10% of energy</td><td>~25 g at 2,250 kcal</td></tr>
-        <tr><th>Total water</th><td>3.7 L (US AI)</td><td>All drinks and food moisture, not plain water alone</td></tr>
+    <section class="nj-panel" aria-labelledby="vitamin-title">
+      <h2 id="vitamin-title">Vitamins — Singapore / International units</h2>
+      <p class="hint">Choose the dietary reference system; values below are population recommendations for healthy adult men, not targets calculated from your meals. Changing systems does <strong>not</strong> mathematically convert Singapore RDA into an international RDA.</p>
+      <label for="vitamin-standard" class="form-label">Daily reference system</label>
+      <select id="vitamin-standard" class="field" style="max-width:390px"><option value="sg">Singapore HealthHub (international fallback if unavailable)</option><option value="international">International / North American DRI</option></select>
+      <p class="hint" id="vitamin-standard-note" aria-live="polite">Singapore HealthHub RDA where published.</p>
+      <div class="nj-table-scroll"><table><thead><tr><th scope="col">Vitamin</th><th scope="col">Daily reference</th><th scope="col">Source / type</th><th scope="col">Important unit caveat</th></tr></thead>
+      <tbody id="vitamin-table-body"><tr><th scope="row">Vitamin D</th><td>2.5 µg (100 IU)</td><td>Singapore RDA</td><td>1 µg vitamin D = 40 IU</td></tr></tbody></table></div>
+      <p class="hint"><strong>Singapore source:</strong> <a href="https://www.healthhub.sg/well-being-and-lifestyle/food-diet-and-nutrition/recommended_dietary_allowances" rel="noopener noreferrer" target="_blank">HealthHub Recommended Dietary Allowances</a>. <strong>International comparison:</strong> <a href="https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/dietary-reference-intakes/tables/reference-values-vitamins.html" rel="noopener noreferrer" target="_blank">Canada/US Dietary Reference Intakes</a>. SG vitamin D 2.5 µg uses Singapore reference assumptions; international 15 µg assumes minimal sun exposure.</p>
+    </section>
+    <section class="nj-panel" aria-labelledby="vitamin-convert-title">
+      <h2 id="vitamin-convert-title">Vitamin unit converter</h2>
+      <p class="hint">mg ↔ µg converts mass. IU measures vitamin-specific activity: select the <strong>specific vitamin and chemical form</strong>. Do not convert vitamin A RE to RAE as if identical, or folic acid directly to DFE without intake context.</p>
+      <form id="vitamin-convert-form" class="nj-fields">
+        <label>Amount<input class="field" id="vitamin-input" type="number" step="any" min="0" max="1000000" placeholder="e.g. 600" required></label>
+        <label>Convert<select class="field" id="vitamin-method"></select></label>
+        <div style="align-self:end"><button class="btn" type="submit">Convert</button></div>
+      </form>
+      <p class="hint" id="vitamin-result" role="status" aria-live="polite">Choose an amount and conversion.</p>
+      <div class="nj-table-scroll"><table><thead><tr><th>Unit</th><th>Meaning</th><th>Conversion guidance</th></tr></thead><tbody>
+      <tr><th>g / mg / µg (mcg)</th><td>Mass</td><td>1 g = 1,000 mg; 1 mg = 1,000 µg; mcg and µg are identical.</td></tr>
+      <tr><th>IU</th><td>International units of biological activity</td><td>Vitamin D only: 1 µg = 40 IU. Other IU factors depend on vitamin and form.</td></tr>
+      <tr><th>RE vs RAE</th><td>Retinol equivalent / retinol activity equivalent</td><td>Preformed retinol 1 µg RE = 1 µg RAE; carotenoids require composition information.</td></tr>
+      <tr><th>DFE</th><td>Dietary folate equivalent</td><td>1 µg food folate = 1 µg DFE; 0.6 µg folic acid consumed with food = 1 µg DFE.</td></tr>
+      <tr><th>NE</th><td>Niacin equivalent</td><td>1 mg niacin = 1 mg NE; 60 mg dietary tryptophan = 1 mg NE.</td></tr>
+      <tr><th>Vitamin E IU</th><td>Form-dependent activity</td><td>Natural alpha-tocopherol: 0.67 mg per IU; synthetic: 0.45 mg per IU.</td></tr>
       </tbody></table></div>
-      <p class="hint">Population reference values vary between SG and US standards. These are not evidence of personal deficiency, and the current app does not measure vitamin or mineral intake.</p>
+      <p class="hint">Conversion basis: <a href="https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/dietary-reference-intakes/tables.html" rel="noopener noreferrer" target="_blank">Health Canada DRI conversion factors</a> and <a href="https://dsid.usda.nih.gov/unit-conversions" rel="noopener noreferrer" target="_blank">USDA/NIH unit guidance</a>. Display is educational, not dosing instructions.</p>
+    </section>
+    <section class="nj-panel"><h2>Other nutrients and minerals</h2>
+      <div class="nj-table-scroll"><table><thead><tr><th>Nutrient</th><th>Daily reference</th><th>Source</th></tr></thead><tbody>
+      <tr><th>Calcium</th><td>800 mg (SG) / 1,000 mg (international)</td><td>Singapore / US RDA</td></tr>
+      <tr><th>Magnesium</th><td>420 mg</td><td>US RDA</td></tr>
+      <tr><th>Potassium</th><td>3,400 mg</td><td>US AI</td></tr>
+      <tr><th>Sodium</th><td>Less than 2,000 mg</td><td>SG public-health guidance</td></tr>
+      <tr><th>Saturated fat</th><td>Below 10% energy (≈25 g at 2,250 kcal)</td><td>General dietary guidance</td></tr>
+      <tr><th>Total water</th><td>3.7 L, including food and drinks</td><td>US AI; not plain water alone</td></tr>
+      </tbody></table></div>
+      <p class="hint">These are reference intakes, not measured food intake. Avoid interpreting a dietary value as evidence of deficiency.</p>
     </section>
     <section class="nj-panel"><h2>Recording actual progress</h2>
       <ol class="nj-steps"><li>On the <a href="./nutrition.html">Nutrition dashboard</a>, tap <strong>Load public example</strong> or choose your own JSON to view reference targets.</li>
@@ -72,5 +91,6 @@
     </section>
     <p class="nj-disclaimer">Source: FitnessPilot Nutrition Requirements v1.1 (25 Oct 2026), compact summary without profile data. Reference-only; always review your own circumstances.</p>
   </main>
+<script type="module" src="./vitamin-reference-ui.js"></script>
 </body>
 </html>
