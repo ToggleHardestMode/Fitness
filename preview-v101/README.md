@@ -1,3 +1,18 @@
+# FitnessPilot V15.19.2 — Daily Food Diary quick-repeat extension (preview only)
+
+**Diary page:** https://togglehardestmode.github.io/Fitness/preview-v101/food-diary.html?v=52  
+**Main preview:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=52
+
+The existing V15.19.1 food diary already supports local-only meal, snack and drink entry; per-serving calories, protein, carbohydrate and fat; editing and deletion/undo; separate JSON export and empty-diary restore; offline Singapore food lookup; and a separately labelled calorie chart. **New in V15.19.2:** the diary now shows up to eight unique previously recorded meals/snacks/drinks from earlier dates, in most-recent order, with a one-tap **Repeat on this day** button. Repeated events have fresh IDs and copied nutrition/serving snapshots. The old record is not changed; the copied portion is editable.
+
+No new storage key/schema or import migration, no workout or Daily check-in modification, no automatic copying of manual calorie totals and no nutrition target activation. Recent history is derived from the existing separate Food Diary backup data; there is no unbacked-up favourites key. Historical diary backups remain v1 compatible. Previous local days are not deleted.
+
+**Suggested iPhone check (synthetic data only):** Record an example meal on an earlier date; select today's date; check the **Repeat recent saved foods** panel; tap Repeat once, inspect one new food and derived totals; edit its portion and verify the past meal did not change; export JSON; restore it into an empty disposable diary in a separate clean browser context and confirm values. Open Dashboard and Daily check-ins to verify separate totals and unchanged workouts. Never clear real Safari site data just to test.
+
+**Verification boundary:** Added Node test cases for deduplication, chronological filtering, copied snapshots, fresh IDs, null nutrients and backup compatibility. Actual Node runner, published Pages delivery, offline reload, iPhone Safari controls and full backup restore remain distinct gates and must not be inferred from GitHub source/PR alone.
+
+---
+
 # FitnessPilot V15.16 — Batch 3A nutrition and weight preview
 
 **Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=44

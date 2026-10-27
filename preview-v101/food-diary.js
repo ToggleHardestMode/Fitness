@@ -1,4 +1,4 @@
-import {FOOD_KEY,EMPTY_DIARY,NUTRIENTS,validateDiary,saveEntry,deleteEntry,totalsForDate,emptyOnlyRestore} from './food-diary-core.js';
+import {FOOD_KEY,EMPTY_DIARY,NUTRIENTS,validateDiary,saveEntry,deleteEntry,totalsForDate,emptyOnlyRestore,recentFoods,repeatEntryToDate} from './food-diary-core.js';
 import { initSgFoodLookup } from './sg-food-lookup.js';
 const $=id=>document.getElementById(id);
 const number=value=>Number(value).toLocaleString('en-SG',{maximumFractionDigits:1});
@@ -27,7 +27,31 @@ export function initFoodDiary(storage=localStorage){
   function reset(){
     form.reset();$('fd-id').value='';$('fd-save').textContent='Save food';
   }
+  function renderRecent(){
+    const host=$('fd-recent');host.replaceChildren();
+    const matches=recentFoods(diary,date.value,8);
+    if(!matches.length){
+      const p=document.createElement('p');p.className='hint';
+      p.textContent='No earlier meals available yet. Save foods normally; they will appear here on following days.';
+      host.append(p);return;
+    }
+    for(const food of matches){
+      const article=document.createElement('article');article.className='fd-recent-entry';
+      const summary=document.createElement('div');summary.className='fd-recent-desc';
+      const title=document.createElement('strong');title.textContent=food.name;
+      const sub=span(food.date+' · '+number(food.servings)+' serving(s) · '+(food.kcal===null?'unknown calories':number(food.kcal*food.servings)+' kcal'),'fd-detail');
+      summary.append(title,sub);
+      article.append(summary,button('Repeat on this day',()=>{
+        try{
+          persist(repeatEntryToDate(diary,food.id,date.value,crypto.randomUUID()));
+          undo=null;reset();render();inform('Copied the saved food and its previous portion. Edit if today’s serving differed.');
+        }catch(error){inform(error.message,true);}
+      }));
+      host.append(article);
+    }
+  }
   function render(){
+    renderRecent();
     const data=totalsForDate(diary,date.value);
     $('fd-count').textContent=data.count+' food/drink '+(data.count===1?'entry':'entries');
     for(const key of NUTRIENTS){

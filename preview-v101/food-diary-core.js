@@ -45,3 +45,30 @@ export function emptyOnlyRestore(current,incoming){
   if(validateDiary(current).entries.length)throw Error('Restore only works with an empty diary; existing entries will not be overwritten.');
   return validateDiary(incoming);
 }
+
+/** Recent historical consumed entries are reusable without a separate or unbacked-up favourites store. */
+export function recentFoods(doc,selectedDate,limit=8){
+  day(selectedDate);
+  if(!Number.isInteger(limit)||limit<1||limit>40)throw Error('Invalid recent food limit.');
+  const {entries}=validateDiary(doc);
+  const seen=new Set(),results=[];
+  const ordered=entries.map((entry,index)=>({entry,index}))
+    .filter(x=>x.entry.date<selectedDate)
+    .sort((a,b)=>b.entry.date.localeCompare(a.entry.date)||b.index-a.index);
+  for(const {entry} of ordered){
+    const signature=JSON.stringify([entry.name.toLocaleLowerCase(),entry.occasion,entry.servings,...NUTRIENTS.map(k=>entry[k])]);
+    if(seen.has(signature))continue;
+    seen.add(signature);results.push({...entry});
+    if(results.length===limit)break;
+  }
+  return results;
+}
+/** Duplicate an existing recorded item onto a selected local date; never replace an existing ID. */
+export function repeatEntryToDate(doc,sourceId,targetDate,newId){
+  day(targetDate);
+  const safe=validateDiary(doc);
+  const original=safe.entries.find(e=>e.id===sourceId);
+  if(!original)throw Error('Source meal is unavailable.');
+  if(safe.entries.some(e=>e.id===newId))throw Error('New meal ID already exists.');
+  return saveEntry(safe,{...original,id:newId,date:targetDate});
+}
