@@ -1,3 +1,17 @@
+# FitnessPilot V15.20.1 — Nutrition quick links at top of Dashboard (preview only)
+
+**Main preview:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=54
+
+User-requested navigation refinement: the Dashboard now displays visible **Nutrition** and **Cheatsheet** buttons immediately under its top heading, before the character and weekly summary. The actions link directly to `nutrition.html` and `nutrition-cheatsheet.html`. On phones the shortcuts form a two-column row with 48px-minimum tap surfaces; on larger screens a compact horizontal row. Existing lower Dashboard nutrition card and all previous tabs remain unchanged.
+
+**Safety / scope:** Preview only. No changes to workout/food logs, app save/restore, server state, supplements, vitamin references or nutrition targets. Offline cache bumped to V15.20.1 so links point to cached existing pages. No new service-worker resources required.
+
+**Verification:** Source-level checks verify top-of-dashboard placement, two link destinations, 48px buttons, mobile CSS, V15.20.1 page labels and both targets in SW precache. Added `tests/top-nutrition-links.test.mjs`; full checkout `npm test`, actual GitHub Pages and iPhone tap/appearance remain separately unverified until operator acceptance.
+
+**User check:** Open main preview `?v=54`, confirm Nutrition and Cheatsheet appear without scrolling and both open their correct pages. Check return to Dashboard and that the Food Diary and workout data are unchanged. Do not clear site storage to refresh.
+
+---
+
 # FitnessPilot V15.20.0 — FP-39 visual polish + vitamin reference units (preview only)
 
 **Main preview:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=53  
