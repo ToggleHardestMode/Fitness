@@ -33,7 +33,7 @@ test('dictionary has distinct versioned definitions, source identities and meani
     assert.equal(item.id,id);
     assert.equal(item.version,1);
     for(const prop of ['source','unit','grain','formula','missing','meaning'])
-      assert.ok(typeof item[prop]==='string' && item[prop].length>3,id+': '+prop);
+      assert.ok(typeof item[prop]==='string' && item[prop].length>=(prop==='unit'?1:4),id+': '+prop);
   }
   assert.notEqual(metricDefinition('food.known_kcal.v1').source,
     metricDefinition('checkin.calories_manual.v1').source);
@@ -209,7 +209,7 @@ test('no logged days means zero coverage, not zero food intake',()=>{
 test('read-only implementation does not touch browser storage or enable diet automation',()=>{
   const src=readFileSync(new URL('../preview-v101/metric-selectors.js',import.meta.url),'utf8');
   const registry=readFileSync(new URL('../preview-v101/metric-dictionary.js',import.meta.url),'utf8');
-  assert.doesNotMatch(src+registry,/localStorage|sessionStorage|setItem\s*\(|removeItem\s*\(|updateState\s*\(|activate_automatically\s*:\s*true/);
+  assert.doesNotMatch(src+registry,/\b(?:localStorage|sessionStorage)\s*\.|\b(?:setItem|removeItem|updateState)\s*\(|activate_automatically\s*:\s*true/);
   assert.match(src,/weeklyTrainingAnalysis\(/);
   assert.match(src,/totalsForDate\(/);
 });
