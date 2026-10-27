@@ -1,3 +1,17 @@
+# FitnessPilot V15.20.2 — Separate Nutrition and Cheatsheet top-level shortcuts (preview only)
+
+**Main preview:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=55
+
+Operator clarified that Nutrition and Cheatsheet should be **separate**, not presented together as one grouped quick-link row. The Dashboard now displays two independently linked and distinctly styled, vertically stacked feature shortcuts immediately below the top heading: **Nutrition** opens the Food/Weight Journey; **Cheatsheet** independently opens dietary reference values and the vitamin-unit converter. Both have individual accessible labels, descriptions and >=66px tap surfaces. The old combined `fp-top-nutrition` bar is removed.
+
+Only preview `app.js`, final theme CSS, version labels, cache prefix, README and related test changed. No changes to the underlying nutrition pages, workout/meal data, storage, sync, targets or production root.
+
+**Check on device:** open the Dashboard and confirm Nutrition and Cheatsheet appear as **two separate full-width rows**, not adjacent halves of a toolbar. Tap each individually; confirm the expected destination, return to the Dashboard and check that saved food/workout logs are unchanged. Never clear device site data for testing.
+
+**QA:** Updated `tests/top-nutrition-links.test.mjs` to assert independent anchors and destination pages, styling, target cache, and V15.20.2. Source read-back and PR diff are narrower than a full native test suite or real mobile visual acceptance.
+
+---
+
 # FitnessPilot V15.20.1 — Nutrition quick links at top of Dashboard (preview only)
 
 **Main preview:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=54
