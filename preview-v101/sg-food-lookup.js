@@ -1,4 +1,5 @@
-// Original catalogue labels, no HPB database rows. Licensed numeric values: USDA FDC CC0 ingredient records.
+// Original SG aliases, 40 independently selected published portion facts, 3 USDA CC0 ingredient records. No SG FoodID database copied.
+import {SG_MACRO_REFERENCES,SG_REFERENCE_SOURCES} from './sg-food-references.js';
 const names=[
   [
     "Chicken rice, steamed",
@@ -182,22 +183,29 @@ const references=[
 ];
 export const SG_FOODS=Object.freeze([
   ...names.map(([name,aliases],i)=>Object.freeze({id:'sg-'+String(i+1).padStart(3,'0'),name,aliases:aliases.split(','),source:'Search name only · no licensed Singapore nutritional figure available',occasion:/^(Kopi|Teh|Milo)/.test(name)?'drink':'meal',kcal:null,protein:null,carbs:null,fat:null})),
-  ...references.map(row=>Object.freeze(row))
+  ...references.map(row=>Object.freeze(row)),
+  ...SG_MACRO_REFERENCES.map(row=>Object.freeze({...row,source:SG_REFERENCE_SOURCES[row.sourceKey].name,sourceUrl:SG_REFERENCE_SOURCES[row.sourceKey].url}))
 ]);
 const normal=value=>String(value??'').normalize('NFKD').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 export function lookupSgFoods(query,limit=10){
   if(!Number.isInteger(limit)||limit<1||limit>50)throw Error('Search limit out of range.');
   const terms=normal(query).split(' ').filter(Boolean);
-  if(!terms.length)return SG_FOODS.slice(0,limit);
+  if(!terms.length)return SG_FOODS.filter(item=>item.sourceKey).slice(0,limit);
+  const phrase=terms.join(' ');
   return SG_FOODS.map(item=>{
     const name=normal(item.name),aliases=item.aliases.map(normal);
-    return terms.every(term=>[name,...aliases].some(x=>x.includes(term)))?{item,rank:name.startsWith(terms.join(' '))?0:1}:null;
+    if(!terms.every(term=>[name,...aliases].some(x=>x.includes(term))))return null;
+    const priority=name===phrase?0:name.startsWith(phrase)?1:aliases.includes(phrase)?2:3;
+    return {item,rank:(item.kcal===null?10:0)+priority};
   }).filter(Boolean).sort((a,b)=>a.rank-b.rank).slice(0,limit).map(result=>result.item);
 }
 export function draftFromSgFood(item){
-  if(!SG_FOODS.some(x=>x.id===item?.id))throw Error('Unknown food reference.');
-  const name=item.source.startsWith('USDA')?item.name+' ['+item.source.split(' · ')[0]+']':item.name;
-  return {name,occasion:item.occasion,servings:1,kcal:item.kcal,protein:item.protein,carbs:item.carbs,fat:item.fat,label:item.source};
+  const selected=SG_FOODS.find(x=>x.id===item?.id);
+  if(!selected)throw Error('Unknown food reference.');
+  const suffix=selected.sourceKey?' ['+selected.sourceKey+', '+selected.portion+']':selected.source.startsWith('USDA')?' ['+selected.source.split(' · ')[0]+']':'';
+  const name=selected.name.slice(0,80-suffix.length)+suffix;
+  const note=selected.sourceKey?SG_REFERENCE_SOURCES[selected.sourceKey].note:'';
+  return {name,occasion:selected.occasion,servings:1,kcal:selected.kcal,protein:selected.protein,carbs:selected.carbs,fat:selected.fat,label:selected.source+(selected.portion?' · '+selected.portion:'')+(note?' · '+note:''),url:selected.sourceUrl||null,portion:selected.portion||null};
 }
 export function initSgFoodLookup(){
   const byId=id=>document.getElementById(id),search=byId('sg-food-search'),results=byId('sg-food-results');
@@ -214,7 +222,7 @@ export function initSgFoodLookup(){
       const button=document.createElement('button');button.type='button';button.className='sg-food-option';
       const title=document.createElement('strong');title.textContent=item.name;
       const sub=document.createElement('span');sub.className='fd-detail';
-      sub.textContent=item.kcal===null?'Nutrition unknown · enter your own estimate':item.kcal+' kcal per 100 g · USDA ingredient reference';
+      sub.textContent=item.kcal===null?'Nutrition unknown · enter your own estimate':item.kcal+' kcal · P '+item.protein+' g · C '+item.carbs+' g · F '+item.fat+' g · '+(item.portion||'100 g')+' · '+(item.sourceKey||'USDA');
       button.append(title,sub);
       button.addEventListener('click',()=>{
         if(byId('fd-id').value&&!confirm('Discard the current edit and start a new food?'))return;
@@ -222,7 +230,9 @@ export function initSgFoodLookup(){
         byId('fd-id').value='';byId('fd-save').textContent='Save food';
         byId('fd-name').value=d.name;byId('fd-occasion').value=d.occasion;byId('fd-servings').value='1';
         for(const k of ['kcal','protein','carbs','fat'])byId('fd-'+k).value=d[k]===null?'':String(d[k]);
-        byId('sg-food-source').textContent=d.label+(d.kcal===null?' · Fill in nutritional values if known.':' · Ingredient reference, not a completed dish. Review serving before saving.');
+        const source=byId('sg-food-source');
+        source.textContent=d.label+(d.kcal===null?' · Fill in nutritional values if known.':' · Review the published portion before saving.');
+        if(d.url){const a=document.createElement('a');a.href=d.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='View original source';source.append(' ',a);}
         byId('fd-form').scrollIntoView({behavior:'smooth',block:'start'});
       });
       results.append(button);

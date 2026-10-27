@@ -5,7 +5,7 @@ import {EMPTY_DIARY,saveEntry,totalsForDate,emptyOnlyRestore} from '../preview-v
 const food=(draft,id,servings=1)=>({...draft,id,date:'2026-10-26',servings});
 
 test('search Singapore names and aliases',()=>{
- assert.equal(SG_FOODS.length,46);
+ assert.equal(SG_FOODS.length,86);
  assert.ok(lookupSgFoods('cai png').some(x=>x.name.includes('Cai png')));
  assert.ok(lookupSgFoods('菜饭').some(x=>x.name.includes('Cai png')));
  assert.ok(lookupSgFoods('kopi peng siu dai').some(x=>x.name==='Kopi peng siu dai'));
@@ -21,7 +21,7 @@ test('USDA ingredient values are per 100 grams with source',()=>{
  assert.deepEqual(emptyOnlyRestore(EMPTY_DIARY(),JSON.parse(JSON.stringify(doc))),doc);
 });
 test('missing SG dish macros stay unknown',()=>{
- const draft=draftFromSgFood(lookupSgFoods('chicken rice')[0]);
+ const draft=draftFromSgFood(lookupSgFoods('cai png')[0]);
  const doc=saveEntry(EMPTY_DIARY(),food(draft,'test0001'));
  assert.equal(totalsForDate(doc,'2026-10-26').nutrients.kcal.unknown,1);
 });
