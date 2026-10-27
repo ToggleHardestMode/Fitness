@@ -91,28 +91,49 @@ body{
   .btn:active,.tab:active,.exercise-choice:active,.sg-food-option:active{transform:none}
 }
 
-/* V15.20.1 — immediately accessible nutrition navigation on the Dashboard.
-   Ordinary links work offline when their pages are cached; no JavaScript action needed. */
-.fp-top-nutrition{
+/* V15.20.2 — separate, independently clickable Dashboard destinations.
+   Intentionally stacked instead of grouped as one paired quick-link bar. */
+.fp-top-feature-link{
   display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:10px;
-  margin:13px 0 17px;
-}
-.fp-top-nutrition .fp-top-nutrition-link{
-  min-width:0;min-height:48px;
-  padding:11px 12px;
-  text-align:center;
+  align-content:center;
+  gap:4px;
+  width:min(100%,560px);
+  min-height:66px;
+  padding:12px 46px 12px 16px;
+  border:1px solid #b4936b;
+  border-radius:14px;
+  color:#f5e5c9;
   text-decoration:none;
-  font-size:14px;
-  white-space:normal;
-  line-height:1.3;
+  position:relative;
+  background:linear-gradient(120deg,#392d3d,#232a37);
+  box-shadow:0 8px 20px #0007,inset 0 1px #fff1cf16;
+  transition:transform .08s ease,border-color .1s ease,filter .1s ease;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
 }
-@media(min-width:700px){
-  .fp-top-nutrition{display:flex;gap:12px;max-width:500px}
-  .fp-top-nutrition .fp-top-nutrition-link{flex:1}
+.fp-top-feature-link::after{
+  content:'›';position:absolute;right:16px;top:50%;
+  transform:translateY(-50%);font-size:28px;line-height:1;color:#efd399;
 }
-@media(max-width:340px){
-  .fp-top-nutrition{gap:7px}
-  .fp-top-nutrition .fp-top-nutrition-link{font-size:13px;padding:10px 7px}
+.fp-top-feature-link strong{display:block;font-size:16px;font-weight:800;color:#ffe2a6}
+.fp-top-feature-link small{display:block;color:#e0d1cb;font-size:12px;line-height:1.35}
+.fp-top-feature-nutrition{margin-top:16px;border-color:#c3a16e}
+.fp-top-feature-cheatsheet{
+  margin-top:10px;margin-bottom:19px;
+  border-color:#9889b4;
+  background:linear-gradient(120deg,#303049,#222b39);
+}
+.fp-top-feature-cheatsheet strong{color:#eee0fc}
+.fp-top-feature-cheatsheet::after{color:#d4bff1}
+.fp-top-feature-link:hover{border-color:#f2d095;filter:brightness(1.06)}
+.fp-top-feature-link:active{transform:translateY(1px);filter:brightness(.94)}
+.fp-top-feature-link:focus-visible{outline:3px solid #ffe7ac;outline-offset:3px}
+@media(max-width:360px){
+ .fp-top-feature-link{padding-left:13px;padding-right:35px}
+ .fp-top-feature-link strong{font-size:15px}
+ .fp-top-feature-link small{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){
+ .fp-top-feature-link{transition:none}
+ .fp-top-feature-link:active{transform:none}
 }
