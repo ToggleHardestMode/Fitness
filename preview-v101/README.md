@@ -173,3 +173,14 @@ npm test
 The scripted tests are defined in [package.json](../package.json) and include preview source and regression checks. These tests complement—not replace—the manual browser checks above.
 
 For canonical workout data and coefficients, consult the [template documentation](../templates/README.md). For overall installation, backups and the separation between production and preview, consult the [root README](../README.md). Keep private workout logs and personal health history out of the public Git repository.
+
+## Read-only metric dictionary v1 — preview source, no UI activation
+
+**Status:** Calculation contract and selectors only. `metric-dictionary.js` documents 10 versioned KPI definitions (food kcal/protein, manual kcal/protein, observed 7-day weight, weekly saved sets, kg×reps, scheduled working-set progress, food-logging coverage and explicitly unavailable nutrition adherence). `metric-selectors.js` computes them from caller-provided workout and Food Diary snapshots. It **does not import browser storage**, write records, update dates, change nutrition targets, activate diet rules or render any new UI.
+
+The selectors reuse existing `food-diary-core.js` quantity/nutrient validation and `training-analytics.js` working-set/hold/warm-up/off-plan counting. `dailyNutritionMetrics(workoutState,diary,date)` displays manual daily check-ins and meal-derived known totals as **separate** values, never adds them; reports null for no known-value meals and retains unknown-food counts. `sevenDayWeightMetric(workoutState,endDate)` divides by **actual measured readings** and supplies dates/count. `weeklyTrainingMetrics(workoutState,anchorDate)` returns true counted saved sets, conditional kg×reps (null if all sets are timed holds), and scheduled-set progress (null when no plan). `sevenDayFoodCoverage(diary,endDate)` measures recording presence, not completed nutrition tracking or calorie-target adherence.
+
+**Test inventory:** `tests/metric-dictionary-v1.test.mjs` has 15 adversarial cases spanning exact data contracts, nullable values, independent sources, per-serving maths, date inclusion, weight sample count, dedup/warm-ups, timed holds/off-plan, null denominator, and pure read-only operation. On 28 Oct 2026, all 15 passed in an isolated V8 test harness constructed from fetched exact GitHub source; this is **not** a claim that native repository-wide `node --test` / `npm test` ran. Full native suite and browser/iPhone integration remain separate release gates.
+
+**Next approved scope, separately:** Integrate these read-only selectors into actual Dashboard/Nutrition views behind correct source labels and drilldowns; do not combine `metrics.calories` and Food Diary values, automatically declare nutritional adherence, rewrite stored records, add storage migrations, or promote to production merely because this registry is available.
+
