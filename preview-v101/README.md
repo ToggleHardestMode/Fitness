@@ -1,3 +1,21 @@
+# FitnessPilot V15.20.0 — FP-39 visual polish + vitamin reference units (preview only)
+
+**Main preview:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=53  
+**Nutrition reference / converter:** https://togglehardestmode.github.io/Fitness/preview-v101/nutrition-cheatsheet.html?v=53  
+**Food Diary:** https://togglehardestmode.github.io/Fitness/preview-v101/food-diary.html?v=53
+
+**FP-39:** A final, original CSS layer (`fp39-dark-fantasy.css`) refines warm-gold outlines, deep-blue/plum translucent panels, press feedback, keyboard focus, table legibility and 390–420 px mobile spacing. It applies on the preview dashboard, Nutrition Journey, Food Diary and cheatsheet; preserves the existing DOM, avatar elements and all app/storage schemas. No external fonts, copyrighted game images, runtime dependencies or audio behavior changed. Subjective design acceptance and Safari layout remain for the operator.
+
+**Vitamin unit module:** The Nutrition Cheatsheet now has an explicit **Singapore vs International/North American DRI selector** showing 13 vitamin reference amounts for healthy adult men, with source badges and fallback labels where a Singapore vitamin RDA is not published on HealthHub. Source: [Singapore HealthHub](https://www.healthhub.sg/well-being-and-lifestyle/food-diet-and-nutrition/recommended_dietary_allowances), [Canada/US DRI](https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/dietary-reference-intakes/tables/reference-values-vitamins.html), [unit conversion factors](https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/dietary-reference-intakes/tables.html). A separate converter supports mg/µg, vitamin D IU/µg, A source-dependent IU→RAE, E natural/synthetic IU→mg and dietary-context folate→DFE. SG Vitamin A RE and international RAE are **not** blindly converted. Different reference intakes are comparisons, not unit transformations.
+
+**Scope:** Static informational reference only: no food-log micronutrient measurements, no supplements or dosage instructions, no personalized nutrient prescriptions, no R0–R6 automation. User-reported P0 complete, P1 in progress; this source patch does not itself recertify P0 tests. Production root unchanged.
+
+**Suggested operator acceptance:** Open main preview and check legible cards, buttons, focus and no overlapping character at 375px and desktop. Open Cheatsheet → switch SG/International; check D SG 2.5 µg (100 IU) versus international 15 µg (600 IU), A 750 µg RE versus 900 µg RAE; enter 600 vitamin-D IU and confirm 15 µg. Check food diary still saves edits and no browser data is cleared. No full iPhone/source-to-Pages acceptance has been inferred from a GitHub merge.
+
+**Developer QA:** `npm test`; `node scripts/verify-preview-assets.mjs`; test vitamin units; confirm preview cache and JavaScript module graph. Full checkout/native suite and device QA may require a connected development environment.
+
+---
+
 # FitnessPilot V15.19.2 — Daily Food Diary quick-repeat extension (preview only)
 
 **Diary page:** https://togglehardestmode.github.io/Fitness/preview-v101/food-diary.html?v=52  
