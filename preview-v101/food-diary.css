@@ -17,3 +17,8 @@
 .sg-food-option:hover,.sg-food-option:focus-visible{border-color:#efd292;background:#373044;outline-offset:2px}
 .sg-food-option strong{font-size:14px;font-weight:750}
 .sg-food-option .fd-detail{font-size:11px}
+.fd-recent-list{display:grid;gap:10px}
+.fd-recent-entry{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff20}
+.fd-recent-desc{display:grid;gap:4px;min-width:0;flex:1;color:#ffe4b4}
+.fd-recent-desc strong{overflow-wrap:anywhere}
+@media(max-width:420px){.fd-recent-entry .btn{width:100%;text-align:center}}
