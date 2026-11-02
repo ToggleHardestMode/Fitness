@@ -1,5 +1,6 @@
 // Strength Journey v1: pure selectors and optional feedback; no network or implicit writes.
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const todayLocal = () => {const d=new Date(),pad=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
 const DIFFICULTY = ['easy','target','hard'];
 const TECHNIQUE = ['good','uncertain','poor'];
 const NEXT_DAY = ['good','symptoms','unknown'];
@@ -67,6 +68,7 @@ export function saveStrengthFeedback(state, draft) {
       !NEXT_DAY.includes(draft.nextDay)) throw Error('Select difficulty, technique and next-day response.');
   const session=verifiedSessions(state,draft.templateId,draft.exerciseIndex).find(x=>x.date===draft.date);
   if (!session) throw Error('Feedback must reference a completed session, not a planned load.');
+  if(draft.nextDay==='good' && draft.date>=todayLocal()) throw Error('Next-day response cannot be marked good until a later local calendar day.');
   const note=String(draft.note || '').trim();
   if(note.length>250) throw Error('Feedback note too long.');
   const next=structuredClone(state);
