@@ -30,6 +30,7 @@ $('download-merge').addEventListener('click',()=>{
   if(!result?.safe||!result.merged)throw Error('No safe merge result is available.');
   if(!$('ack').checked)throw Error('Preserve both original backups and check the acknowledgement.');
   if(JSON.stringify(snapshot())!==localJSON)throw Error('This device changed since the preview. Re-import and review the merge.');
+  if(new Blob([JSON.stringify(result.merged)]).size>8_000_000)throw Error('Merged backup exceeds the current 8 MB restore limit; do not attempt restore.');
   save('FitnessPilot-manually-merged-backup.json',result.merged);
   $('transfer-status').textContent='Merged backup file prepared. No restore was performed. Use Tools to inspect and restore explicitly.';
  }catch(error){$('transfer-status').textContent=error.message;}
