@@ -189,6 +189,14 @@ const v102Templates = () => parseWorkouts(V102_CSV).map(t => ({
     } : {})
   }))
 }));
+function twoProgramTemplates() {
+  return [
+    ...parseWorkouts(UNIFIED_UL_CSV).map(t => ({
+      ...t, requiresClinicalReview: t.day === 1 || t.day === 4
+    })),
+    ...v102Templates()
+  ];
+}
 function isPTReview(t) { return !!t?.requiresClinicalReview || !!t?.name?.includes('[PT Review]'); }
 function selectFocusSet() {
   const exercise=state.templates.find(t=>t.id===chosenTemplate)?.exercises[chosenExercise];
@@ -273,6 +281,14 @@ function plan() {
   </section>`:'';
   return `${shellHeading()}${heading('PLAN','Plan your training','Choose workouts, assign training days, and browse your saved templates. Saved sets remain unchanged.')}
   <div class="codex-waypoints" aria-label="Planning steps"><div><b>01</b><span>Add a workout to the library</span></div><div><b>02</b><span>Assign it to training days</span></div><div><b>03</b><span>Log real sets in Train</span></div></div>
+  <section class="card stack codex-program" aria-label="My two workout programs">
+    <div class="eyebrow">TWO PROGRAMS · 8 WORKOUT TEMPLATES</div>
+    <h2>Add my two workout programs</h2>
+    <p class="subtle small">Recovery-Optimized Upper/Lower Unified (80–82 weekly sets; two optional) and Adaptive Recovery UL V10.2 Home (62 weekly sets). Both contain Upper A, Lower A, Upper B and Lower B.</p>
+    <div class="notice warn"><strong>[PT Review]</strong> Lower-body templates are not medical clearance. Lower A and Lower B in the older plan also receive PT-review flags when added here.</div>
+    <div class="quick-actions"><button class="btn" type="button" data-action="two-programs-add">Add both programs to my library</button></div>
+    <p class="hint">Adds missing templates only. Existing workouts, weekly assignments, saved sets, Food Diary and other records stay unchanged. Repeated taps skip duplicates.</p>
+  </section>
   <section class="card codex-board"><div class="card-head"><div><div class="eyebrow">WEEKLY SCHEDULE</div><h2>Choose your training days</h2><p>${Object.keys(state.assignments).filter(k=>state.assignments[k]).length} days assigned · All changes take effect only when you save</p></div></div><form id="schedule-form">${rows}<div class="form-actions"><button class="btn" type="submit">Save weekly schedule</button></div></form></section>
   <div class="section-label"><h2>Current recommended workout · V10.2</h2><span>Optional import</span></div>
   <section class="card stack codex-program"><div class="eyebrow">V10.2 · OVERLAP-AWARE</div><h2>Adaptive Recovery UL — V10.2</h2>
@@ -461,6 +477,12 @@ document.addEventListener('click', event=>{
       focusMode=!focusMode;
       if(focusMode) selectFocusSet();
       render();
+      return;
+    }
+    if(act==='two-programs-add') {
+      const result=addWorkouts(state,twoProgramTemplates(),false);
+      if(result.added) commit(result.state,`Added ${result.added} templates from your two programs; ${result.skipped} already present. Weekly schedule and workout logs unchanged.`);
+      else toast('Both programs are already in your library. No duplicates added.');
       return;
     }
     if(act==='v102-add') {
