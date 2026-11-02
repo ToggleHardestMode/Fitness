@@ -18,7 +18,7 @@ function fixture() {
 test('preview is read-only and shows exact deletion/preservation counts',()=>{
   const source=fixture(),before=structuredClone(source);
   const {counts,nextState}=resetTrackingData(source);
-  assert.deepEqual(counts,{templatesKept:4,assignmentsKept:4,setsRemoved:1,checkinsRemoved:1,symptomsRemoved:0});
+  assert.deepEqual(counts,{templatesKept:4,assignmentsKept:4,setsRemoved:1,checkinsRemoved:1,symptomsRemoved:0,feedbackRemoved:0,restartBaselinesRemoved:0});
   assert.equal(nextState,null);
   assert.deepEqual(source,before);
 });
@@ -32,6 +32,8 @@ test('explicit apply drops records and preserves workout templates, schedule and
   assert.deepEqual(nextState.logs,[]);
   assert.deepEqual(nextState.metrics,[]);
   assert.deepEqual(nextState.symptomLogs,[]);
+  assert.deepEqual(nextState.strengthFeedback,[]);
+  assert.deepEqual(nextState.strengthJourneyStarts,{});
   assert.deepEqual(source,before);
   assert.deepEqual(validateBackup(JSON.parse(JSON.stringify(nextState))),nextState);
 });
