@@ -1,11 +1,11 @@
 // FitnessPilot's data rules. No network calls or browser-specific APIs.
 import { validateSymptomLogs } from './symptom-journal.js';
-import { validateStrengthFeedback } from './strength-journey.js';
+import { validateStrengthFeedback, validateStrengthJourneyStarts } from './strength-journey.js';
 
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 export const STORAGE_KEY = "fitnesspilot.preview.v101.v1";
-export const emptyState = () => ({ version: 1, templates: [], assignments: {}, logs: [], metrics: [], strengthFeedback: [], reminder: { hour: 18, minute: 30, lead: 0 } });
+export const emptyState = () => ({ version: 1, templates: [], assignments: {}, logs: [], metrics: [], strengthFeedback: [], strengthJourneyStarts: {}, reminder: { hour: 18, minute: 30, lead: 0 } });
 
 export const STARTER_CSV = `day,workout,exercise,muscle,sets,rep_min,rep_max,rest_seconds
 Mon,Upper A,Dumbbell Bench Press,Chest,3,8,12,120
@@ -332,6 +332,7 @@ export function validateBackup(value) {
   }
   validateSymptomLogs(value);
   validateStrengthFeedback(value);
+  validateStrengthJourneyStarts(value);
   const rem=value.reminder;
   if(!rem) fail("Backup lacks reminder settings.");
   intRange(rem.hour,"Reminder hour",0,23);intRange(rem.minute,"Reminder minute",0,59);intRange(rem.lead,"Reminder lead",0,120);
