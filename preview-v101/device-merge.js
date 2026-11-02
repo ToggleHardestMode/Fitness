@@ -35,6 +35,16 @@ export function previewDeviceMerge(localInput,remoteInput){
     output[field]=[...byId.values()];
     summary[field]={onThisDevice:a.length,onImport:b.length,added};
   }
+  const mergedStarts={...(local.strengthJourneyStarts||{})};
+  let startsAdded=0;
+  for(const [id,date] of Object.entries(remote.strengthJourneyStarts||{})){
+    if(Object.hasOwn(mergedStarts,id) && mergedStarts[id]!==date)
+      conflicts.push({collection:'strengthJourneyStarts',key:id,reason:'Both devices chose different restart dates.'});
+    else if(!Object.hasOwn(mergedStarts,id)){mergedStarts[id]=date;startsAdded++;}
+  }
+  output.strengthJourneyStarts=mergedStarts;
+  summary.strengthJourneyStarts={onThisDevice:Object.keys(local.strengthJourneyStarts||{}).length,
+    onImport:Object.keys(remote.strengthJourneyStarts||{}).length,added:startsAdded};
   const blankLocal = local.templates.length===0 && local.logs.length===0 && local.metrics.length===0 &&
     (local.symptomLogs||[]).length===0 && (local.strengthFeedback||[]).length===0;
   if(blankLocal){output.assignments=structuredClone(remote.assignments);output.reminder=structuredClone(remote.reminder);}
