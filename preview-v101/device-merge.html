@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; connect-src 'self'">
+<title>Manual Device Transfer · FitnessPilot Preview</title>
+<link rel="stylesheet" href="./strength-journey.css"></head>
+<body><header><a href="./index.html">← FitnessPilot</a><span>PREVIEW · MANUAL BACKUP TRANSFER</span></header>
+<main><h1>Phone ↔ PC: backup transfer</h1>
+<p>This is <strong>not automatic cloud sync</strong>. It merges distinct saved records from two FitnessPilot JSON backups without overwriting existing sets. Conflicting edits require review; no records are silently replaced or deleted.</p>
+<section class="card"><h2>1. Preserve both original backups</h2><p>On each device: Tools → Download full backup (.json). Keep both files in a secure location. Food Diary has separate storage and is not part of this merger.</p>
+<button id="download-local" type="button">Download this device's current backup</button>
+</section>
+<section class="card"><h2>2. Inspect the other device's backup</h2>
+<label>Select another FitnessPilot backup<input id="other-backup" type="file" accept=".json,application/json"></label>
+<div id="preview" role="status" aria-live="polite">No file selected; nothing changed.</div></section>
+<section class="card"><h2>3. Save merged file, then restore explicitly</h2>
+<p>Only after confirming zero conflicts, download the merged backup. In FitnessPilot Tools, use the existing backup restore flow and type REPLACE after separately backing up your current records. Verify counts and saved sets.</p>
+<label><span><input id="ack" type="checkbox" style="width:auto"> I have preserved both original backup files and reviewed the merge summary</span></label>
+<button id="download-merge" type="button" disabled>Download verified merged backup</button>
+<p class="help">No remote upload, login or backend is involved. Restore is intentionally a separate step; this page cannot modify your saved workouts.</p></section>
+<div id="transfer-status" role="status" aria-live="polite"></div>
+</main><script type="module" src="./device-merge-page.js"></script></body></html>
