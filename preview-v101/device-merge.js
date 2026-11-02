@@ -35,9 +35,12 @@ export function previewDeviceMerge(localInput,remoteInput){
     output[field]=[...byId.values()];
     summary[field]={onThisDevice:a.length,onImport:b.length,added};
   }
-  if(canonical(local.assignments)!==canonical(remote.assignments))
+  const blankLocal = local.templates.length===0 && local.logs.length===0 && local.metrics.length===0 &&
+    (local.symptomLogs||[]).length===0 && (local.strengthFeedback||[]).length===0;
+  if(blankLocal){output.assignments=structuredClone(remote.assignments);output.reminder=structuredClone(remote.reminder);}
+  else if(canonical(local.assignments)!==canonical(remote.assignments))
     conflicts.push({collection:'assignments',key:'weekly-schedule',reason:'Different weekly schedules require an explicit choice.'});
-  if(canonical(local.reminder)!==canonical(remote.reminder))
+  if(!blankLocal && canonical(local.reminder)!==canonical(remote.reminder))
     conflicts.push({collection:'reminder',key:'reminder-settings',reason:'Different reminder settings require an explicit choice.'});
   if(conflicts.length)return {safe:false,conflicts,summary,merged:null};
   try{
