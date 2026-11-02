@@ -1,5 +1,5 @@
 import {STORAGE_KEY,validateBackup} from './core.js';
-import {exerciseChoices,verifiedSessions,saveStrengthFeedback,nextSessionTarget} from './strength-journey.js';
+import {exerciseChoices,verifiedSessions,saveStrengthFeedback,nextSessionTarget,setJourneyStart} from './strength-journey.js';
 const root=document.getElementById('journey-content'),status=document.getElementById('journey-status');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=v=>Number(v).toLocaleString('en-SG',{maximumFractionDigits:2});
@@ -32,10 +32,13 @@ function render(){
   if(!options.some(o=>o.templateId+'|'+o.exerciseIndex===selected))selected=options[0].templateId+'|'+options[0].exerciseIndex;
   const [id,indexText]=selected.split('|'), index=Number(indexText),e=state.templates.find(t=>t.id===id)?.exercises[index];
   const sessions=verifiedSessions(state,id,index);
-  if(!sessions.some(x=>x.date===chosenDate))chosenDate=sessions.at(-1).date;
-  const oldest=sessions[0],last=sessions.at(-1);
+  const savedStart=state.strengthJourneyStarts?.[selected];
+  const startDate=sessions.some(s=>s.date===savedStart)?savedStart:sessions[0].date;
+  const visibleSessions=sessions.filter(s=>s.date>=startDate);
+  if(!visibleSessions.some(x=>x.date===chosenDate))chosenDate=visibleSessions.at(-1).date;
+  const oldest=visibleSessions[0],last=visibleSessions.at(-1);
   const parsed=available.trim()?available.split(',').map(v=>Number(v.trim())):[];
-  const calc=nextSessionTarget(state,{templateId:id,exerciseIndex:index,nextDate,incrementsKg:verifiedUnit?parsed:[]});
+  const calc=nextSessionTarget(state,{templateId:id,exerciseIndex:index,nextDate,incrementsKg:verifiedUnit?parsed:[],journeyStartDate:startDate});
   const notice=calc.candidate
     ? calc.candidate.map(v=>'Set '+v.set+': '+fmt(v.kg)+' kg × '+v.reps+' reps').join(' · ')
     : 'No automatic increase recommended';
@@ -44,13 +47,13 @@ function render(){
   const prior=(state.strengthFeedback||[]).find(f=>f.date===chosenDate&&f.templateId===id&&f.exerciseIndex===index);
   root.innerHTML='<section class="card"><label>Exercise / exact saved template<select id="journey-exercise">'+
     options.map(o=>'<option value="'+esc(o.templateId+'|'+o.exerciseIndex)+'" '+((o.templateId+'|'+o.exerciseIndex)===selected?'selected':'')+'>'+esc(o.label)+'</option>').join('')+
-    '</select></label><p class="help">Different workout versions are intentionally separate. There is no automatic exercise-name merging.</p>'+
+    '</select></label><label>Verified restart Day 1<select id="journey-start-date">'+sessions.map(s=>'<option value="'+esc(s.date)+'" '+(s.date===startDate?'selected':'')+'>'+esc(s.date)+'</option>').join('')+'</select></label><p class="help">The earliest recorded session is selected by default. If earlier logs predate your restart, choose the actual completed restart date. This setting is included in JSON backups.</p><p class="help">Different workout versions are intentionally separate. There is no automatic exercise-name merging.</p>'+
     '<div class="grid"><div class="stat"><span>Day 1 · first saved session</span><strong>'+esc(oldest.date)+'</strong></div>'+
     '<div class="stat"><span>Last saved session</span><strong>'+esc(last.date)+'</strong></div>'+
-    '<div class="stat"><span>Verified sessions</span><strong>'+sessions.length+'</strong></div>'+
+    '<div class="stat"><span>Verified sessions since Day 1</span><strong>'+visibleSessions.length+'</strong></div>'+
     '<div class="stat"><span>Latest max set (kg logged)</span><strong>'+fmt(last.heaviest)+'</strong></div></div></section>'+
-    '<section class="card"><h2>'+esc(e.name)+'</h2>'+paint(sessions)+
-    '<div class="sessions">'+sessions.map(s=>'<details class="session" '+(s.date===chosenDate?'open':'')+' id="session-'+esc(s.date)+'"><summary>'+esc(s.date)+' · '+fmt(s.heaviest)+' kg top completed set · '+s.rows.length+' sets</summary><ul>'+
+    '<section class="card"><h2>'+esc(e.name)+'</h2>'+paint(visibleSessions)+
+    '<div class="sessions">'+visibleSessions.map(s=>'<details class="session" '+(s.date===chosenDate?'open':'')+' id="session-'+esc(s.date)+'"><summary>'+esc(s.date)+' · '+fmt(s.heaviest)+' kg top completed set · '+s.rows.length+' sets</summary><ul>'+
       s.rows.map(r=>'<li>Set '+r.set+': '+fmt(r.kg)+' kg × '+r.reps+' '+noteUnit+' · '+(r.rpe==null?'RPE not recorded':'RPE '+fmt(r.rpe))+(r.notes?' · '+esc(r.notes):'')+'</li>').join('')+
     '</ul></details>').join('')+'</div></section>'+
     '<section class="card recommend"><h2>Next-session recommendation</h2><div class="inline"><label>Target date<input id="journey-next-date" type="date" value="'+esc(nextDate)+'"></label>'+
@@ -59,7 +62,7 @@ function render(){
     '<p class="help">Enter actual achievable dumbbell weights; a 10% single-step ceiling applies. No default increments or per-hand units are assumed.</p>'+
     '<p><strong>'+esc(notice)+'</strong></p><p>'+esc(calc.reason)+'</p><small>Ruleset '+esc(calc.ruleset)+' · Source '+esc(calc.sourceDate||'none')+' · Not automatically applied or recorded</small></section>'+
     '<section class="card"><h2>Record performance feedback</h2><p class="help">Optional feedback on a completed workout. Next-day response means a genuinely observed later check-in. It is not medical clearance. Existing symptom journal observations remain mandatory for suggested increases.</p>'+
-    '<form id="journey-feedback"><label>Completed session<select name="date" id="journey-feedback-date">'+sessions.map(s=>'<option value="'+s.date+'" '+(s.date===chosenDate?'selected':'')+'>'+s.date+'</option>').join('')+'</select></label>'+
+    '<form id="journey-feedback"><label>Completed session<select name="date" id="journey-feedback-date">'+visibleSessions.map(s=>'<option value="'+s.date+'" '+(s.date===chosenDate?'selected':'')+'>'+s.date+'</option>').join('')+'</select></label>'+
     '<div class="grid"><label>Difficulty<select name="difficulty">'+[['','Choose…'],['easy','Too easy'],['target','On target'],['hard','Too hard']].map(([v,l])=>'<option value="'+v+'" '+(prior?.difficulty===v?'selected':'')+'>'+l+'</option>').join('')+'</select></label>'+
     '<label>Technique<select name="technique">'+[['','Choose…'],['good','Controlled'],['uncertain','Uncertain'],['poor','Compromised']].map(([v,l])=>'<option value="'+v+'" '+(prior?.technique===v?'selected':'')+'>'+l+'</option>').join('')+'</select></label>'+
     '<label>Next-day response<select name="nextDay">'+[['unknown','Unknown / not yet checked'],['good','Observed acceptable'],['symptoms','Concerning / worse']].map(([v,l])=>'<option value="'+v+'" '+((prior?.nextDay||'unknown')===v?'selected':'')+'>'+l+'</option>').join('')+'</select></label></div>'+
@@ -68,6 +71,13 @@ function render(){
 }
 root.addEventListener('change',e=>{
  if(e.target.id==='journey-exercise'){selected=e.target.value;chosenDate='';render();}
+ if(e.target.id==='journey-start-date'){
+  try{const [templateId,exerciseIndex]=selected.split('|');
+   const saved=setJourneyStart(read(),{templateId,exerciseIndex:Number(exerciseIndex),startDate:e.target.value});
+   localStorage.setItem(STORAGE_KEY,JSON.stringify(validateBackup(saved)));
+   chosenDate='';status.textContent='Verified Day 1 changed; earlier records were preserved.';render();
+  }catch(error){status.textContent=error.message;render();}
+ }
  if(e.target.id==='journey-next-date'){nextDate=e.target.value;render();}
  if(e.target.id==='journey-increments'){available=e.target.value;render();}
  if(e.target.id==='journey-verify-unit'){verifiedUnit=e.target.checked;render();}
