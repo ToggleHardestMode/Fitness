@@ -1,0 +1,32 @@
+name: FitnessPilot preview regression
+on:
+  push:
+    branches:
+      - feature/strength-journey-foundation-20261102
+  pull_request:
+    paths:
+      - 'preview-v101/**'
+      - 'tests/**'
+      - 'package.json'
+      - '.github/workflows/fitnesspilot-strength-journey.yml'
+permissions:
+  contents: read
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run complete Node regression suite
+        run: npm test
+      - name: Check updated JavaScript syntax
+        run: |
+          node --check preview-v101/strength-journey.js
+          node --check preview-v101/strength-journey-page.js
+          node --check preview-v101/device-merge.js
+          node --check preview-v101/device-merge-page.js
+          node --check preview-v101/app.js
+          node --check preview-v101/core.js
