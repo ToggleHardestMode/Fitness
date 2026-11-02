@@ -1,3 +1,19 @@
+# FitnessPilot V15.21.0 — one action to add two saved workout programs (preview only)
+
+**Test URL:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=57
+
+**Plan → Add both programs to my library** offers the two user-source-derived workout programs in a prominent, single opt-in action:
+- **Recovery-Optimized Upper/Lower Unified (30 Sep 2026)** — 4 sessions, 27 exercise entries, 82 available working sets (80 if both optional Face Pull / Lateral Raise third sets are omitted).
+- **Adaptive Recovery UL V10.2 Home** — 4 sessions, 24 exercise entries, 62 prescribed working sets.
+
+The click imports up to eight **missing** workout templates, preserving different top/back-off rep targets and the canonical V10.2 source notes and muscle labels. The two older lower-body sessions are explicitly tagged for PT review at import, as are V10.2 lower-body sessions. This adds no automatic training schedule or medical clearance; existing workouts, logs, Food Diary, symptoms and assignments are unchanged. Repeat action skips identical templates. If earlier Unified lower-body templates were already imported, they remain unchanged; the new action does not mutate previously stored records or retroactively add warnings.
+
+These plans already existed in the code as individually selectable imports; this change makes them easy to find and add together. Because the app is local-first, publishing the preview does **not** put workouts into a user's private device storage: the operator must tap the in-app Add action on the actual device. No production-root code changes.
+
+**Verification gates:** check 8 parsed templates with exact 4/4 schedule and 82+62 sets, four PT-review lower sessions, additive import and repeat idempotence; run `node --test tests/two-programs-import.test.mjs`, `npm test`, and `node scripts/verify-preview-assets.mjs` in a full checkout. Verify deployed Pages banner and manually tap the button in iPhone Safari, then check workout library and saved records. Do **not** clear Safari data.
+
+---
+
 # FitnessPilot V15.20.1 — Nutrition quick links at top of Dashboard (preview only)
 
 **Main preview:** https://togglehardestmode.github.io/Fitness/preview-v101/?v=54
