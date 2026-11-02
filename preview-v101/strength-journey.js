@@ -6,7 +6,8 @@ const TECHNIQUE = ['good','uncertain','poor'];
 const NEXT_DAY = ['good','symptoms','unknown'];
 const isPT = (t,e) => !!t?.requiresClinicalReview ||
   /\[PT Review\]|\blower\b/i.test(t?.name || '') ||
-  /\[PT Review\]|\b(squat|deadlift|lunge|rdl|hip hinge|split squat)\b/i.test(e?.name || '');
+  /\[PT Review\]|\b(squat|deadlift|lunge|rdl|hip hinge|split squat|leg press|leg extension|leg curl|calf raise|glute bridge|hip thrust|hamstring|quadriceps)\b/i.test(e?.name || '') ||
+  /\b(quad|hamstring|glute|calf|legs?|lower)\b/i.test(e?.muscle || '');
 const concern = r => r.severity !== 0 || r.tingling !== false ||
   r.numbness !== false || r.functionChange !== 'none' || r.location !== 'none';
 const scope = (x, t, i) => x.templateId === t && x.exerciseIndex === i;
@@ -43,6 +44,30 @@ export function exerciseChoices(state) {
 
 const comparableSnapshot = (rows) => JSON.stringify(rows.map(x =>
   [x.id,x.set,x.kg,x.reps,x.rpe ?? null,x.notes || '',x.tempo || '']));
+export function validateStrengthJourneyStarts(state) {
+  if (state.strengthJourneyStarts === undefined) return;
+  const starts=state.strengthJourneyStarts;
+  if (!starts || Array.isArray(starts) || typeof starts!=='object' || Object.keys(starts).length>5000)
+    throw Error('Invalid journey restart baselines.');
+  for(const [scopeId,start] of Object.entries(starts)){
+    const split=scopeId.lastIndexOf('|');
+    if(split<=0 || !DATE.test(start)) throw Error('Invalid journey restart date.');
+    const templateId=scopeId.slice(0,split),index=Number(scopeId.slice(split+1));
+    if(!Number.isInteger(index) || !state.templates.some(t=>t.id===templateId && t.exercises?.[index]))
+      throw Error('Journey baseline refers to a missing exercise.');
+  }
+}
+
+export function setJourneyStart(state,{templateId,exerciseIndex,startDate}){
+  if(!verifiedSessions(state,templateId,exerciseIndex).some(s=>s.date===startDate))
+    throw Error('Day 1 must be a genuinely completed session date.');
+  const next=structuredClone(state);
+  next.strengthJourneyStarts ||= {};
+  next.strengthJourneyStarts[templateId+'|'+exerciseIndex]=startDate;
+  validateStrengthJourneyStarts(next);
+  return next;
+}
+
 export function validateStrengthFeedback(state) {
   if (state.strengthFeedback === undefined) return;
   const arr=state.strengthFeedback, seen=new Set();
@@ -101,10 +126,11 @@ function clearedRecord(state,session,templateId,exerciseIndex) {
   return {ok:true,reason:'All recorded feedback gates met; not medical clearance.'};
 }
 
-export function nextSessionTarget(state, {templateId,exerciseIndex,nextDate,incrementsKg=[]}) {
+export function nextSessionTarget(state, {templateId,exerciseIndex,nextDate,incrementsKg=[],journeyStartDate=null}) {
   const t=state.templates.find(x=>x.id===templateId),e=t?.exercises?.[exerciseIndex];
   if(!e || !DATE.test(nextDate)) throw Error('Choose a valid exercise and next date.');
-  const all=verifiedSessions(state,templateId,exerciseIndex).filter(s=>s.date<nextDate);
+  const start=journeyStartDate || state.strengthJourneyStarts?.[templateId+'|'+exerciseIndex] || null;
+  const all=verifiedSessions(state,templateId,exerciseIndex).filter(s=>s.date<nextDate && (!start||s.date>=start));
   const latest=all.at(-1),previous=all.at(-2);
   const base={status:'hold',candidate:null,sourceDate:latest?.date||null,ruleset:'strength-journey-v1'};
   if(!latest)return {...base,reason:'No verified earlier session. Log actual completed sets first.'};
