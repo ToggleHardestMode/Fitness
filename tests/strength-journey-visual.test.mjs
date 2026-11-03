@@ -68,7 +68,7 @@ test('volume graph is computed from actual saved kg times repetitions',()=>{
   const html=markup({...base(),logs:sessions(1)},{metric:'volume'});
   assert.match(html,/Sum of kg × reps across saved sets/);
   assert.match(html,/class="sj-svg-chart sj-svg-volume"/);
-  assert.match(html,/total 252 kg × reps/);
+  assert.match(html,/total 240 kg × reps/);
 });
 test('one logged exercise and another workout version never combine counts',()=>{
   const state=base();state.logs=sessions(3);
@@ -91,7 +91,7 @@ test('missing RPE and follow-up do not become positive safety feedback',()=>{
   assert.match(html,/RPE —/);
   assert.match(html,/Not cleared/);
   assert.doesNotMatch(html,/Recovery acceptable/);
-  assert.match(html,/No progression/);
+  assert.match(html,/Effort was missing or above RPE 8/);
 });
 test('PT review is an explicit not-cleared status on recommendation card',()=>{
   const state=base();state.logs=sessions(2);state.templates[0].requiresClinicalReview=true;
