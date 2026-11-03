@@ -4,7 +4,7 @@ import {getExerciseJourney, recommendNextExercise} from './strength-journey.js';
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g,
   character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 const fmt = number => Number(number).toLocaleString('en-SG', {maximumFractionDigits:2});
-const dateLabel = value => new Date(value+'T12:00:00').toLocaleDateString('en-SG',
+const dateLabel = value => new Date(value+'T12:00:00').toLocaleDateString('en-US',
   {month:'short',day:'2-digit'});
 const dateLong = value => new Date(value+'T12:00:00').toLocaleDateString('en-SG',
   {day:'numeric',month:'short',year:'numeric'});
