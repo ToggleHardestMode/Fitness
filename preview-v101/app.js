@@ -21,7 +21,7 @@ import { createExerciseVersion } from './template-version.js';
 import { workoutLogbookHtml, workoutLogbookCsv } from './workout-logbook.js';
 import { strengthDashboard, strengthNextSession } from './strength-journey-ui.js';
 import { verifyLocalSnapshot, inspectBackupFileText } from './recovery-check.js';
-import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
+import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, dateFromKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
 
 const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -603,6 +603,19 @@ document.addEventListener('change',event=>{
 document.addEventListener('submit',event=>{
   event.preventDefault();const form=event.target;
   tryAction(()=>{
+    if(form.id==='strength-start-form'){
+      const start=form.elements.start.value;
+      if(start){
+        dateFromKey(start);
+        if(start>today())throw Error('Day 1 cannot be in the future.');
+      }
+      const next=structuredClone(state);
+      if(start)next.strengthJourneyStartDate=start;
+      else delete next.strengthJourneyStartDate;
+      strengthJourneyIndex=0;
+      commit(next,start?'Journey start date saved. Your earlier workout history remains intact.':'Journey start reset to first saved session. History unchanged.');
+      return;
+    }
     if(form.id==='strength-step-form'){
       const raw=form.elements.step.value;
       const value=raw===''?null:Number(raw);
