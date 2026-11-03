@@ -335,6 +335,7 @@ export function validateBackup(value) {
   for(const m of value.metrics) { dateFromKey(m.date);if(metricDays.has(m.date))fail("Backup contains duplicate check-in dates.");metricDays.add(m.date);
     for(const [key,min,max,whole] of [["weight",1,400,false],["calories",0,15000,true],["protein",0,600,true],["sleep",0,24,false],["recovery",1,5,true]])if(m[key] != null)(whole?intRange(m[key],key,min,max):numRange(m[key],key,min,max));
   }
+  if (value.strengthJourneyStartDate !== undefined) dateFromKey(value.strengthJourneyStartDate);
   if (value.progressionStepKg !== undefined && ![0.5,1,2,2.5,4].includes(value.progressionStepKg))
     fail("Backup contains an invalid dumbbell increment.");
   validateSymptomLogs(value);
