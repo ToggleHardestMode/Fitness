@@ -153,6 +153,8 @@ test('nine-session compact charts keep every real data point and readable-date l
   const data=base();data.logs=sessions(9);
   const html=markup(data);
   assert.equal((html.match(/class="sj-svg-dot"/g)||[]).length,18);
+  // Nine real points per chart, but only five readable date labels per chart.
+  assert.equal((html.match(/class="sj-svg-date"/g)||[]).length,10);
   assert.match(html,/viewBox="0 0 410 151"/);
   assert.match(html,/Nov 02/);
   assert.match(html,/Nov 26/);
