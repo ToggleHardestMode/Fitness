@@ -91,14 +91,18 @@ export function recommendNextExercise(state, {templateId, exerciseIndex, date}) 
   const targets = latest.sets.map(row => exercise.setTargets?.[row.set - 1] ||
     {min:exercise.min, max:exercise.max});
   if (latest.sets.some((row, index) =>
-    row.reps < targets[index].min || row.reps > targets[index].max))
-    return hold("Some saved repetitions are outside the prescribed range. Review the load.");
+    row.reps < targets[index].min ||
+    (row.reps > targets[index].max && !(row.difficulty === "too_easy" && row.rpe <= 6))))
+    return hold("Repetitions are outside the prescribed range without verified low-effort feedback. Review the load.");
   const sameLoad = latest.sets.every(row => row.kg === latest.sets[0].kg);
   if (!sameLoad) return hold("Previous sets used different loads. Calibrate each working set manually.");
   if (latest.sets.some((row, index) => row.reps < targets[index].max)) {
+    const easy = latest.sets.every(row => row.difficulty === "too_easy" && row.rpe <= 6);
+    const extra = easy ? 2 : 1;
     return {...base, status:"rep", targets:latest.sets.map((row, index) =>
-      ({set:row.set, kg:row.kg, reps:Math.min(row.reps + 1, targets[index].max)})),
-      reason:"Recovery and effort gates passed. Trial: one more rep within each set range."};
+      ({set:row.set, kg:row.kg, reps:Math.min(row.reps + extra, targets[index].max)})),
+      reason:easy ? "Low-effort feedback recorded with recovery gates passed. Trial: up to two more reps per set." :
+        "Recovery and effort gates passed. Trial: one more rep within each set range."};
   }
   const previous = sessions.at(-2);
   if (!previous || previous.sets.length !== exercise.sets ||
