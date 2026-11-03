@@ -32,6 +32,15 @@ function plot(sessions) {
       esc(sessions.at(-1).date) + '</text></svg>';
 }
 
+function startDateForm(state) {
+  return '<form id="strength-start-form" class="strength-start-form">' +
+    '<label class="form-label" for="strength-start">Restart journey Day 1 (optional)</label>' +
+    '<div class="strength-step-row"><input class="field" type="date" id="strength-start" name="start" value="' +
+      esc(state.strengthJourneyStartDate || "") + '">' +
+    '<button class="btn secondary" type="submit">Save Day 1</button></div>' +
+    '<p class="hint">Leave blank to use the earliest saved session. Setting a new start date only filters the journey and its targets; older records stay in your logbook.</p></form>';
+}
+
 export function strengthDashboard(state, selectedIndex = 0) {
   const choices = [];
   for (const template of state.templates || []) {
@@ -42,7 +51,8 @@ export function strengthDashboard(state, selectedIndex = 0) {
     });
   }
   if (!choices.length) return '<section class="card strength-card"><h2>Strength Journey</h2>' +
-    '<p class="hint">Your Day 1 chart appears when you save a completed weight-based working set. No sample values are used.</p></section>';
+    '<p class="hint">Your Day 1 chart appears when you save a completed weight-based working set on or after your selected restart date. No sample values are used.</p>' +
+    startDateForm(state) + '</section>';
   const index = Number.isInteger(selectedIndex) && selectedIndex >= 0 &&
     selectedIndex < choices.length ? selectedIndex : 0;
   const chosen = choices[index], journey = chosen.journey;
@@ -58,7 +68,8 @@ export function strengthDashboard(state, selectedIndex = 0) {
   return '<section class="card strength-card" aria-label="Strength journey">' +
     '<div class="card-head"><div><h2>Strength Journey</h2>' +
     '<p>Actual recorded workouts from Day 1 · saved sets only</p></div>' +
-    '<span class="badge">ALL-TIME</span></div>' +
+    '<span class="badge">SINCE DAY 1</span></div>' +
+    startDateForm(state) +
     '<label class="strength-filter"><span class="form-label">Exercise (workout version kept separate)</span>' +
     '<select class="field" id="strength-exercise">' +
     choices.map(({template,exercise},i) => '<option value="' + i + '"' +
