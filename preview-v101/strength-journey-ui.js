@@ -4,24 +4,24 @@ const esc = value => String(value ?? "").replace(/[&<>"']/g,
   mark => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[mark]));
 const fmt = value => Number(value).toLocaleString("en-SG",{maximumFractionDigits:2});
 
-function plot(sessions) {
+function plot(sessions, measure = "kg") {
   if (!sessions.length) return '<p class="hint">No completed sets for this exercise yet.</p>';
   const width = 600, left = 40, right = 580, top = 18, bottom = 172;
-  const highest = Math.max(1, ...sessions.map(row => row.kg));
+  const highest = Math.max(1, ...sessions.map(row => row[measure]));
   const ceiling = Math.max(1, Math.ceil(highest / 2) * 2);
   const x = index => sessions.length === 1 ? (left + right) / 2 :
     left + (right - left) * index / (sessions.length - 1);
-  const y = kg => bottom - (bottom - top) * kg / ceiling;
+  const y = value => bottom - (bottom - top) * value / ceiling;
   const path = sessions.map((row,index) =>
-    fmt(x(index)) + "," + fmt(y(row.kg))).join(" ");
+    fmt(x(index)) + "," + fmt(y(row[measure]))).join(" ");
   const circles = sessions.map((row,index) =>
-    '<circle cx="' + fmt(x(index)) + '" cy="' + fmt(y(row.kg)) +
+    '<circle cx="' + fmt(x(index)) + '" cy="' + fmt(y(row[measure])) +
     '" r="5" class="strength-point"><title>' + esc(row.date + ": " +
     fmt(row.kg) + " kg × " + row.reps + " reps (heaviest saved set)") +
     '</title></circle>').join("");
   return '<svg class="strength-plot" viewBox="0 0 600 205" role="img" aria-label="' +
     esc("Actual heaviest saved working set each session from " +
-      sessions[0].date + " through " + sessions.at(-1).date) + '">' +
+      sessions[0].date + " through " + sessions.at(-1).date + " · " + measure) + '">' +
     '<line x1="40" x2="580" y1="172" y2="172" class="strength-axis"/>' +
     '<line x1="40" x2="580" y1="18" y2="18" class="strength-grid"/>' +
     '<text x="8" y="22" class="strength-label">' + fmt(ceiling) + '</text>' +
@@ -81,6 +81,7 @@ export function strengthDashboard(state, selectedIndex = 0) {
       (calibrated.loadChange == null ? "—" :
         (calibrated.loadChange > 0 ? "+" : "") + fmt(calibrated.loadChange) + " kg") +
       '</strong></div></div>' + plot(sessions) +
+    '<details class="strength-reps"><summary>Show repetitions trend</summary>' + plot(sessions, "reps") + '</details>' +
     '<p class="hint">Each point is the heaviest saved working set that day, not a strength prediction. ' +
     'Reps, RPE and qualitative feedback remain inspectable below. Kilograms are displayed exactly as entered.</p>' +
     '<div class="strength-session-list">' + rows + '</div>' +
@@ -107,7 +108,7 @@ export function strengthNextSession(state, selection) {
     '<div class="strength-calibration">Calibration: ' + journey.calibrated.sessions +
     ' saved session(s) · ' + journey.calibrated.ratedSets + '/' +
     journey.calibrated.totalSets + ' sets rated for effort</div>' +
-    '<form id="strength-step-form"><label class="form-label" for="strength-step">Smallest available per-dumbbell weight increase</label>' +
+    '<form id="strength-step-form"><label class="form-label" for="strength-step">Smallest available load increment (in recorded kg units)</label>' +
     '<div class="strength-step-row"><select class="field" id="strength-step" name="step">' +
     options.map(([value,label]) => '<option value="' + value + '"' +
     (step === value ? ' selected' : '') + '>' + label + '</option>').join("") +
