@@ -19,7 +19,7 @@ import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
 import { workoutLogbookHtml, workoutLogbookCsv } from './workout-logbook.js';
-import { manualProgressionPanel } from './manual-progression-ui.js';
+import { strengthDashboard, strengthNextSession } from './strength-journey-ui.js';
 import { verifyLocalSnapshot, inspectBackupFileText } from './recovery-check.js';
 import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
 
@@ -53,6 +53,7 @@ try {
 }
 let page='dashboard', activeDate=today(), chosenTemplate=null, chosenExercise=0, pendingWorkouts=null, pendingBackup=null;
 let focusMode=false, focusSet=0, customizing=null;
+let strengthJourneyIndex=0;
 let timerEnd=null,timerHandle=null, audioContext=null, toastHandle=null;
 const SLIME_HIT_SETTING='fitnesspilot.preview.v101.ui.slime-hit.v1';
 let slimeHitEnabled=false,slimeHitTimer=null;
@@ -151,6 +152,7 @@ function dashboard() {
   const days=DAYS.map((d,i)=>{const t=state.templates.find(t=>t.id===state.assignments[i]);return `<div class="day-tile ${t?'active':''}"><strong>${d}</strong><span>${esc(t?.name||'Rest')}</span></div>`;}).join('');
   const nextDay=(()=>{for(let i=0;i<7;i++){const day=weekdayOf(addDays(today(),i));const t=state.templates.find(t=>t.id===state.assignments[day]);if(t)return {date:addDays(today(),i),t};}return null;})();
   return `${shellHeading()}<nav class="fp-top-nutrition" aria-label="Nutrition quick links"><a class="btn fp-top-nutrition-link" href="./nutrition.html">Nutrition</a><a class="btn secondary fp-top-nutrition-link" href="./nutrition-cheatsheet.html">Cheatsheet</a></nav>${dashboardAdventurer()}${gildedSummary(analysis,nextDay,lifetimeTrainingSets(state))}${!state.templates.length?initialCard():`<section class="hero codex-quest"><div class="quest-topline"><span>✦ NEXT WORKOUT</span><span class="quest-date">${nextDay?(nextDay.date===today()?'TODAY':nice(nextDay.date)):'UNASSIGNED'}</span></div><h1>${nextDay?esc(nextDay.t.name):'Your weekly plan is ready to set up.'}</h1><p class="quest-subtitle">${nextDay?'Your next scheduled workout. Only saved working sets count as progress.':'Choose your training days in Plan before heading into the training hall.'}</p><div class="quest-facts">${nextDay?`<span>${nextDay.t.exercises.length} exercises</span><span>${nextDay.t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</span><span>${isPTReview(nextDay.t)?'PT review required':'Scheduled'}</span>`:'<span>Choose a plan</span><span>Log actual sets</span>'}</div><button class="btn" data-page="${nextDay?'train':'plan'}">${nextDay?'Open Workout →':'Open Plan →'}</button>${nextDay&&isPTReview(nextDay.t)?'<span class="quest-caution">PT Review is not medical clearance.</span>':''}</section>`}
+  ${strengthDashboard(state,strengthJourneyIndex)}
   <div class="section-label"><h2>This week</h2><span>${nice(s.dates[0])} – ${nice(s.dates[6])}</span></div>${inWeekCards(s,analysis)}
   <div class="two-panels" style="margin-top:12px"><section class="card"><div class="card-head"><div><h2>Completed sets by day</h2><p>Working sets logged each day</p></div><span class="badge">7 DAYS</span></div><div class="day-bars" role="img" aria-label="Completed sets by day: ${analysis.days.map((v,i)=>`${DAYS[i]} ${v.completed} sets`).join('; ')}">${chart}</div><div class="inline-meta"><span class="dot"></span>Chart counts unique logged working sets, not finished sessions.</div>${volumeExplanation}</section>
   <section class="card"><div class="card-head"><div><h2>Your training week</h2><p>Workout assignments</p></div><button class="btn ghost small-btn" data-page="plan">Edit plan →</button></div><div class="day-calendar">${days}</div><div class="inline-meta">${analysis.days.filter(d=>d.assignedCompleted>0).length} assigned day(s) with logged sets · ${s.planned} scheduled. This is not a workout-completion score.</div></section></div>
@@ -230,6 +232,7 @@ function train() {
        <p class="hint">Shortcuts only edit these fields. Review values and press Save this set to record; nothing saves automatically.</p>
      </div>`:'';
      const selectedOld=current.find(l=>l.set===focusSet+1);
+    const feedbackOld=focusMode?selectedOld:current[0];
     const selectedPrior=previous.find(l=>l.set===focusSet+1);
     const focusIntro=focusMode?`<div class="v152-focus-header"><strong>Set ${focusSet+1} of ${ex.sets}</strong><span>${selectedOld?'Editing a saved set':'Not logged yet'}</span></div><p class="v152-history">${selectedOld?'Saved today — values below are editable.':selectedPrior?`Previous: ${esc(selectedPrior.kg)} kg × ${esc(selectedPrior.reps)} ${ex.repUnit==='seconds_per_side'?'seconds/side':'reps'} (${esc(selectedPrior.date)}). Review before saving.`:'No earlier set recorded. Enter actual values before saving.'}</p>`:'';
     const focusNavigation=focusMode?`<div class="v152-set-navigation"><button class="btn secondary small-btn" data-focus-set="${focusSet-1}" type="button" ${focusSet===0?'disabled':''}>← Previous set</button><button class="btn secondary small-btn" data-focus-set="${focusSet+1}" type="button" ${focusSet===ex.sets-1?'disabled':''}>Next set →</button></div><p class="hint">Only the displayed set will be saved. Change the values to match what you actually completed; no weights are increased automatically.</p>`:'';
@@ -239,8 +242,8 @@ function train() {
     ${workout.sourceVersion?`<div class="hint">Source: ${esc(workout.sourceVersion)}</div>`:''}
     ${workout.equipmentNote?`<div class="hint"><strong>Equipment:</strong> ${esc(workout.equipmentNote)}</div>`:''}
     ${ex.sourceNote?`<div class="notice"><strong>Exercise instructions:</strong> ${esc(ex.sourceNote)}</div>`:''}
-    ${focusMode?manualProgressionPanel(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise,set:focusSet+1}):''}
-    <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">RPE</span><span class="micro">✓</span></div>${setFields}${repeatButton}${quickControls}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">${ex.rest}s rest timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
+    ${strengthNextSession(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise})}
+    <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">RPE</span><span class="micro">✓</span></div>${setFields}${repeatButton}${quickControls}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><div class="metrics-grid"><label><span class="form-label">How did this exercise feel?</span><select class="field" name="difficulty"><option value="">Not rated</option><option value="too_easy" ${feedbackOld?.difficulty==='too_easy'?'selected':''}>Too easy</option><option value="on_target" ${feedbackOld?.difficulty==='on_target'?'selected':''}>On target</option><option value="too_hard" ${feedbackOld?.difficulty==='too_hard'?'selected':''}>Too hard</option></select></label><label><span class="form-label">Technique quality</span><select class="field" name="technique"><option value="">Not rated</option><option value="controlled" ${feedbackOld?.technique==='controlled'?'selected':''}>Controlled</option><option value="unstable" ${feedbackOld?.technique==='unstable'?'selected':''}>Unstable</option></select></label></div><p class="hint">Feedback applies to each set you save now. Use RPE to describe individual set effort.</p><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">${ex.rest}s rest timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
   } else {exMarkup=`<div class="card empty"><strong>${state.templates.length?'No workout selected':'No templates yet'}</strong>${state.templates.length?'Choose any workout above or assign a day in Plan.':'Go to Dashboard and load the example plan, or import your own CSV in Plan.'}</div>`;}
   return `${shellHeading()}${heading('TRAINING','One set at a time','Choose an exercise, record your completed sets, then rest before the next one.')}
   <div class="card"><div class="two-panels"><label><span class="form-label" style="margin-top:0">Workout date</span><input class="field" type="date" id="active-date" value="${activeDate}"></label><label><span class="form-label" style="margin-top:0">Workout for this date</span><select class="field" id="active-workout">${options}</select></label></div><div class="inline-meta"><span class="dot"></span>${DAY_NAMES[day]} · ${state.logs.filter(l=>l.date===activeDate).length} set(s) saved</div></div>
@@ -554,6 +557,11 @@ document.addEventListener('change',event=>{
     }
     return;
   }
+  if(target.id==='strength-exercise'){
+    const index=Number(target.value);
+    if(!Number.isInteger(index)||index<0)throw Error('Choose a valid strength exercise.');
+    strengthJourneyIndex=index;render();return;
+  }
   if(target.id==='active-date'){
     if(!mayLeaveFocusSet()){target.value=activeDate;return;}
     tryAction(()=>{activeDate=target.value;chosenExercise=0;chosenTemplate=null;focusSet=0;render();});
@@ -592,6 +600,16 @@ document.addEventListener('change',event=>{
 document.addEventListener('submit',event=>{
   event.preventDefault();const form=event.target;
   tryAction(()=>{
+    if(form.id==='strength-step-form'){
+      const raw=form.elements.step.value;
+      const value=raw===''?null:Number(raw);
+      if(value!==null&&![0.5,1,2,2.5,4].includes(value))throw Error('Choose a supported available dumbbell increment.');
+      const next=structuredClone(state);
+      if(value===null)delete next.progressionStepKg;
+      else next.progressionStepKg=value;
+      commit(next,value===null?'Dumbbell increment cleared.':'Available dumbbell increment saved. Actual workout sets remain unchanged.');
+      return;
+    }
     if(form.id==='template-version-form'){
       if(!customizing)throw Error('Select a saved exercise to customize first.');
       const changes=Object.fromEntries(['name','muscle','sets','min','max','rest','sourceNote']
@@ -614,7 +632,7 @@ document.addEventListener('submit',event=>{
     if(form.id==='sets-form'){
       if(!chosenTemplate)throw Error('Select a workout first.');const template=state.templates.find(t=>t.id===chosenTemplate);
       const exercise=template?.exercises[chosenExercise];if(!exercise)throw Error('Select a valid exercise.');
-      const shared={rest:form.elements.rest.value,notes:form.elements.notes.value,tempo:form.elements.tempo.value};
+      const shared={rest:form.elements.rest.value,notes:form.elements.notes.value,tempo:form.elements.tempo.value,difficulty:form.elements.difficulty.value,technique:form.elements.technique.value};
       const entries=focusMode
         ? focusEntries(exercise.sets,focusSet,{...shared,kg:form.elements[`kg${focusSet}`].value,reps:form.elements[`reps${focusSet}`].value,rpe:form.elements[`rpe${focusSet}`].value})
         : Array.from({length:exercise.sets},(_,i)=>({...shared,completed:form.elements[`done${i}`].checked,kg:form.elements[`kg${i}`].value,reps:form.elements[`reps${i}`].value,rpe:form.elements[`rpe${i}`].value}));
