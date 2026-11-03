@@ -16,6 +16,7 @@ import { WALKER_KEY, validateWalkerFile, validateWalkerDataUrl, dashboardWalkerB
 import { applyWalkerFile, checkWalkerImage, readWalkerDataUrl } from './dashboard-walker-apply.js';
 import { createWalkerStill } from './walker-still.js';
 import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
+import { createFloatingRestTimer, restClock, effortHint, effortQuickLabel } from './floating-rest.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
 import { workoutLogbookHtml, workoutLogbookCsv } from './workout-logbook.js';
@@ -57,7 +58,7 @@ let focusMode=false, focusSet=0, customizing=null;
 let strengthJourneyIndex=0;
 let strengthViewMetric='load', strengthHistoryFilter='all';
 let pendingCompletedCsv=null, pendingCompletedSnapshot=null;
-let timerEnd=null,timerHandle=null, audioContext=null, toastHandle=null;
+let toastHandle=null;
 const SLIME_HIT_SETTING='fitnesspilot.preview.v101.ui.slime-hit.v1';
 let slimeHitEnabled=false,slimeHitTimer=null;
 try { slimeHitEnabled=localStorage.getItem(SLIME_HIT_SETTING)==='on'; } catch { /* optional visual feedback stays off */ }
@@ -249,13 +250,13 @@ function train() {
     const setFields=visibleSetIndices.map(i=>{
       const old=current.find(l=>l.set===i+1), prior=previous.find(l=>l.set===i+1);
       const target=ex.setTargets?.[i] ?? {min:ex.min,max:ex.max};
-      return `<div class="log-grid set-row ${focusMode?'v152-focused-row':''}"><strong class="tiny set-target-label">${i+1}<small>${target.min}–${target.max}</small></strong><input class="field" inputmode="decimal" type="number" min="0" max="500" step="0.5" name="kg${i}" aria-label="Set ${i+1} kilograms" value="${esc(old?.kg??prior?.kg??'')}"><input class="field" inputmode="numeric" type="number" min="1" max="100" step="1" name="reps${i}" aria-label="Set ${i+1} ${ex.repUnit==='seconds_per_side'?'seconds per side':'reps'}" value="${esc(old?.reps??prior?.reps??'')}"><input class="field" inputmode="decimal" type="number" min="1" max="10" step="0.5" name="rpe${i}" aria-label="Set ${i+1} RPE" value="${esc(old?.rpe??'')}">${focusMode?`<span class="v152-set-status">${old?'Saved':'New'}</span>`:`<input class="tick" type="checkbox" name="done${i}" aria-label="Mark set ${i+1} complete" ${old?'checked':''}>`}</div>`;
+      return `<div class="log-grid set-row ${focusMode?'v152-focused-row':''}"><strong class="tiny set-target-label">${i+1}<small>${target.min}–${target.max}</small></strong><input class="field" inputmode="decimal" type="number" min="0" max="500" step="0.5" name="kg${i}" aria-label="Set ${i+1} kilograms" value="${esc(old?.kg??prior?.kg??'')}"><input class="field" inputmode="numeric" type="number" min="1" max="100" step="1" name="reps${i}" aria-label="Set ${i+1} ${ex.repUnit==='seconds_per_side'?'seconds per side':'reps'}" value="${esc(old?.reps??prior?.reps??'')}"><input class="field" inputmode="decimal" type="number" min="1" max="10" step="0.5" name="rpe${i}" aria-label="Set ${i+1} effort score 1 to 10 (RPE)" value="${esc(old?.rpe??'')}">${focusMode?`<span class="v152-set-status">${old?'Saved':'New'}</span>`:`<input class="tick" type="checkbox" name="done${i}" aria-label="Mark set ${i+1} complete" ${old?'checked':''}>`}</div>`;
     }).join('');
     const repeatChoice=focusMode?repeatLastSessionSet(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise,set:focusSet+1}):null;
     const repeatButton=repeatChoice?`<div class="v156-repeat"><button class="btn secondary small-btn" type="button" data-action="focus-repeat">↻ Copy saved set ${repeatChoice.sourceSet}</button><span class="hint">${esc(repeatChoice.kg)} kg × ${esc(repeatChoice.reps)} reps. Copies only kg/reps; RPE is entered separately. Review before saving.</span></div>`:'';
     const quickControls=focusMode?`<div class="v1512-quick" aria-label="Optional form-only quick entry">
        <div class="v1512-quick-row"><span>Reps</span><button class="btn secondary small-btn" type="button" data-action="quick-reps-minus" aria-label="Decrease reps by one">−1</button><button class="btn secondary small-btn" type="button" data-action="quick-reps-plus" aria-label="Increase reps by one">+1</button></div>
-       <div class="v1512-quick-row"><span>RPE</span>${QUICK_RPE.map(value=>`<button class="btn secondary small-btn" type="button" data-action="quick-rpe" data-quick-rpe="${value}" aria-label="Set RPE to ${value}">${value}</button>`).join('')}</div>
+       <div class="v1512-quick-row"><span>Effort</span>${QUICK_RPE.map(value=>`<button class="btn secondary small-btn" type="button" data-action="quick-rpe" data-quick-rpe="${value}" aria-label="Set effort to ${effortQuickLabel(value)}">${effortQuickLabel(value)}</button>`).join('')}</div>
        <p class="hint">Shortcuts only edit these fields. Review values and press Save this set to record; nothing saves automatically.</p>
      </div>`:'';
      const selectedOld=current.find(l=>l.set===focusSet+1);
@@ -270,7 +271,7 @@ function train() {
     ${workout.equipmentNote?`<div class="hint"><strong>Equipment:</strong> ${esc(workout.equipmentNote)}</div>`:''}
     ${ex.sourceNote?`<div class="notice"><strong>Exercise instructions:</strong> ${esc(ex.sourceNote)}</div>`:''}
     ${strengthNextSession(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise})}
-    <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">RPE</span><span class="micro">✓</span></div>${setFields}${repeatButton}${quickControls}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><div class="metrics-grid"><label><span class="form-label">How did this exercise feel?</span><select class="field" name="difficulty"><option value="">Not rated</option><option value="too_easy" ${feedbackOld?.difficulty==='too_easy'?'selected':''}>Too easy</option><option value="on_target" ${feedbackOld?.difficulty==='on_target'?'selected':''}>On target</option><option value="too_hard" ${feedbackOld?.difficulty==='too_hard'?'selected':''}>Too hard</option></select></label><label><span class="form-label">Technique quality</span><select class="field" name="technique"><option value="">Not rated</option><option value="controlled" ${feedbackOld?.technique==='controlled'?'selected':''}>Controlled</option><option value="unstable" ${feedbackOld?.technique==='unstable'?'selected':''}>Unstable</option></select></label></div><p class="hint">Feedback applies to each set you save now. Use RPE to describe individual set effort.</p><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">${ex.rest}s rest timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
+    <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">EFFORT</span><span class="micro">✓</span></div>${setFields}<p class="fp-effort-help"><strong>How hard did it feel?</strong> ${esc(effortHint)}</p>${repeatButton}${quickControls}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><div class="metrics-grid"><label><span class="form-label">How did this exercise feel?</span><select class="field" name="difficulty"><option value="">Not rated</option><option value="too_easy" ${feedbackOld?.difficulty==='too_easy'?'selected':''}>Too easy</option><option value="on_target" ${feedbackOld?.difficulty==='on_target'?'selected':''}>On target</option><option value="too_hard" ${feedbackOld?.difficulty==='too_hard'?'selected':''}>Too hard</option></select></label><label><span class="form-label">Technique quality</span><select class="field" name="technique"><option value="">Not rated</option><option value="controlled" ${feedbackOld?.technique==='controlled'?'selected':''}>Controlled</option><option value="unstable" ${feedbackOld?.technique==='unstable'?'selected':''}>Unstable</option></select></label></div><p class="hint">Feedback applies to each set you save now. Effort is how hard it felt; leave the score blank if unsure.</p><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">Rest ${ex.rest}s · floating timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
   } else {exMarkup=`<div class="card empty"><strong>${state.templates.length?'No workout selected':'No templates yet'}</strong>${state.templates.length?'Choose any workout above or assign a day in Plan.':'Go to Dashboard and load the example plan, or import your own CSV in Plan.'}</div>`;}
   return `${shellHeading()}${heading('TRAINING','One set at a time','Choose an exercise, record your completed sets, then rest before the next one.')}
   <div class="card"><div class="two-panels"><label><span class="form-label" style="margin-top:0">Workout date</span><input class="field" type="date" id="active-date" value="${activeDate}"></label><label><span class="form-label" style="margin-top:0">Workout for this date</span><select class="field" id="active-workout">${options}</select></label></div><div class="inline-meta"><span class="dot"></span>${DAY_NAMES[day]} · ${state.logs.filter(l=>l.date===activeDate).length} set(s) saved</div></div>
@@ -353,8 +354,7 @@ function tools() {
   <section class="card codex-reminders"><div class="card-head"><div><h2>Workout reminders</h2><p>Uses your iPhone Calendar — even when FitnessPilot is closed</p></div><span class="badge">CALENDAR</span></div><form id="reminder-form"><div class="metrics-grid"><label><span class="form-label">Workout time</span><input class="field" type="time" name="time" required value="${time}"></label><label><span class="form-label">Alert ahead of time</span><select class="field" name="lead"><option value="0" ${reminder.lead===0?'selected':''}>At workout time</option><option value="5" ${reminder.lead===5?'selected':''}>5 minutes before</option><option value="15" ${reminder.lead===15?'selected':''}>15 minutes before</option><option value="30" ${reminder.lead===30?'selected':''}>30 minutes before</option><option value="60" ${reminder.lead===60?'selected':''}>1 hour before</option></select></label></div><div class="form-actions"><button class="btn" type="submit">Save alert settings</button><button class="btn secondary" type="button" data-action="calendar">Export Calendar reminders (.ics)</button></div></form><p class="hint" style="margin-top:14px">First save your settings, then export the .ics file. Import it into a calendar that supports .ics events and alarms. Some iPhone import paths may require emailing the file to yourself or using a computer calendar. Check the alert in Apple Calendar after import. If you change the schedule, remove previous imported events and export again to avoid duplicate alerts.</p><div class="notice warn"><strong>Not a Clock alarm.</strong> This web app cannot force a loud full-screen ring while closed. Calendar notifications depend on your phone's notification, Focus and Silent settings. Use the iPhone Clock app if an audible alarm is essential.</div></section>
   <p class="app-footer">FitnessPilot Web v1 · No accounts · No analytics · No advertisements</p>`;
 }
-function timerRemaining(){if(!timerEnd)return '00:00';const n=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));return `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;}
-function timerTick() {const display=$('#timer-display');if(display)display.textContent=timerRemaining();if(timerEnd && timerEnd<=Date.now()){timerEnd=null;clearInterval(timerHandle);timerHandle=null;try{if(audioContext){const osc=audioContext.createOscillator();const gain=audioContext.createGain();osc.connect(gain);gain.connect(audioContext.destination);osc.frequency.value=740;gain.gain.value=.15;osc.start();osc.stop(audioContext.currentTime+.35);}}catch{}toast('Rest timer finished. Time for your next set!');}}
+function timerRemaining(){ return restClock(floatingRest.getRemaining()); }
 function inspectWalkerDisplay(){
   const image=$('.fp-walker-sprite');
   const status=$('#walker-render-status');
@@ -404,7 +404,7 @@ function inspectWalkerDisplay(){
   status.textContent='Loading one walking character…';
   useAvatar(selected,'Personal walker loaded: walking in place toward the right.');
 }
-function render(){const markup=navMarkup();$('.bottom-tabs').innerHTML=markup;$('.desktop-tabs').innerHTML=markup;$('#main').innerHTML=`${storageError?`<div class="error-strip" role="alert">${esc(storageError)}</div>`:''}${page==='dashboard'?dashboard():page==='train'?train():page==='plan'?plan():tools()}`;inspectWalkerDisplay();timerTick();}
+function render(){const markup=navMarkup();$('.bottom-tabs').innerHTML=markup;$('.desktop-tabs').innerHTML=markup;$('#main').innerHTML=`${storageError?`<div class="error-strip" role="alert">${esc(storageError)}</div>`:''}${page==='dashboard'?dashboard():page==='train'?train():page==='plan'?plan():tools()}`;inspectWalkerDisplay();floatingRest.updatePage(page);}
 function download(filename,content,mime){const url=URL.createObjectURL(new Blob([content],{type:mime}));const a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}
 async function readCompletedCsv(file) {
   if(!file||file.size>1_000_000||!/\.csv$/i.test(file.name))
@@ -461,9 +461,8 @@ document.addEventListener('click', event=>{
     });
     return;
   }
-  if(button.dataset.rest){tryAction(()=>{const seconds=intRange(button.dataset.rest,'Rest',1,600);timerEnd=Date.now()+seconds*1000;clearInterval(timerHandle);timerHandle=setInterval(timerTick,250);
-    try{const A=window.AudioContext||window.webkitAudioContext;if(A){audioContext=audioContext||new A();void audioContext.resume();}}catch{}
-    timerTick();toast(`Rest timer started: ${seconds} seconds.`);});return;}
+  if(button.dataset.rest){tryAction(()=>{const seconds=intRange(button.dataset.rest,'Rest',1,600);
+    floatingRest.start(seconds);toast(`Rest timer started: ${seconds} seconds.`);});return;}
   const act=button.dataset.action;
   tryAction(()=>{
     if(act==='cancel-customize'){customizing=null;render();return;}
@@ -597,7 +596,7 @@ document.addEventListener('click', event=>{
     if(act==='restore-cancel'){pendingBackup=null;render();}
     if(act==='restore-confirm'){if(!pendingBackup)throw Error('Choose a backup file first.');if($('#restore-word')?.value!=='REPLACE')throw Error('Type REPLACE to confirm.');if(!confirm('Replace ALL current local sets, workouts and check-ins with this backup? Export your existing backup first.'))return;const next=pendingBackup;commit(next,'Backup restored. Previous local data replaced.');pendingBackup=null;render();}
     if(act==='calendar'){download(`FitnessPilot-weekly-reminders-${today()}.ics`,calendarICS(state),'text/calendar;charset=utf-8');toast('Calendar file prepared. Import events into your calendar.');}
-    if(act==='stop-timer'){timerEnd=null;clearInterval(timerHandle);timerHandle=null;timerTick();toast('Timer stopped.');}
+    if(act==='stop-timer'){floatingRest.stop();toast('Timer stopped.');}
   });
 });
 
@@ -773,6 +772,7 @@ document.addEventListener('submit',event=>{
     }
   });
 });
+const floatingRest = createFloatingRestTimer();
 render();
 if('serviceWorker' in navigator && location.protocol !== 'file:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
 initRoFeedback();
