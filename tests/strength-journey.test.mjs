@@ -108,3 +108,35 @@ test("unsafe labels are escaped in graph choices",()=>{
   assert.doesNotMatch(html,/<img src=x/);
   assert.match(html,/&lt;img/);
 });
+
+test("restart Day 1 filters prior records but does not delete them",()=>{
+  const data=build();
+  data.strengthJourneyStartDate="2026-11-01";
+  const journey=getExerciseJourney(data,"upper-a",0);
+  assert.equal(journey.day1,"2026-11-01");
+  assert.equal(journey.sessions.length,1);
+  assert.equal(data.logs.length,4);
+  assert.equal(recommendNextExercise(data,choice).status,"hold");
+  assert.equal(validateBackup(data).strengthJourneyStartDate,"2026-11-01");
+});
+
+test("clearly easy sets can progress two reps, capped by the prescribed maximum",()=>{
+  const data=build();
+  data.logs.filter(row=>row.date==="2026-11-01").forEach(row=>{
+    row.reps=10;
+    row.rpe=5;
+    row.difficulty="too_easy";
+  });
+  const target=recommendNextExercise(data,choice);
+  assert.equal(target.status,"rep");
+  assert.deepEqual(target.targets,[{set:1,kg:12,reps:12},{set:2,kg:12,reps:12}]);
+});
+
+test("weight and repetitions graphs remain actual-record based",()=>{
+  const data=build();
+  const html=strengthDashboard(data);
+  assert.match(html,/Show repetitions trend/);
+  assert.match(html,/Restart journey Day 1/);
+  assert.match(html,/strength-start-form/);
+  assert.equal((html.match(/strength-plot/g)||[]).length,2);
+});
