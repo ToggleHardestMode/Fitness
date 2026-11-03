@@ -200,8 +200,11 @@ function selectFocusSet() {
 function mayLeaveFocusSet() {
   const form=focusMode ? $('#sets-form') : null;
   if(!form)return true;
-  const dirty=Array.from(form.querySelectorAll('input')).some(input=>
-    input.type==='checkbox' ? input.checked!==input.defaultChecked : input.value!==input.defaultValue
+  const dirty=Array.from(form.querySelectorAll('input,select')).some(input=>
+    input.type==='checkbox' ? input.checked!==input.defaultChecked :
+    input.tagName==='SELECT'
+      ? input.value !== (input.querySelector('option[selected]')?.value ?? input.options[0]?.value ?? '')
+      : input.value!==input.defaultValue
   );
   return !dirty || confirm('Discard your unsaved set changes?');
 }
