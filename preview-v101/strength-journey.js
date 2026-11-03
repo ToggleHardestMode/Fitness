@@ -24,9 +24,11 @@ export function getExerciseJourney(state, templateId, exerciseIndex) {
   const exercise = template?.exercises?.[exerciseIndex];
   if (!exercise || !Number.isInteger(exerciseIndex))
     throw Error("Select an existing workout exercise to inspect.");
-  const allValid = (state.logs || []).filter(isValid);
-  const day1 = allValid.length ? allValid.reduce((min, log) =>
-    log.date < min ? log.date : min, allValid[0].date) : null;
+  const startDate = state.strengthJourneyStartDate || null;
+  const allValid = (state.logs || []).filter(row => isValid(row) &&
+    (!startDate || row.date >= startDate));
+  const day1 = startDate || (allValid.length ? allValid.reduce((min, log) =>
+    log.date < min ? log.date : min, allValid[0].date) : null);
   const days = new Map();
   for (const row of allValid) {
     if (row.templateId !== templateId || row.exerciseIndex !== exerciseIndex ||
