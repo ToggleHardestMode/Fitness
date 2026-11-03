@@ -72,7 +72,7 @@ export function initRoFeedback() {
   window.addEventListener('blur', clearPressed);
   document.addEventListener('click', event => {
     const control = event.target.closest?.(PRESS_SELECTOR);
-    if (control && !control.disabled && event.isTrusted) playSquish();
+    if (control && !control.disabled && event.isTrusted && !control.closest?.('#fp-floating-rest')) playSquish();
   }, true);
   document.addEventListener('change', event => {
     if (event.target.id === 'ro-click-sound') {
