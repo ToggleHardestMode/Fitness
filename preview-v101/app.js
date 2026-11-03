@@ -20,6 +20,7 @@ import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
 import { workoutLogbookHtml, workoutLogbookCsv } from './workout-logbook.js';
 import { strengthDashboard, strengthNextSession } from './strength-journey-ui.js';
+import {previewCompletedCsv, applyCompletedCsv, blankCompletedCsv} from './completed-workout-csv.js';
 import { verifyLocalSnapshot, inspectBackupFileText } from './recovery-check.js';
 import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, dateFromKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
 
@@ -54,6 +55,7 @@ try {
 let page='dashboard', activeDate=today(), chosenTemplate=null, chosenExercise=0, pendingWorkouts=null, pendingBackup=null;
 let focusMode=false, focusSet=0, customizing=null;
 let strengthJourneyIndex=0;
+let pendingCompletedCsv=null, pendingCompletedSnapshot=null;
 let timerEnd=null,timerHandle=null, audioContext=null, toastHandle=null;
 const SLIME_HIT_SETTING='fitnesspilot.preview.v101.ui.slime-hit.v1';
 let slimeHitEnabled=false,slimeHitTimer=null;
@@ -208,6 +210,28 @@ function mayLeaveFocusSet() {
   );
   return !dirty || confirm('Discard your unsaved set changes?');
 }
+function completedCsvPanel() {
+  const pending=pendingCompletedCsv;
+  const preview=pending?'<div class="completed-csv-preview" role="status"><strong>Completed-session import preview</strong>' +
+    '<p>'+pending.add.length+' new working set(s) to add · '+pending.skipped.length+' identical set(s) already saved · dates: '+pending.days.map(esc).join(', ')+'</p>' +
+    '<div class="completed-csv-list">'+pending.add.slice(0,12).map(row=>
+      '<div><strong>'+esc(row.date)+'</strong> · '+esc(row.exerciseName)+' · set '+row.set+
+      ' · '+fmt(row.kg)+' kg × '+row.reps+' reps'+(row.rpe==null?'':' · RPE '+fmt(row.rpe))+'</div>').join('')+'</div>'+
+    (pending.add.length>12?'<p class="hint">Showing the first 12 new sets; all validated rows will be added together.</p>':'')+
+    (pending.add.length?
+      '<div class="completed-csv-review"><button class="btn secondary small-btn" type="button" data-action="completed-csv-backup">Download pre-import JSON backup</button>'+
+      '<label><input type="checkbox" id="completed-import-backup-ack"> I saved a backup of my current workout history.</label></div>'+
+      '<div class="quick-actions"><button class="btn" type="button" data-action="completed-csv-apply">Import '+pending.add.length+' completed set(s)</button>'+
+      '<button class="btn secondary" type="button" data-action="completed-csv-cancel">Cancel</button></div>'
+      :'<p class="hint">All completed rows already exist; no changes required.</p><button class="btn secondary small-btn" type="button" data-action="completed-csv-cancel">Close</button>')+
+    '</div>':'';
+  return '<section class="card completed-csv-card" aria-label="Import completed workout CSV">'+
+    '<div class="card-head"><div><h2>Import completed workout CSV</h2><p>Record sets you actually did on a specific date. This is separate from importing a workout template in Plan.</p></div></div>'+
+    '<div class="quick-actions"><button class="btn secondary" type="button" data-action="completed-csv-blank" '+(!chosenTemplate?'disabled':'')+'>Download blank session CSV</button>'+
+    '<button class="btn" type="button" data-action="completed-csv-pick">Choose completed CSV</button></div>'+
+    '<p class="hint">Choose a workout above to download a dated, exercise-matched worksheet. Fill kg and reps for completed sets, leave unperformed sets blank, then upload the CSV here. No day column required. Existing sets are never overwritten.</p>'+
+    preview+'</section>';
+}
 function train() {
   const day=weekdayOf(activeDate);
   const selected=chosenTemplate && state.templates.some(t=>t.id===chosenTemplate)?chosenTemplate:(state.assignments[day]||'');
@@ -250,6 +274,7 @@ function train() {
   } else {exMarkup=`<div class="card empty"><strong>${state.templates.length?'No workout selected':'No templates yet'}</strong>${state.templates.length?'Choose any workout above or assign a day in Plan.':'Go to Dashboard and load the example plan, or import your own CSV in Plan.'}</div>`;}
   return `${shellHeading()}${heading('TRAINING','One set at a time','Choose an exercise, record your completed sets, then rest before the next one.')}
   <div class="card"><div class="two-panels"><label><span class="form-label" style="margin-top:0">Workout date</span><input class="field" type="date" id="active-date" value="${activeDate}"></label><label><span class="form-label" style="margin-top:0">Workout for this date</span><select class="field" id="active-workout">${options}</select></label></div><div class="inline-meta"><span class="dot"></span>${DAY_NAMES[day]} · ${state.logs.filter(l=>l.date===activeDate).length} set(s) saved</div></div>
+  ${completedCsvPanel()}
   ${workout?`<section class="codex-session"><div class="codex-session-heading"><div><div class="eyebrow">CURRENT WORKOUT · ${DAY_NAMES[day]}</div><h2>${esc(workout.name)}</h2></div><div class="codex-count"><strong>${state.logs.filter(l=>l.date===activeDate&&l.templateId===selected).length} / ${workout.exercises.reduce((n,e)=>n+e.sets,0)}</strong><div>sets logged</div></div></div><div class="progress-track"><div class="progress-fill" style="width:${Math.min(100,Math.round(state.logs.filter(l=>l.date===activeDate&&l.templateId===selected).length/workout.exercises.reduce((n,e)=>n+e.sets,0)*100))}%"></div></div><p class="hint">Saved working sets only. No clinical clearance is implied.</p></section>`:'' }
   ${workout?`<div class="v152-mode-toggle"><button type="button" class="btn secondary small-btn" data-action="focus-toggle" aria-pressed="${focusMode}">${focusMode?'Use standard logging':'Try Focus Mode'}</button><span>${focusMode?'One set at a time, with editable values':'Standard log — multiple sets at once'}</span></div>`:''}
   ${exMarkup}<div class="section-label"><h2>Daily check-in</h2><span>${nice(activeDate)}</span></div><section class="card"><form id="metrics-form"><div class="metrics-grid">${[['weight','Body weight (kg)','0.1'],['calories','Calories (kcal)','1'],['protein','Protein (g)','1'],['sleep','Sleep (hours)','0.1'],['recovery','Recovery (1–5)','1']].map(([key,label,step])=>`<label><span class="form-label">${label}</span><input class="field" type="number" inputmode="decimal" step="${step}" name="${key}" value="${esc(metrics[key]??'')}" placeholder="Not recorded"></label>`).join('')}</div><div class="form-actions"><button class="btn secondary" type="submit">Save daily check-in</button></div><p class="hint" style="margin-top:10px">Only enter values you measured. Blank fields are not guessed.</p></form></section>${symptomPanel(activeDate,state,selected)}`;
@@ -381,6 +406,16 @@ function inspectWalkerDisplay(){
 }
 function render(){const markup=navMarkup();$('.bottom-tabs').innerHTML=markup;$('.desktop-tabs').innerHTML=markup;$('#main').innerHTML=`${storageError?`<div class="error-strip" role="alert">${esc(storageError)}</div>`:''}${page==='dashboard'?dashboard():page==='train'?train():page==='plan'?plan():tools()}`;inspectWalkerDisplay();timerTick();}
 function download(filename,content,mime){const url=URL.createObjectURL(new Blob([content],{type:mime}));const a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}
+async function readCompletedCsv(file) {
+  if(!file||file.size>1_000_000||!/\.csv$/i.test(file.name))
+    throw Error('Choose a completed-workout .csv file smaller than 1 MB.');
+  const csv=await file.text();
+  if(storageError)throw Error('Saved workout history is locked; CSV import is disabled.');
+  const original=localStorage.getItem(STORAGE_KEY);
+  const parsed=previewCompletedCsv(state,csv);
+  pendingCompletedCsv=parsed;pendingCompletedSnapshot=original;
+  render();toast('Completed workout review ready. Nothing saved yet.');
+}
 async function readCSV(file) {
   if (!file || file.size > 1_000_000) throw Error('Choose a CSV smaller than 1 MB.');
   if (!/\.csv$/i.test(file.name)) throw Error('Choose a .csv file exported from Excel.');
@@ -482,6 +517,35 @@ document.addEventListener('click', event=>{
     }
     if(act==='v101-csv')download('V10.1_Home_FitnessPilot_Import.csv',V101_CSV,'text/csv;charset=utf-8');
     if(act==='starter'){if(!confirm('Add the example four-day workout plan? Existing logs will not change.'))return;const out=addWorkouts(state,parseWorkouts(STARTER_CSV),true);commit(out.state,`Added ${out.added} workout templates.`);}
+    if(act==='completed-csv-blank'){
+      if(!chosenTemplate)throw Error('Select a workout in Train first.');
+      download('FitnessPilot-completed-session-'+activeDate+'.csv',blankCompletedCsv(state,activeDate,chosenTemplate),'text/csv;charset=utf-8');
+      toast('Blank completed-session CSV downloaded. Fill actual kg/reps, then import it here.');
+      return;
+    }
+    if(act==='completed-csv-pick'){$('#completed-workout-file').click();return;}
+    if(act==='completed-csv-backup'){
+      if(storageError)throw Error('Saved data is locked. Cannot back up before import.');
+      download('FitnessPilot-PREVIEW-before-session-import-'+today()+'.json',JSON.stringify(state,null,2)+'\n','application/json');
+      toast('Backup prepared. Verify it is saved before ticking confirmation.');
+      return;
+    }
+    if(act==='completed-csv-cancel'){pendingCompletedCsv=null;pendingCompletedSnapshot=null;render();return;}
+    if(act==='completed-csv-apply'){
+      if(storageError)throw Error('Saved data is locked. Import refused.');
+      if(!pendingCompletedCsv||!pendingCompletedCsv.add.length)throw Error('Preview a CSV with new completed sets first.');
+      if(!$('#completed-import-backup-ack')?.checked)throw Error('Save and acknowledge a current JSON backup before applying.');
+      if(localStorage.getItem(STORAGE_KEY)!==pendingCompletedSnapshot){
+        pendingCompletedCsv=null;pendingCompletedSnapshot=null;render();
+        throw Error('Workout history changed since CSV preview. Choose the CSV again and recheck.');
+      }
+      if(!confirm('Add '+pendingCompletedCsv.add.length+' actual completed sets to your saved history? No existing sets will be replaced.'))return;
+      const count=pendingCompletedCsv.add.length;
+      const next=applyCompletedCsv(state,pendingCompletedCsv);
+      commit(next,'Imported '+count+' completed working sets; saved history preserved.');
+      pendingCompletedCsv=null;pendingCompletedSnapshot=null;render();
+      return;
+    }
     if(act==='pick-csv')$('#csv-file').click();
     if(act==='cancel-csv'){pendingWorkouts=null;render();}
     if(act==='confirm-csv'){if(!pendingWorkouts)throw Error('Choose a CSV first.');const out=addWorkouts(state,pendingWorkouts);pendingWorkouts=null;commit(out.state,`Imported ${out.added}; skipped ${out.skipped} identical template(s).`);}
@@ -577,6 +641,13 @@ document.addEventListener('change',event=>{
     const tmpl=state.templates.find(t=>t.id===target.value);
     const list=$('#symptom-exercise');
     if(list)list.innerHTML='<option value="">Whole workout / not exercise-specific</option>'+(tmpl?tmpl.exercises.map((e,i)=>`<option value="${i}">${i+1}. ${esc(e.name)}</option>`).join(''):'');
+  }
+  if(target.id==='completed-workout-file'){
+    const file=target.files?.[0];target.value='';
+    if(file)readCompletedCsv(file).catch(error=>{
+      pendingCompletedCsv=null;pendingCompletedSnapshot=null;render();toast(error.message,true);
+    });
+    return;
   }
   if(target.id==='csv-file'){const file=target.files?.[0];target.value='';if(file)readCSV(file).catch(e=>toast(e.message,true));}
   if(target.id==='backup-file'){const file=target.files?.[0];target.value='';if(file)readBackup(file).catch(e=>{pendingBackup=null;render();toast(e.message,true);});}
