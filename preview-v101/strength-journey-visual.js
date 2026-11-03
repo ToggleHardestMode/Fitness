@@ -62,7 +62,8 @@ function chartMarkup(sessions, key) {
   const grids=tickValues.map(value=>'<line x1="'+left+'" x2="'+right+'" y1="'+y(value).toFixed(2)+
     '" y2="'+y(value).toFixed(2)+'" class="sj-svg-grid"/><text class="sj-svg-axis" x="29" y="'+
     (y(value)+4).toFixed(2)+'" text-anchor="end">'+fmt(Number(value.toFixed(2)))+'</text>').join('');
-  const nth=Math.max(1,Math.ceil(sessions.length/9));
+  // Keep every recorded data point, but limit date labels to avoid overlap on iPhone.
+  const nth=Math.max(1,Math.ceil(sessions.length/5));
   const dateIndices=sessions.map((_,i)=>i).filter(i=>i===0||i===sessions.length-1||i%nth===0);
   const dateTicks=dateIndices.map(i=>'<text class="sj-svg-date" x="'+x(i).toFixed(2)+'" y="128" text-anchor="'+
     (i===0 && sessions.length>1?'start':i===sessions.length-1 && sessions.length>1?'end':'middle')+'">'+
