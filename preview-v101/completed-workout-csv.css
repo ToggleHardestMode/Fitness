@@ -1,0 +1,12 @@
+.completed-csv-card{margin:14px 0;border:1px solid rgba(196,163,97,.35)}
+.completed-csv-card .quick-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.completed-csv-card .quick-actions .btn{min-height:42px}
+.completed-csv-preview{margin:14px 0 0;padding:14px;border:1px solid rgba(196,163,97,.45);border-radius:12px;background:rgba(196,163,97,.06)}
+.completed-csv-preview>strong{display:block;color:#f0d29d;margin-bottom:5px}
+.completed-csv-preview p{margin:6px 0 10px}
+.completed-csv-list{max-height:240px;overflow:auto;font-size:13px}
+.completed-csv-list>div{padding:7px 0;border-top:1px solid rgba(196,163,97,.16)}
+.completed-csv-review{display:grid;gap:12px;margin:14px 0}
+.completed-csv-review label{display:flex;align-items:flex-start;gap:10px;line-height:1.45}
+.completed-csv-review input{width:19px;height:19px;flex:none;accent-color:#d5b576}
+@media(max-width:390px){.completed-csv-card .quick-actions .btn{width:100%}}
