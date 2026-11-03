@@ -242,8 +242,12 @@ export function recordSets(state, { date, templateId, exerciseIndex, entries }, 
     const rpe = e.rpe === "" || e.rpe == null ? null : numRange(e.rpe, `Set ${i+1} RPE`, 1, 10);
     const rest = intRange(e.rest ?? exercise.rest, `Set ${i+1} rest`, 0, 600);
     const notes = String(e.notes ?? "").trim(), tempo = String(e.tempo ?? "").trim();
+    const difficulty = e.difficulty ?? "", technique = e.technique ?? "";
+    if (!["", "too_easy", "on_target", "too_hard"].includes(difficulty)) fail("Set difficulty feedback is invalid.");
+    if (!["", "controlled", "unstable"].includes(technique)) fail("Set technique feedback is invalid.");
     if (notes.length > 250 || tempo.length > 40) fail("Notes or tempo are too long.");
-    const log = { id: existingIndex >= 0 ? next.logs[existingIndex].id : makeId(), date, templateId, exerciseIndex, exerciseName: exercise.name, muscle: exercise.muscle, set: i + 1, kg, reps, rpe, rest, notes, tempo };
+    const log = { id: existingIndex >= 0 ? next.logs[existingIndex].id : makeId(), date, templateId, exerciseIndex, exerciseName: exercise.name, muscle: exercise.muscle, set: i + 1, kg, reps, rpe, rest, notes, tempo,
+      ...(difficulty ? {difficulty} : {}), ...(technique ? {technique} : {}) };
     if (existingIndex >= 0) next.logs[existingIndex] = log;
     else next.logs.push(log);
     saved++;
@@ -322,6 +326,8 @@ export function validateBackup(value) {
     if (l.rest != null) intRange(l.rest,"Rest",0,600);
     if (l.notes != null && (typeof l.notes !== "string" || l.notes.length > 250)) fail("Backup has invalid notes.");
     if (l.tempo != null && (typeof l.tempo !== "string" || l.tempo.length > 40)) fail("Backup has invalid tempo.");
+    if (l.difficulty !== undefined && !["too_easy", "on_target", "too_hard"].includes(l.difficulty)) fail("Backup has invalid difficulty feedback.");
+    if (l.technique !== undefined && !["controlled", "unstable"].includes(l.technique)) fail("Backup has invalid technique feedback.");
     const k=`${l.date}|${l.templateId}|${l.exerciseIndex}|${l.set}`;
     if (logKeys.has(k)) fail("Backup contains duplicate sets.");logKeys.add(k);
   }
@@ -329,6 +335,9 @@ export function validateBackup(value) {
   for(const m of value.metrics) { dateFromKey(m.date);if(metricDays.has(m.date))fail("Backup contains duplicate check-in dates.");metricDays.add(m.date);
     for(const [key,min,max,whole] of [["weight",1,400,false],["calories",0,15000,true],["protein",0,600,true],["sleep",0,24,false],["recovery",1,5,true]])if(m[key] != null)(whole?intRange(m[key],key,min,max):numRange(m[key],key,min,max));
   }
+  if (value.strengthJourneyStartDate !== undefined) dateFromKey(value.strengthJourneyStartDate);
+  if (value.progressionStepKg !== undefined && ![0.5,1,2,2.5,4].includes(value.progressionStepKg))
+    fail("Backup contains an invalid dumbbell increment.");
   validateSymptomLogs(value);
   const rem=value.reminder;
   if(!rem) fail("Backup lacks reminder settings.");
