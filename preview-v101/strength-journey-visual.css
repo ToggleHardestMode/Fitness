@@ -138,34 +138,6 @@
   clip:rect(0,0,0,0);white-space:nowrap;border:0}
 #main .sj-journey select:focus-visible,#main .sj-journey summary:focus-visible,
 #main .sj-journey button:focus-visible{outline:2px solid #ffe0a1;outline-offset:3px}
-@media(max-width:740px){
-  #main .sj-journey .sj-metrics{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
-  #main .sj-journey .sj-stat{padding:10px 9px;min-height:79px}
-  #main .sj-journey .sj-stat-heading{font-size:10px}
-  #main .sj-journey .sj-stat strong{font-size:15px}
-  #main .sj-journey .sj-comparison-grid{grid-template-columns:1fr}
-  #main .sj-journey .sj-recent-row{grid-template-columns:1fr 1fr 1fr auto}
-}
-@media(max-width:395px){
-  #main .sj-journey{margin-left:-8px;margin-right:-8px;padding:11px}
-  #main .sj-journey .sj-kicker{font-size:11px}
-  #main .sj-journey .sj-hero-symbol{width:43px;height:43px}
-  #main .sj-journey .sj-hero h2{font-size:21px}
-  #main .sj-journey .sj-switch{display:block}
-  #main .sj-journey .sj-switch select{margin-top:7px;width:100%}
-  #main .sj-journey .sj-metrics{gap:6px}
-  #main .sj-journey .sj-stat{padding:9px 7px;min-height:75px}
-  #main .sj-journey .sj-stat-heading span{font-size:12px}
-  #main .sj-journey .sj-stat-heading{white-space:normal;line-height:1.25}
-  #main .sj-journey .sj-stat strong{font-size:14px}
-  #main .sj-journey .sj-stat small{font-size:9px}
-  #main .sj-journey .sj-chart-panel{padding:12px 6px}
-  #main .sj-journey .sj-panel-title{padding:0 6px}
-  #main .sj-journey .sj-panel-title h3{font-size:15px}
-  #main .sj-journey .sj-svg-value{font-size:11px}
-  #main .sj-journey .sj-history-date{flex-basis:54px}
-  #main .sj-journey .sj-next-footer{flex-wrap:wrap}
-}
 @media(prefers-reduced-motion:reduce){
  #main .sj-journey .sj-chevron{transition:none}
 }
