@@ -49,7 +49,8 @@ function chartMarkup(sessions, key) {
   const unit=isRep?'reps':isVolume?'kg × reps':'kg';
   const lower=Math.max(0,Math.floor((first-pad)/2)*2);
   const upper=Math.max(lower+2,Math.ceil((last+pad)/2)*2);
-  const left=50,right=620,top=34,bottom=195;
+  // Small coordinate space keeps chart labels legible at 390px viewport width.
+  const left=34,right=376,top=24,bottom=111;
   const x = i => values.length===1 ? (left+right)/2 : left+(right-left)*i/(values.length-1);
   const y = value => bottom-(value-lower)/(upper-lower)*(bottom-top);
   const coords=values.map((value,index)=>[Number(x(index).toFixed(2)),Number(y(value).toFixed(2))]);
@@ -59,14 +60,15 @@ function chartMarkup(sessions, key) {
   const id=isRep?'reps':isVolume?'volume':'load';
   const tickValues=Array.from({length:5},(_,i)=>lower+(upper-lower)*i/4);
   const grids=tickValues.map(value=>'<line x1="'+left+'" x2="'+right+'" y1="'+y(value).toFixed(2)+
-    '" y2="'+y(value).toFixed(2)+'" class="sj-svg-grid"/><text class="sj-svg-axis" x="42" y="'+
+    '" y2="'+y(value).toFixed(2)+'" class="sj-svg-grid"/><text class="sj-svg-axis" x="29" y="'+
     (y(value)+4).toFixed(2)+'" text-anchor="end">'+fmt(Number(value.toFixed(2)))+'</text>').join('');
+  // Keep every recorded data point, but limit date labels to avoid overlap on iPhone.
   const nth=Math.max(1,Math.ceil(sessions.length/5));
   const dateIndices=sessions.map((_,i)=>i).filter(i=>i===0||i===sessions.length-1||i%nth===0);
-  const dateTicks=dateIndices.map(i=>'<text class="sj-svg-date" x="'+x(i).toFixed(2)+'" y="222" text-anchor="'+
+  const dateTicks=dateIndices.map(i=>'<text class="sj-svg-date" x="'+x(i).toFixed(2)+'" y="128" text-anchor="'+
     (i===0 && sessions.length>1?'start':i===sessions.length-1 && sessions.length>1?'end':'middle')+'">'+
     escapeHtml(dateLabel(sessions[i].date))+'</text><text class="sj-svg-day" x="'+
-    x(i).toFixed(2)+'" y="241" text-anchor="'+
+    x(i).toFixed(2)+'" y="141" text-anchor="'+
     (i===0 && sessions.length>1?'start':i===sessions.length-1 && sessions.length>1?'end':'middle')+
     '">Day '+(i+1)+'</text>').join('');
   const annotate=sessions.length<=9;
@@ -78,11 +80,11 @@ function chartMarkup(sessions, key) {
       ' reps · '+(session.rpe==null?'RPE not recorded':'RPE '+fmt(session.rpe))+
       (isVolume?' · total '+fmt(metricValue)+' kg × reps':''));
     return '<circle class="sj-svg-dot" cx="'+cx+'" cy="'+cy+'" r="5.3"><title>'+title+'</title></circle>'+
-      (tag?'<text class="sj-svg-value" x="'+cx+'" y="'+Math.max(15,cy-12).toFixed(2)+
+      (tag?'<text class="sj-svg-value" x="'+cx+'" y="'+Math.max(13,cy-10).toFixed(2)+
         '" text-anchor="middle">'+fmt(metricValue)+'</text>':'');
   }).join('');
   const aria='Actual '+unit+' across '+sessions.length+' recorded exercise session'+(sessions.length===1?'':'s');
-  return '<svg class="sj-svg-chart sj-svg-'+id+'" viewBox="0 0 650 258" role="img" aria-label="'+
+  return '<svg class="sj-svg-chart sj-svg-'+id+'" viewBox="0 0 410 151" role="img" aria-label="'+
     escapeHtml(aria)+'"><defs><linearGradient id="sj-gradient-'+id+
     '" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="'+
     (isRep?'#ab6bf3':'#f3bb5e')+'" stop-opacity=".26"/><stop offset="100%" stop-color="'+
@@ -140,7 +142,7 @@ function sessionHistoryMarkup(sessions,range,templateName) {
       '</small></span><span class="sj-history-main"><strong>'+fmt(session.kg)+' kg × '+
       session.reps+' reps</strong><small>'+escapeHtml(templateName)+' · '+session.sets.length+
       ' set'+(session.sets.length===1?'':'s')+'</small></span><span class="sj-rpe sj-rpe-'+
-      classOfRpe(session.rpe)+'">'+escapeHtml(rpe)+'</span><span class="sj-chevron" aria-hidden="true">⌄</span>'+
+      classOfRpe(session.rpe)+'">'+escapeHtml(rpe)+'</span><span class="sj-history-feedback">'+escapeHtml(feedback)+'</span><span class="sj-chevron" aria-hidden="true">⌄</span>'+
       '</summary><div class="sj-session-expanded"><p>'+escapeHtml(dateLong(session.date))+
       ' · '+escapeHtml(feedback)+'</p>'+sets+'</div></details>';
   }).join('')+'</div>'+
@@ -215,14 +217,14 @@ export function renderStrengthJourney(state, selectedIndex=0, settings={}) {
     '<select class="field" id="strength-exercise" aria-label="Choose exercise and workout version">'+
     exerciseItems+'</select></label>'+
     '<div class="sj-metrics">'+
-    metricCard('Journey Day 1',journey.day1||'—',
-      journey.day1?'From saved records':'Not established','▣')+
+    metricCard('Journey Day 1',journey.day1?dateLabel(journey.day1):'—',
+      journey.day1?journey.day1.slice(0,4):'Not established','▣')+
     metricCard('Exercise sessions',sessions.length,'Completed dates','▤')+
     metricCard('Load change',loadChange,sessions.length>1?
       fmt(sessions[0].kg)+' → '+fmt(latest.kg)+' kg':'More sessions needed','↗')+
     metricCard('Rep best',best?best.reps+' reps':'—',best?fmt(best.kg)+' kg logged':'No records','▥')+
-    metricCard('Current best',latest?fmt(latest.kg)+' kg × '+latest.reps:'—',
-      latest?dateLabel(latest.date):'No records','✦')+'</div>'+
+    metricCard('Current best',latest?fmt(latest.kg)+' kg':'—',
+      latest?'× '+latest.reps+' reps · '+dateLabel(latest.date):'No records','✦')+'</div>'+
     '<section class="sj-chart-panel"><div class="sj-panel-title"><h3>⚒ Load progression</h3>'+
     '<label class="sj-view-choice"><span class="sr-only">Chart measurement</span>'+
     '<select id="strength-metric" class="field" aria-label="Load graph measurement">'+

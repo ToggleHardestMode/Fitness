@@ -135,3 +135,36 @@ test('history and chart selectors and Train navigation are real controls',()=>{
   assert.match(html,/id="strength-exercise"/);
   assert.match(html,/data-page="train"/);
 });
+
+
+test('compact metrics abbreviate display only, while preserving full Day 1 in saved state',()=>{
+  const data=base();
+  data.logs=sessions(1);
+  const html=markup(data);
+  assert.match(html,/Journey Day 1/);
+  assert.match(html,/Nov 02/);
+  assert.match(html,/2026/);
+  assert.match(html,/Current best/);
+  assert.equal(data.logs[0].date,'2026-11-02');
+  assert.equal((html.match(/class="sj-stat"/g)||[]).length,5);
+});
+
+test('nine-session compact charts keep every real data point and readable-date labels',()=>{
+  const data=base();data.logs=sessions(9);
+  const html=markup(data);
+  assert.equal((html.match(/class="sj-svg-dot"/g)||[]).length,18);
+  // Nine real points per chart, but only five readable date labels per chart.
+  assert.equal((html.match(/class="sj-svg-date"/g)||[]).length,10);
+  assert.match(html,/viewBox="0 0 410 151"/);
+  assert.match(html,/Nov 02/);
+  assert.match(html,/Nov 26/);
+});
+
+test('compact session rows show recorded difficulty without opening a row',()=>{
+  const data=base();data.logs=sessions(1).map(row=>({...row,difficulty:'too_easy'}));
+  const html=markup(data);
+  const summary=html.slice(html.indexOf('<summary>',html.indexOf('sj-history-row')));
+  assert.match(summary,/sj-history-feedback/);
+  assert.match(summary,/Too easy/);
+  assert.doesNotMatch(html,/<img src=x onerror/);
+});
