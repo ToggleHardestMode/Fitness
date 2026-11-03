@@ -13,7 +13,7 @@ export function effortQuickLabel(value) {
   return ({6:'Easy (6)',7:'Moderate (7)',8:'Hard (8)',9:'Very hard (9)'})[value] || String(value);
 }
 
-export function createFloatingRestTimer({doc = document, win = window} = {}) {
+export function createFloatingRestTimer({doc = document, win = window, now = Date.now} = {}) {
   const KEY = 'fitnesspilot.preview.v101.ui.rest-sound.v1';
   let soundEnabled = true;
   try { soundEnabled = win.localStorage.getItem(KEY) !== 'off'; } catch {}
@@ -93,7 +93,7 @@ export function createFloatingRestTimer({doc = document, win = window} = {}) {
     handle = null;
   }
   function sync() {
-    const seconds = end == null ? 0 : timeLeftSeconds(end, Date.now());
+    const seconds = end == null ? 0 : timeLeftSeconds(end, now());
     const value = restClock(seconds);
     byId('fp-rest-fab-clock').textContent = value;
     byId('fp-rest-count').textContent = value;
@@ -105,7 +105,7 @@ export function createFloatingRestTimer({doc = document, win = window} = {}) {
     root.hidden = page !== 'train' && page !== 'tools' && end == null && !finished;
   }
   function tick() {
-    if (end != null && timeLeftSeconds(end, Date.now()) === 0) {
+    if (end != null && timeLeftSeconds(end, now()) === 0) {
       end = null;
       stopInterval();
       finished = true;
@@ -120,7 +120,7 @@ export function createFloatingRestTimer({doc = document, win = window} = {}) {
       throw Error('Rest timer must be between 1 and 600 seconds.');
     // Called directly from a user click: unlock iOS audio before countdown.
     if (soundEnabled) getContext();
-    end = Date.now() + seconds * 1000;
+    end = now() + seconds * 1000;
     finished = false; open = false;
     stopInterval();
     handle = win.setInterval(tick, 200);
@@ -155,5 +155,5 @@ export function createFloatingRestTimer({doc = document, win = window} = {}) {
   });
   doc.addEventListener('visibilitychange', () => { if (!doc.hidden) tick(); });
   sync();
-  return { start, stop, tick, updatePage, getRemaining: () => end == null ? 0 : timeLeftSeconds(end, Date.now()) };
+  return { start, stop, tick, updatePage, getRemaining: () => end == null ? 0 : timeLeftSeconds(end, now()) };
 }
