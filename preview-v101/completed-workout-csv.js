@@ -125,8 +125,12 @@ export function applyCompletedCsv(state,preview,makeId) {
   if(!preview||!Array.isArray(preview.add)||!preview.add.length)
     throw Error('No new completed sets to import.');
   let result=structuredClone(state);
+  const occupied=new Set(result.logs.map(row=>keyFor(row.date,row.templateId,row.exerciseIndex,row.set)));
   const grouped=new Map();
   for(const row of preview.add){
+    const setKey=keyFor(row.date,row.templateId,row.exerciseIndex,row.set);
+    if(occupied.has(setKey))throw Error('A set was saved after the CSV preview. Nothing imported or overwritten; review the CSV again.');
+    occupied.add(setKey);
     const k=[row.date,row.templateId,row.exerciseIndex].join('|');
     if(!grouped.has(k))grouped.set(k,[]);
     grouped.get(k).push(row);
