@@ -10,6 +10,7 @@ class Events {
   fire(name,event) { for(const fn of this.listeners.get(name)||[])fn(event); }
 }
 const doc=new Events(), win=new Events(), settings=new Map();
+doc.getElementById=()=>null;
 win.localStorage={getItem:k=>settings.get(k)??null,setItem:(k,v)=>settings.set(k,v)};
 let soundPlays=0;
 class FakeAudio {
