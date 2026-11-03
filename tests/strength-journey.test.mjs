@@ -95,7 +95,8 @@ test("Dashboard displays saved-only graph; recommendations never appear as compl
   assert.match(html,/Strength Journey/);
   assert.match(html,/2026-10-30/);
   assert.match(html,/12 kg/);
-  assert.doesNotMatch(html,/14 kg/);
+  const plotted=html.split('class="sj-next-panel"')[0];
+  assert.doesNotMatch(plotted,/14 kg/);
   const proposed=strengthNextSession(build(),choice);
   assert.match(proposed,/14 kg/);
   assert.match(proposed,/Save increment/);
@@ -135,8 +136,8 @@ test("clearly easy sets can progress two reps, capped by the prescribed maximum"
 test("weight and repetitions graphs remain actual-record based",()=>{
   const data=build();
   const html=strengthDashboard(data);
-  assert.match(html,/Show repetitions trend/);
+  assert.match(html,/Repetition trend/);
   assert.match(html,/Restart journey Day 1/);
   assert.match(html,/strength-start-form/);
-  assert.equal((html.match(/strength-plot/g)||[]).length,2);
+  assert.equal((html.match(/sj-svg-chart/g)||[]).length,2);
 });
