@@ -1,6 +1,6 @@
-# FitnessPilot — Master Development Backlog (104 tasks)
+# FitnessPilot — Master Development Backlog (109 tasks)
 
-Date: 2026-11-03 SGT
+Date: 2026-11-03 SGT (reconciled 2026-11-05 SGT)
 Sources: FitnessPilot's public source and preview release history, associated pull requests, and a separate internal planning audit. No personal training records or internal conversations are reproduced here.
 Status: **planning/inventory only**. No app configuration, saved workout records, backup files, or production behavior are modified by this documentation.
 
@@ -92,6 +92,14 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B051 | Require explicit user selection and review of exercise tolerance before adding more demanding accessory movements | Proposed |
 | B052 | Add exercise instruction cards with plain form cues, alternatives and safety notes rather than excessive jargon | Proposed |
 
+## P1/P2 — calendar reminders and one-way scheduling
+
+| ID | Work item | Current state |
+|---|---|---|
+| B105 | Stabilize existing one-time .ics workout reminder export with deterministic event UIDs and explicit re-export/duplicate-import behavior; FitnessPilot remains schedule authority | Existing .ics export; UID stability not implemented |
+| B106 | Validate calendar-export time zone, recurring dates, duration, alert lead time and privacy-safe event content in Apple/Google/Outlook clients, including real-device acceptance | Pending real calendar-client testing |
+| B107 | Consider explicitly authorized one-way Google Calendar publishing or a revocable private subscription feed, with least-privilege access, idempotent updates, disconnect/status and no external writeback to saved workouts | Deferred option; not built; two-way integration KIV |
+
 ## P1/P2 — storage, backup and genuine two-device sync
 
 | ID | Work item | Current state |
@@ -168,6 +176,8 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B102 | Retire stale/contradictory labels and old documentation while preserving historical audit records | Pending cleanup |
 | B103 | Benchmark 30 synthetic set entries for completion time, tap count, corrections and missed sets | F-024 captured |
 | B104 | Keep separate private research notes, QA evidence, and change decisions, with verified commits | Existing policy |
+| B108 | Pilot independent, sanitized failure-event capture and private coverage reconciliation for FitnessPilot coding/QA failures; link observed events to regression receipts without putting raw chats or private logs in this public repository | Proposed Fitness integration; reusable tooling exists separately, no genuine Fitness ledger verified |
+| B109 | Add and verify a narrow Fitness CI workflow for native Node regressions and read-only integrity checks on relevant changes, preserving real-device acceptance as a separate gate | Proposed; no workflow on current main, Actions availability unverified |
 
 ## Suggested implementation order
 
@@ -187,6 +197,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 
 ## Evidence links
 
+- [One-way calendar reminders scope decision, 5 November 2026](docs/decisions/2026-11-05-calendar-reminders-only.md) — code change not authorized; two-way sync remains deferred.
 - [V15.22.2 PR #67](https://github.com/ToggleHardestMode/Fitness/pull/67)
 - [V15.22.1 compact Strength Journey PR #66](https://github.com/ToggleHardestMode/Fitness/pull/66)
 - [Completed-set CSV import PR #64](https://github.com/ToggleHardestMode/Fitness/pull/64)
