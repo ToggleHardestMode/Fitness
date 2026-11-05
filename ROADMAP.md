@@ -1,4 +1,4 @@
-# FitnessPilot — Master Development Backlog (113 tasks)
+# FitnessPilot — Master Development Backlog (116 tasks)
 
 Date: 2026-11-03 SGT (reconciled 2026-11-05 SGT)
 Sources: FitnessPilot's public source and preview release history, associated pull requests, and a separate internal planning audit. No personal training records or internal conversations are reproduced here.
@@ -95,6 +95,9 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B051 | Require explicit user selection and review of exercise tolerance before adding more demanding accessory movements | Proposed |
 | B052 | Add exercise instruction cards with plain form cues, alternatives and safety notes rather than excessive jargon | Proposed |
 | B113 | Define pulldown load semantics (cable/plate kg vs resistance band level) before finalizing V10.3 pulldown logging; count unilateral sets once per side-pair | Equipment type unconfirmed |
+| B114 | Separate the sets currently being performed ("active sets") from a template's target sets, so volume can ramp toward V10.3 without progression holding as "incomplete" | Planned; spec in docs/plans/2026-11-05-v10.3-transition-plan.md |
+| B115 | Record a per-exercise clinical clearance entered by the owner (date, cleared by, revocable) so a cleared [PT Review] exercise can receive the normal gated suggestions; never inferred from logs | Planned; spec in transition plan |
+| B116 | Decide whether a general (not exercise-linked) symptom entry should block progression for all exercises that day or only lower-body/PT-review exercises | Owner decision pending; current behaviour unchanged |
 
 ## P1/P2 — calendar reminders and one-way scheduling
 
@@ -203,6 +206,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 
 ## Evidence links
 
+- [V10.3 transition plan, 5 November 2026](docs/plans/2026-11-05-v10.3-transition-plan.md) — B111, B073, B114, B115 implementation specs.
 - [Owner roadmap decisions 1–8, 5 November 2026](docs/decisions/2026-11-05-roadmap-owner-decisions.md) — decisions recorded; implementation pending.
 - [One-way calendar reminders scope decision, 5 November 2026](docs/decisions/2026-11-05-calendar-reminders-only.md) — code change not authorized; two-way sync remains deferred.
 - [V15.22.2 PR #67](https://github.com/ToggleHardestMode/Fitness/pull/67)
