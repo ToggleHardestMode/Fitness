@@ -25,6 +25,9 @@ export function strengthNextSession(state, selection) {
     'No planned or suggested values count as completed sets.</p>' +
     (rows ? '<table class="strength-target-table"><thead><tr><th>Set</th><th>Load entered</th><th>Target</th></tr></thead><tbody>' +
       rows + '</tbody></table>' : '<p class="hint">No numeric target available.</p>') +
+    (plan.reference ? '<p class="hint"><strong>Linked earlier history (reference only):</strong> ' +
+      esc(plan.reference.exerciseName) + ' · ' + esc(plan.reference.date) + ' · ' + fmt(plan.reference.kg) +
+      ' kg × ' + plan.reference.reps + ' reps. Not a target.</p>' : '') +
     '<p class="hint"><strong>Why:</strong> ' + esc(plan.reason) + '</p>' +
     '<div class="strength-calibration">Calibration: ' + journey.calibrated.sessions +
     ' saved session(s) · ' + journey.calibrated.ratedSets + '/' +

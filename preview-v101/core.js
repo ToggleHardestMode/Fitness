@@ -1,5 +1,6 @@
 // FitnessPilot's data rules. No network calls or browser-specific APIs.
 import { validateSymptomLogs } from './symptom-journal.js';
+import { validateExerciseEquivalences } from './exercise-equivalence.js';
 
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -339,6 +340,7 @@ export function validateBackup(value) {
   if (value.progressionStepKg !== undefined && ![0.5,1,2,2.5,4].includes(value.progressionStepKg))
     fail("Backup contains an invalid dumbbell increment.");
   validateSymptomLogs(value);
+  validateExerciseEquivalences(value);
   const rem=value.reminder;
   if(!rem) fail("Backup lacks reminder settings.");
   intRange(rem.hour,"Reminder hour",0,23);intRange(rem.minute,"Reminder minute",0,59);intRange(rem.lead,"Reminder lead",0,120);
