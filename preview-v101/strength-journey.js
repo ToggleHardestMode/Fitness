@@ -2,6 +2,7 @@
 export const STRENGTH_RULE_VERSION = "strength-v1";
 import { linkedSources } from "./exercise-equivalence.js";
 import { expectedSetCount } from "./active-sets.js";
+import { activeClearance } from "./exercise-clearance.js";
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const isWorking = row => row && row.isWarmup !== true && row.kind !== "warmup";
 const isValid = row => isWorking(row) && DATE.test(row.date) &&
@@ -101,7 +102,7 @@ export function recommendNextExercise(state, {templateId, exerciseIndex, date}) 
         linked.source.exerciseName + ", " + linked.date + ", " + linked.kg + " kg x " + linked.reps +
         " reps) is a reference for choosing a starting weight, not a target. Select a trial weight manually."};
   }
-  if (ptReview(template, exercise)) return {...base, status:"pt-review",
+  if (ptReview(template, exercise) && !activeClearance(state, templateId, exerciseIndex, date)) return {...base, status:"pt-review",
     reason:"[PT Review]: previous sets are reference only. No loading recommendation."};
   if (exercise.repUnit === "seconds_per_side") return {...base, status:"timed",
     reason:"Timed holds use seconds/side and cannot receive a kilogram progression target."};
