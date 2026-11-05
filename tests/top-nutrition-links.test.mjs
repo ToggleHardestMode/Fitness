@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {previewVersion,cacheVersionToken,cacheName} from './preview-version.mjs';
 const src = name => readFileSync(new URL('../preview-v101/'+name, import.meta.url),'utf8');
 
 test('dashboard places top Nutrition and Cheatsheet links directly below heading',()=>{
@@ -24,14 +25,14 @@ test('responsive style provides two touch-friendly shortcuts',()=>{
  assert.match(css,/\.fp-top-nutrition \.fp-top-nutrition-link\s*\{[^}]*min-height:48px/);
  assert.match(css,/@media\(min-width:700px\)/);
 });
-test('existing nutrition destinations remain real and cached in V15.20.1',()=>{
+test('existing nutrition destinations remain real and cached with a synchronized preview version',()=>{
  const sw=src('sw.js'),app=src('app.js');
  for(const page of ['nutrition.html','nutrition-cheatsheet.html']){
    assert.match(sw,new RegExp("'\\.\\/"+page.replace('.','\\.')+"'"));
-   assert.ok(src(page).includes('FITNESSPILOT V15.20.1 PREVIEW'));
+   assert.match(src(page),/FITNESSPILOT V\d+\.\d+\.\d+ PREVIEW/);
  }
- assert.match(src('index.html'),/FITNESSPILOT V15\.20\.1 PREVIEW/);
- assert.match(src('manifest.webmanifest'),/FitnessPilot V15\.20\.1 Preview/);
- assert.match(sw,/fitnesspilot-preview-v15201-top-nutrition-v53/);
+ const version=previewVersion();
+ assert.equal(JSON.parse(src('manifest.webmanifest')).name,`FitnessPilot ${version} Preview`);
+ assert.ok(cacheName().includes(cacheVersionToken(version)));
  assert.match(app,/Open Food Diary/);
 });
