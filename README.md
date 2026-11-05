@@ -4,7 +4,7 @@ FitnessPilot is a browser-based, no-account workout tracker hosted on GitHub Pag
 
 ## Development roadmap
 
-The canonical [FitnessPilot master backlog](ROADMAP.md) tracks 104 numbered fixes, progression tasks, feature proposals, verification gates and deferred ideas. The roadmap is planning only; workout data stays local and is not stored in this public repository.
+The canonical [FitnessPilot master backlog](ROADMAP.md) tracks 109 numbered fixes, progression tasks, feature proposals, verification gates and deferred ideas. The roadmap is planning only; workout data stays local and is not stored in this public repository.
 
 ## Open the app
 
