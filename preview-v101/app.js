@@ -21,6 +21,8 @@ import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
 import { workoutLogbookHtml, workoutLogbookCsv } from './workout-logbook.js';
 import { strengthDashboard, strengthNextSession } from './strength-journey-ui.js';
+import { equivalencePanel } from './exercise-equivalence-ui.js';
+import { addExerciseEquivalence, removeExerciseEquivalence, linkCandidates } from './exercise-equivalence.js';
 import {previewCompletedCsv, applyCompletedCsv, blankCompletedCsv} from './completed-workout-csv.js';
 import { verifyLocalSnapshot, inspectBackupFileText } from './recovery-check.js';
 import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, dateFromKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
@@ -271,6 +273,7 @@ function train() {
     ${workout.equipmentNote?`<div class="hint"><strong>Equipment:</strong> ${esc(workout.equipmentNote)}</div>`:''}
     ${ex.sourceNote?`<div class="notice"><strong>Exercise instructions:</strong> ${esc(ex.sourceNote)}</div>`:''}
     ${strengthNextSession(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise})}
+    ${equivalencePanel(state,{templateId:selected,exerciseIndex:chosenExercise})}
     <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">EFFORT</span><span class="micro">✓</span></div>${setFields}<p class="fp-effort-help"><strong>How hard did it feel?</strong> ${esc(effortHint)}</p>${repeatButton}${quickControls}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><div class="metrics-grid"><label><span class="form-label">How did this exercise feel?</span><select class="field" name="difficulty"><option value="">Not rated</option><option value="too_easy" ${feedbackOld?.difficulty==='too_easy'?'selected':''}>Too easy</option><option value="on_target" ${feedbackOld?.difficulty==='on_target'?'selected':''}>On target</option><option value="too_hard" ${feedbackOld?.difficulty==='too_hard'?'selected':''}>Too hard</option></select></label><label><span class="form-label">Technique quality</span><select class="field" name="technique"><option value="">Not rated</option><option value="controlled" ${feedbackOld?.technique==='controlled'?'selected':''}>Controlled</option><option value="unstable" ${feedbackOld?.technique==='unstable'?'selected':''}>Unstable</option></select></label></div><p class="hint">Feedback applies to each set you save now. Effort is how hard it felt; leave the score blank if unsure.</p><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">Rest ${ex.rest}s · floating timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
   } else {exMarkup=`<div class="card empty"><strong>${state.templates.length?'No workout selected':'No templates yet'}</strong>${state.templates.length?'Choose any workout above or assign a day in Plan.':'Go to Dashboard and load the example plan, or import your own CSV in Plan.'}</div>`;}
   return `${shellHeading()}${heading('TRAINING','One set at a time','Choose an exercise, record your completed sets, then rest before the next one.')}
@@ -466,6 +469,24 @@ document.addEventListener('click', event=>{
   const act=button.dataset.action;
   tryAction(()=>{
     if(act==='cancel-customize'){customizing=null;render();return;}
+    if(act==='equivalence-link'){
+      const choice=$('#equivalence-candidate')?.value||'';
+      const [tIndex,eIndex]=choice.split(':').map(Number);
+      const earlier=state.templates[tIndex];
+      if(!choice||!earlier||!Number.isInteger(eIndex)||!earlier.exercises[eIndex])throw Error('Choose an earlier exercise to link.');
+      const here=state.templates.find(t=>t.id===chosenTemplate)?.exercises[chosenExercise];
+      if(!here)throw Error('Choose an exercise first.');
+      if(!linkCandidates(state,chosenTemplate,chosenExercise).some(c=>c.templateId===earlier.id&&c.exerciseIndex===eIndex))throw Error('That exercise cannot be linked here.');
+      if(!confirm(`Link "${earlier.exercises[eIndex].name}" (${earlier.name}) as earlier history of "${here.name}"? Its sets will appear on this exercise's Strength Journey chart and as a starting-weight reference only. Progression still uses only this exercise's own sessions. No saved sets are changed.`))return;
+      commit(addExerciseEquivalence(state,{from:{templateId:earlier.id,exerciseIndex:eIndex},to:{templateId:chosenTemplate,exerciseIndex:chosenExercise},approvedDate:today()},undefined,{confirmed:true}),'Earlier history linked. No saved sets were changed.');
+      return;
+    }
+    if(act==='equivalence-unlink'){
+      const id=button.dataset.linkId;
+      if(!confirm('Remove this link? Only the link is removed; all saved sets stay exactly as they are.'))return;
+      commit(removeExerciseEquivalence(state,id,{confirmed:true}),'Link removed. No saved sets were changed.');
+      return;
+    }
     if(act==='quick-reps-minus' || act==='quick-reps-plus' || act==='quick-rpe') {
       if(!focusMode)throw Error('Switch to Focus Mode for quick entry.');
       const form=$('#sets-form');

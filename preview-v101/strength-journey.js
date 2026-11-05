@@ -1,5 +1,6 @@
 // Pure selectors: saved working sets only. No training records or targets are mutated.
 export const STRENGTH_RULE_VERSION = "strength-v1";
+import { linkedSources } from "./exercise-equivalence.js";
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const isWorking = row => row && row.isWarmup !== true && row.kind !== "warmup";
 const isValid = row => isWorking(row) && DATE.test(row.date) &&
@@ -29,23 +30,38 @@ export function getExerciseJourney(state, templateId, exerciseIndex) {
     (!startDate || row.date >= startDate));
   const day1 = startDate || (allValid.length ? allValid.reduce((min, log) =>
     log.date < min ? log.date : min, allValid[0].date) : null);
-  const days = new Map();
-  for (const row of allValid) {
-    if (row.templateId !== templateId || row.exerciseIndex !== exerciseIndex ||
-        !Number.isInteger(row.set) || row.set < 1 || row.set > exercise.sets) continue;
-    if (!days.has(row.date)) days.set(row.date, new Map());
-    // Existing validator disallows duplicates; first occurrence wins for defensive reads.
-    if (!days.get(row.date).has(row.set)) days.get(row.date).set(row.set, row);
+  const sessionsOf = (tid, index, ex) => {
+    const days = new Map();
+    for (const row of allValid) {
+      if (row.templateId !== tid || row.exerciseIndex !== index ||
+          !Number.isInteger(row.set) || row.set < 1 || row.set > ex.sets) continue;
+      if (!days.has(row.date)) days.set(row.date, new Map());
+      // Existing validator disallows duplicates; first occurrence wins for defensive reads.
+      if (!days.get(row.date).has(row.set)) days.get(row.date).set(row.set, row);
+    }
+    return [...days.entries()].sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, setMap]) => {
+        const sets = [...setMap.values()].sort((a, b) => a.set - b.set)
+          .map(row => ({set:row.set, kg:row.kg, reps:row.reps, rpe:row.rpe ?? null,
+            difficulty:row.difficulty || "", technique:row.technique || "", id:row.id}));
+        const top = sets.reduce((best, row) =>
+          !best || row.kg > best.kg || (row.kg === best.kg && row.reps > best.reps) ? row : best, null);
+        return {date, sets, kg:top.kg, reps:top.reps, rpe:top.rpe};
+      });
+  };
+  const sessions = sessionsOf(templateId, exerciseIndex, exercise);
+  // Sessions of owner-linked earlier exercises: display and starting-weight reference only.
+  const linkedSessions = [];
+  for (const source of linkedSources(state, templateId, exerciseIndex)) {
+    const sourceExercise = (state.templates || []).find(item => item.id === source.templateId)?.exercises?.[source.exerciseIndex];
+    if (!sourceExercise) continue;
+    for (const session of sessionsOf(source.templateId, source.exerciseIndex, sourceExercise))
+      linkedSessions.push({...session, linked:true, source:{templateId:source.templateId,
+        exerciseIndex:source.exerciseIndex, exerciseName:sourceExercise.name}});
   }
-  const sessions = [...days.entries()].sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, setMap]) => {
-      const sets = [...setMap.values()].sort((a, b) => a.set - b.set)
-        .map(row => ({set:row.set, kg:row.kg, reps:row.reps, rpe:row.rpe ?? null,
-          difficulty:row.difficulty || "", technique:row.technique || "", id:row.id}));
-      const top = sets.reduce((best, row) =>
-        !best || row.kg > best.kg || (row.kg === best.kg && row.reps > best.reps) ? row : best, null);
-      return {date, sets, kg:top.kg, reps:top.reps, rpe:top.rpe};
-    });
+  linkedSessions.sort((a, b) => a.date.localeCompare(b.date));
+  const allSessions = linkedSessions.length ?
+    [...linkedSessions, ...sessions].sort((a, b) => a.date.localeCompare(b.date)) : sessions;
   const latest = sessions.at(-1) || null;
   const first = sessions[0] || null;
   const rated = sessions.reduce((total, session) =>
@@ -58,7 +74,7 @@ export function getExerciseJourney(state, templateId, exerciseIndex) {
     evidence:sessions.length >= 3 ? "Multiple sessions" :
       sessions.length === 2 ? "Two sessions" : sessions.length === 1 ? "Single session" : "No sessions"
   };
-  return {template, exercise, day1, firstExerciseDay:first?.date || null, sessions, calibrated};
+  return {template, exercise, day1, firstExerciseDay:first?.date || null, sessions, linkedSessions, allSessions, calibrated};
 }
 
 export function recommendNextExercise(state, {templateId, exerciseIndex, date}) {
@@ -69,8 +85,16 @@ export function recommendNextExercise(state, {templateId, exerciseIndex, date}) 
   const latest = sessions.at(-1) || null;
   const base = {version:STRENGTH_RULE_VERSION, status:"review", targets:[],
     reason:"", priorDate:latest?.date || null, sampleSessions:sessions.length};
-  if (!latest) return {...base, status:"no-history",
-    reason:"No previous recorded workout before this date. Select a trial weight manually."};
+  if (!latest) {
+    const linked = journey.linkedSessions.filter(row => row.date < date).at(-1);
+    if (!linked) return {...base, status:"no-history",
+      reason:"No previous recorded workout before this date. Select a trial weight manually."};
+    return {...base, status:"no-history",
+      reference:{date:linked.date, kg:linked.kg, reps:linked.reps, exerciseName:linked.source.exerciseName},
+      reason:"No previous recorded workout of this exercise before this date. Linked earlier history (" +
+        linked.source.exerciseName + ", " + linked.date + ", " + linked.kg + " kg x " + linked.reps +
+        " reps) is a reference for choosing a starting weight, not a target. Select a trial weight manually."};
+  }
   if (ptReview(template, exercise)) return {...base, status:"pt-review",
     reason:"[PT Review]: previous sets are reference only. No loading recommendation."};
   if (exercise.repUnit === "seconds_per_side") return {...base, status:"timed",

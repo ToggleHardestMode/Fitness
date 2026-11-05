@@ -36,7 +36,7 @@ function metricCard(title, value, detail, icon) {
     escapeHtml(value) + '</strong><small>' + escapeHtml(detail) + '</small></div>';
 }
 
-function chartMarkup(sessions, key) {
+function chartMarkup(sessions, key, currentName) {
   const isRep=key==='reps';
   const isVolume=key==='volume';
   const values=sessions.map(session => isVolume
@@ -72,6 +72,15 @@ function chartMarkup(sessions, key) {
     (i===0 && sessions.length>1?'start':i===sessions.length-1 && sessions.length>1?'end':'middle')+
     '">Day '+(i+1)+'</text>').join('');
   const annotate=sessions.length<=9;
+  // Visible marker wherever the plotted exercise changes (owner-approved links only).
+  const sourceKey=session=>session.source?session.source.templateId+'|'+session.source.exerciseIndex:'current';
+  const sourceName=session=>session.source?session.source.exerciseName:currentName;
+  const changes=coords.map((point,i)=>i>0&&sourceKey(sessions[i])!==sourceKey(sessions[i-1])?i:-1).filter(i=>i>0).map(i=>{
+    const cx=((coords[i-1][0]+coords[i][0])/2).toFixed(2);
+    return '<g class="sj-svg-change"><line x1="'+cx+'" x2="'+cx+'" y1="'+top+'" y2="'+bottom+
+      '"/><text x="'+cx+'" y="'+(top-10)+'" text-anchor="middle">Exercise changed</text><title>'+
+      escapeHtml('Exercise changed from '+sourceName(sessions[i-1])+' to '+sourceName(sessions[i]))+'</title></g>';
+  }).join('');
   const markers=coords.map(([cx,cy],i)=>{
     const session=sessions[i];
     const tag=annotate||i===0||i===coords.length-1;
@@ -79,7 +88,8 @@ function chartMarkup(sessions, key) {
     const title=escapeHtml(session.date+' · '+fmt(session.kg)+' kg × '+session.reps+
       ' reps · '+(session.rpe==null?'RPE not recorded':'RPE '+fmt(session.rpe))+
       (isVolume?' · total '+fmt(metricValue)+' kg × reps':''));
-    return '<circle class="sj-svg-dot" cx="'+cx+'" cy="'+cy+'" r="5.3"><title>'+title+'</title></circle>'+
+    return '<circle class="sj-svg-dot'+(session.linked?' sj-svg-dot-linked':'')+'" cx="'+cx+'" cy="'+cy+'" r="5.3"><title>'+
+      (session.linked?escapeHtml(session.source.exerciseName)+' · ':'')+title+'</title></circle>'+
       (tag?'<text class="sj-svg-value" x="'+cx+'" y="'+Math.max(13,cy-10).toFixed(2)+
         '" text-anchor="middle">'+fmt(metricValue)+'</text>':'');
   }).join('');
@@ -92,7 +102,7 @@ function chartMarkup(sessions, key) {
     grids+'<line class="sj-svg-baseline" x1="'+left+'" x2="'+right+'" y1="'+bottom+'" y2="'+bottom+'"/>'+
     (fill?'<path class="sj-svg-area" fill="url(#sj-gradient-'+id+')" d="'+fill+'"/>':'')+
     (coords.length>1?'<polyline class="sj-svg-line" points="'+polyline+'"/>':'')+
-    markers+dateTicks+'</svg>'+
+    changes+markers+dateTicks+'</svg>'+
     (sessions.length===1?'<p class="sj-chart-note">First recorded session. Your trend starts when you log another workout.</p>':'');
 }
 
@@ -233,10 +243,10 @@ export function renderStrengthJourney(state, selectedIndex=0, settings={}) {
     '</select></label></div><p class="sj-chart-subtitle">'+
     (options.metric==='volume'?'Sum of kg × reps across saved sets, per session':
     'Heaviest saved working-set load per exercise session')+'</p>'+
-    chartMarkup(sessions,options.metric==='volume'?'volume':'kg')+
+    chartMarkup(journey.allSessions,options.metric==='volume'?'volume':'kg',exercise.name)+
     '<div class="sj-chart-divider"></div><div class="sj-panel-title"><h3>⌄ Repetition trend</h3>'+
     '<span class="sj-small-note">Reps on heaviest set</span></div>'+
-    chartMarkup(sessions,'reps')+
+    chartMarkup(journey.allSessions,'reps',exercise.name)+
     '<p class="sj-footnote">Every point represents an actual saved exercise session. Planned and suggested loads are excluded. Values are kg exactly as entered.</p>'+
     '</section>'+
     '<div class="sj-comparison-grid"><section class="sj-subpanel"><div class="sj-panel-title"><h3>◎ Progress summary</h3><span>'+sessions.length+' sessions</span></div>'+

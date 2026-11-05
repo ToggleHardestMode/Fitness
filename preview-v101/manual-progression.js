@@ -1,3 +1,5 @@
+import { linkedSources } from './exercise-equivalence.js';
+
 // Read-only candidate planning. Not a strength prescription or medical clearance.
 const isPT = template => Boolean(template?.requiresClinicalReview || template?.name?.includes('[PT Review]'));
 const sameSet = (row, templateId, exerciseIndex, set) =>
@@ -32,7 +34,23 @@ export function manualProgression(state, {date, templateId, exerciseIndex, set})
   const latest = uniqueDays[0] || null;
   const base = {history:latest ? {date:latest.date,kg:latest.kg,reps:latest.reps,rpe:latest.rpe} : null,
     candidate:null, status:'review', reason:''};
-  if (!latest) return {...base,status:'no-history',reason:'No comparable earlier set. Enter real values manually.'};
+  if (!latest) {
+    // Owner-linked earlier exercises give a starting-weight reference only, never a candidate.
+    let reference = null;
+    for (const source of linkedSources(state, templateId, exerciseIndex)) {
+      const row = (state.logs || [])
+        .filter(item => sameSet(item, source.templateId, source.exerciseIndex, set) &&
+          item.date < date && item.isWarmup !== true && item.kind !== 'warmup')
+        .sort((a,b) => b.date.localeCompare(a.date))[0];
+      if (row && (!reference || row.date > reference.date)) {
+        const name = state.templates.find(t => t.id === source.templateId)?.exercises?.[source.exerciseIndex]?.name;
+        reference = {date:row.date,kg:row.kg,reps:row.reps,exerciseName:name};
+      }
+    }
+    if (reference) return {...base,status:'no-history',reference,
+      reason:'No comparable earlier set for this exercise. Linked earlier history is a reference for choosing a starting weight, not a target. Enter real values manually.'};
+    return {...base,status:'no-history',reason:'No comparable earlier set. Enter real values manually.'};
+  }
   if (isPT(template) || /\[PT\]/i.test(exercise.name)) {
     return {...base,status:'pt-review',reason:'Lower-body PT review: previous results are reference only. No progression suggestion.'};
   }
