@@ -1,4 +1,4 @@
-# FitnessPilot — Master Development Backlog (109 tasks)
+# FitnessPilot — Master Development Backlog (113 tasks)
 
 Date: 2026-11-03 SGT (reconciled 2026-11-05 SGT)
 Sources: FitnessPilot's public source and preview release history, associated pull requests, and a separate internal planning audit. No personal training records or internal conversations are reproduced here.
@@ -31,6 +31,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B005 | Create disposable backup export->validate->restore on separate empty browser profile, no real data overwrite | Pending |
 | B006 | Verify imported backup preserves set records, source notes, program versions, assigned days, feedback and symptom schema | Pending |
 | B007 | Ensure completion/undo/export never silently overwrite, duplicate or invent training history | Ongoing invariant |
+| B111 | Tracking reset must also clear `strengthJourneyStartDate` (port from closed PR #62) without touching templates or weekday assignments; add test | Proposed; fix identified |
 | B008 | Audit consent/privacy for any training or health-like records before any backend, analytics or syncing feature | Pending |
 | B009 | Let users suspend or exclude any exercise that causes a concerning response; do not diagnose symptoms or imply medical clearance | Proposed safety design |
 | B010 | Document user-facing stop/hold and symptom-entry prompts for unusual exercise responses, without diagnostic automation | Proposed safety design |
@@ -43,7 +44,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B012 | Show currently selected program and active version prominently on Train/Today | Proposed |
 | B013 | Show assigned day, optional manual workout choice, and clear difference between a plan and a completed session | Proposed |
 | B014 | Reduce overlapping templates via safe archive/hide, never delete records or silently merge exercise identity | Proposed |
-| B015 | Make choosing V10.2/V10.3/V10.1 opt-in and explain archived, planned and active program statuses | Proposed |
+| B015 | Make choosing V10.2/V10.3/V10.1 opt-in and explain archived, planned and active program statuses | Decided 2026-11-05: V10.3 becomes default only after import; V10.1/V10.2 archived but selectable |
 | B016 | One active exercise and one active set, quick weight/reps entry, unmistakable Save action | Partly present Focus Mode; optimize |
 | B017 | Improve exercise picker's layout and one-hand access without creating accidental saves | Proposed |
 | B018 | Offer Save Set -> Rest -> Next Set flow as a user-selectable shortcut, without starting timers on failed saves | Proposed |
@@ -67,17 +68,17 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B031 | Make rest-duration choice easy to edit from current exercise without navigating to Tools | Implemented preview, verify UX |
 | B032 | Display end-of-rest alert until acknowledged even when audio was blocked | Implemented source; device pending |
 | B033 | Show sound-muted and background-alert limitations visibly but concisely | Implemented source; copy review |
-| B034 | Evaluate optional keep-screen-awake feature only with platform support and battery safeguards | Research |
-| B035 | Explore OS-managed notifications or optional native wrapper only if real locked-screen alarm is essential | Deferred |
-| B036 | Compare timestamp-based countdown vs delayed/background timer behavior on actual iOS | Pending device |
+| B034 | Evaluate optional keep-screen-awake feature only with platform support and battery safeguards | Decided 2026-11-05: optional toggle, active workout only, released on finish/leave; drop if unreliable on device |
+| B035 | Explore OS-managed notifications or optional native wrapper only if real locked-screen alarm is essential | Closed 2026-11-05: no native wrapper; persistent on-screen alert (B032) accepted |
+| B036 | Compare timestamp-based countdown vs delayed/background timer behavior on actual iOS | Source already uses Date.now timestamps; pending device |
 | B037 | Avoid duplicate squish MP3 playback over end-of-rest cue | Implemented source; device pending |
 
 ## P1 — workout program and progressive training
 
 | ID | Work item | Current state |
 |---|---|---|
-| B038 | Finalize V10.3 as new selectable program; preserve V10.2 and earlier versions | Draft pending |
-| B039 | Create upper A/B phased working-set templates with exact ranges, rest and optional readiness hold | Draft pending |
+| B038 | Finalize V10.3 as new selectable program; preserve V10.2 and earlier versions | Decided 2026-11-05: V10.3 is the target program; not yet in source — import and validation pending |
+| B039 | Create upper A/B phased working-set templates with exact ranges, rest and optional readiness hold | Decided 2026-11-05: upper target 37 sets/week (Mon 17, Thu 20), built up gradually; supersedes 33-set draft; template pending |
 | B040 | Keep light Lower A/B main muscular work with selected adjunct trunk/mobility only where tolerated | Draft pending |
 | B041 | Retain normal lower lifts as future goals, not automatic instruction to load previously provocative exercises | Draft guard |
 | B042 | Make exercise-specific substitutions and versioned templates (e.g., sit-to-stand for squat role) without rewriting history | Versioning exists; mapping pending |
@@ -89,8 +90,10 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B048 | Limit loaded squat/hinge progression advice without assessment; retain non-diagnostic boundaries | Existing PT review, refine |
 | B049 | Allow deload or repeat-week logic when fatigue or performance warrants, without calendar-forced jumps | Proposed |
 | B050 | Separate planned weekly sets from actual sets, and direct vs indirect muscle contributions | Partially implemented |
+| B112 | Store the full per-exercise muscle contribution table (direct 1, secondary 0.5) alongside V10.3 so weekly dose estimates are reproducible | Proposed |
 | B051 | Require explicit user selection and review of exercise tolerance before adding more demanding accessory movements | Proposed |
 | B052 | Add exercise instruction cards with plain form cues, alternatives and safety notes rather than excessive jargon | Proposed |
+| B113 | Define pulldown load semantics (cable/plate kg vs resistance band level) before finalizing V10.3 pulldown logging; count unilateral sets once per side-pair | Equipment type unconfirmed |
 
 ## P1/P2 — calendar reminders and one-way scheduling
 
@@ -105,18 +108,19 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | ID | Work item | Current state |
 |---|---|---|
 | B053 | Keep offline local working state as source of in-session speed and resilience | Current architecture |
-| B054 | Define stable record IDs, created/edited timestamps, schema version, origin-device ID and explicit deletions/tombstones | Sync design needed |
-| B055 | Define idempotent two-device merge, duplicate prevention, deterministic conflicts and manual resolution | Sync design needed |
-| B056 | Specify how an offline phone and PC reconcile edits to the same set, template, schedule or daily entry | Sync design needed |
-| B057 | Decide whether backed-up health-sensitive observations are in scope; minimize data by default | Privacy design needed |
-| B058 | Compare managed backend/auth providers vs encrypted private cloud file vs private GitHub snapshots | Research decision |
-| B059 | If using GitHub backups, private encrypted files only; never embed tokens in public GitHub Pages JavaScript | Not implemented |
-| B060 | Build connection/authentication with revocation, least privilege and no visible/committed secrets | Not implemented |
-| B061 | Test lossless export->sync->restore, offline edits, conflicting edits, reconnect and interrupted writes | Not implemented |
-| B062 | Show last sync success/failure and local-unsynced counts without falsely implying server success | Not implemented |
+| B054 | Define stable record IDs, created/edited timestamps, schema version, origin-device ID and explicit deletions/tombstones | Deferred 2026-11-05: no sync planned; revisit only if sync is requested |
+| B055 | Define idempotent two-device merge, duplicate prevention, deterministic conflicts and manual resolution | Dropped 2026-11-05: no two-device merge; local encrypted backup chosen (B110) |
+| B056 | Specify how an offline phone and PC reconcile edits to the same set, template, schedule or daily entry | Dropped 2026-11-05: phone is the single logging device; PC stores backups only |
+| B057 | Decide whether backed-up health-sensitive observations are in scope; minimize data by default | Decided 2026-11-05: no remote storage; observations stay local or inside encrypted backup |
+| B058 | Compare managed backend/auth providers vs encrypted private cloud file vs private GitHub snapshots | Decided 2026-11-05: local encrypted backup file; no managed backend, cloud provider or GitHub snapshots |
+| B059 | If using GitHub backups, private encrypted files only; never embed tokens in public GitHub Pages JavaScript | Not applicable 2026-11-05: no remote backups planned |
+| B060 | Build connection/authentication with revocation, least privilege and no visible/committed secrets | Deferred 2026-11-05: no sync planned |
+| B061 | Test lossless export->sync->restore, offline edits, conflicting edits, reconnect and interrupted writes | Deferred 2026-11-05: no sync planned; encrypted export/restore testing moves to B110 |
+| B062 | Show last sync success/failure and local-unsynced counts without falsely implying server success | Deferred 2026-11-05: no sync planned |
 | B063 | Preserve downloadable self-contained JSON and CSV exports regardless of remote provider | Current invariant |
 | B064 | Add emergency read-only export even when UI partially fails, with validation and operator recovery instructions | Proposed |
-| B065 | Measure sync provider cost, limits, retention and maintenance before choosing architecture | Research |
+| B065 | Measure sync provider cost, limits, retention and maintenance before choosing architecture | Deferred 2026-11-05: no sync planned |
+| B110 | Build passphrase-encrypted backup export: clean-profile restore, wrong-passphrase and corrupted-file rejection, restored-record match, recovery copy of passphrase kept off the phone; existing plain JSON/CSV exports stay (B063) | New feature; not implemented |
 
 ## P2 — charts, analytics and progress history
 
@@ -129,7 +133,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B070 | Add read-only 7-day weight trend and 28-day graph with recorded daily weigh-ins, moving average, optional targets | F-038 unbuilt |
 | B071 | Make 4-week deficit evidence review only after enough dated food/weight data exists, not inferred compliance | F-067 unbuilt |
 | B072 | Avoid fake progress from planned sets, duplicate templates, warmups, seconds holds or generated examples | Required invariant |
-| B073 | Improve comparison across renamed/versioned exercises using explicit user-approved equivalence map | Proposed |
+| B073 | Improve comparison across renamed/versioned exercises using explicit user-approved equivalence map | Decided 2026-11-05: user-approved map for same-movement renames only; new movements get new IDs; implementation required (strength-journey.js keys on templateId + exerciseIndex) |
 | B074 | Provide personal bests by exercise and rep range with form/effort context, no automatic promotion of a single anomalous set | Proposed |
 | B075 | Separate strength trend, training adherence, bodyweight trend and body composition inference | Proposed |
 
@@ -155,26 +159,26 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B086 | Verify optional audio/haptic preferences and accessible labels, not sound-only confirmation | Pending device |
 | B087 | Verify walking avatar render/animation reduced-motion fallback and image import on device | Source implemented, past issue |
 | B088 | Keep set-save visual slime reaction optional, only after persisted new set, no phantom rewards | Implemented preview; device pending |
-| B089 | Consider user-controlled cosmetic Adventure Mode with no pay-to-win/randomized monetization | F-046–F-050 deferred |
-| B090 | Consider optional avatar roster and Physique Journey only after core reliability | F-019/F-020/F-062 deferred |
-| B091 | Evaluate compact logger versus RPG view with task-time and error-rate comparison | F-051 and research pending |
+| B089 | Consider user-controlled cosmetic Adventure Mode with no pay-to-win/randomized monetization | Frozen 2026-11-05: no expansion; measure existing features first |
+| B090 | Consider optional avatar roster and Physique Journey only after core reliability | Frozen 2026-11-05: no expansion; measure existing features first |
+| B091 | Evaluate compact logger versus RPG view with task-time and error-rate comparison | Frozen 2026-11-05: replaced by 4-week adherence/logging-friction measurement of existing features |
 | B092 | Check color contrast, safe areas, keyboard screen-reader labels and reduced-motion across main pages | Pending QA |
 
 ## P2 — code maintenance and release hygiene
 
 | ID | Work item | Current state |
 |---|---|---|
-| B093 | Rebase/close superseded open PRs instead of merging overlapping branches blindly (#62/#60/#57 and older #6–9) | Open PR triage |
-| B094 | Review independent worker PR #61 and browser fixture PR #59 against latest source and owner | Open PR triage |
+| B093 | Rebase/close superseded open PRs instead of merging overlapping branches blindly (#62/#60/#57 and older #6–9) | Done 2026-11-05: #6–#9, #57, #60, #62 closed unmerged, branches kept |
+| B094 | Review independent worker PR #61 and browser fixture PR #59 against latest source and owner | Decided 2026-11-05: keep both; rebase onto current main, then review |
 | B095 | Run full npm test and dependency-free Node regression on exact merged main revision | Pending current revision |
 | B096 | Add integrated browser smoke for Train/Timer/Plan/Import/Backup/Offline with disposable fixtures | Pending |
 | B097 | Test 320/390/428px viewport on live served Pages including full CSS cascade | Pending device/browser |
 | B098 | Test service worker upgrades, old caches and localStorage persistence over preview versions | Pending |
 | B099 | Verify source/test/asset consistency and no preview-only imports leaking into production root | Pending |
 | B100 | Keep small PRs with exact SHA, reported synthetic versus live checks, and device acceptance | Required workflow |
-| B101 | Maintain explicit preview->production promotion checklist; never silently deploy or clear storage | Current policy |
+| B101 | Maintain explicit preview->production promotion checklist; never silently deploy or clear storage | Decided 2026-11-05: release gates listed in docs/decisions/2026-11-05-roadmap-owner-decisions.md |
 | B102 | Retire stale/contradictory labels and old documentation while preserving historical audit records | Pending cleanup |
-| B103 | Benchmark 30 synthetic set entries for completion time, tap count, corrections and missed sets | F-024 captured |
+| B103 | Benchmark 30 synthetic set entries for completion time, tap count, corrections and missed sets | Decided 2026-11-05: required as baseline before B011–B028 UI changes |
 | B104 | Keep separate private research notes, QA evidence, and change decisions, with verified commits | Existing policy |
 | B108 | Pilot independent, sanitized failure-event capture and private coverage reconciliation for FitnessPilot coding/QA failures; link observed events to regression receipts without putting raw chats or private logs in this public repository | Proposed Fitness integration; reusable tooling exists separately, no genuine Fitness ledger verified |
 | B109 | Add and verify a narrow Fitness CI workflow for native Node regressions and read-only integrity checks on relevant changes, preserving real-device acceptance as a separate gate | Proposed; no workflow on current main, Actions availability unverified |
@@ -185,7 +189,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 2. **Minimal day-to-day workflow:** Implement selected program clarity, Today screen and effortless explicit set save (B011–B028); measure real time to log a session. When calendar work is requested, stabilize and validate one-way reminders (B105–B106).
 3. **Finalize V10.3:** Confirm proposed exercise variations and training parameters independently of automated medical clearance; never rewrite historical workout logs (B038–B052).
 4. **Close reliability gap:** Finish native regressions, physical Safari/Pages/offline and export/restore checks; review open PR overlap (B093–B104). Add scoped CI and private failure-event coverage only with independent evidence (B108–B109).
-5. **Do sync safely:** Provider, auth, secure storage, encrypted/restricted data and merge conflicts (B053–B065). Any optional one-way calendar publisher (B107) requires a separate explicit request. Never begin by uploading unencrypted backups to public repo.
+5. **Sync not planned (owner decision 2026-11-05):** build local encrypted backup instead (B110); B054–B065 sync items are deferred or dropped. Former scope: provider, auth, secure storage, encrypted/restricted data and merge conflicts (B053–B065). Any optional one-way calendar publisher (B107) requires a separate explicit request. Never begin by uploading unencrypted backups to public repo.
 6. **Expand from real data:** Weight Journey, source-aware metric dictionary, food diary evidence review and carefully chosen cosmetics (B066–B092).
 
 ## Known blockers and non-goals
@@ -198,6 +202,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 
 ## Evidence links
 
+- [Owner roadmap decisions 1–8, 5 November 2026](docs/decisions/2026-11-05-roadmap-owner-decisions.md) — decisions recorded; implementation pending.
 - [One-way calendar reminders scope decision, 5 November 2026](docs/decisions/2026-11-05-calendar-reminders-only.md) — code change not authorized; two-way sync remains deferred.
 - [V15.22.2 PR #67](https://github.com/ToggleHardestMode/Fitness/pull/67)
 - [V15.22.1 compact Strength Journey PR #66](https://github.com/ToggleHardestMode/Fitness/pull/66)
