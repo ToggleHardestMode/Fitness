@@ -26,7 +26,7 @@
 ## Application status
 
 - **Production root** [FitnessPilot](https://togglehardestmode.github.io/Fitness/) is an older separate application.
-- **V15.11.1 preview** [FitnessPilot test app](https://togglehardestmode.github.io/Fitness/preview-v101/?v=33) already embeds V10.2 and also retains the V10.1 import option. To add V10.2 in the preview, use **Plan → Add V10.2 Home templates**. Imports are opt-in and do **not** change previously logged sets or auto-assign weekdays.
+- **V15.22.2 preview** [FitnessPilot test app](https://togglehardestmode.github.io/Fitness/preview-v101/?v=59) still embeds V10.2 and retains V10.1 imports. To add V10.3, use **Plan → Import CSV** and select `V10.3_Home_FitnessPilot_Import.csv`. This adds four workout templates to the library; it neither changes logged sets nor assigns your weekdays. The app's parser retains per-exercise `equipment` metadata, but the current Train view does not display that field directly; the exercise notes also explain the relevant units.
 - The preview preserves exercise `sourceNote`, PT-review status and seconds-per-side holds. The older production parser does **not** preserve all the same metadata.
 - A **Custom** workout created with the V15.7+ versioned editor is separate from canonical V10.2; it must not silently reuse the original exercise's overlap coefficients.
 
