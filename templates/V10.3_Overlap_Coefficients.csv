@@ -1,0 +1,28 @@
+day,exercise,prescribed_sets,Chest,Lats,Upper Back,Front Delts,Side Delts,Rear Delts,Biceps,Triceps,Quads,Hamstrings,Glutes,Calves,Core,PT_review
+Mon,DB Flat Bench Press,3,1,0,0,0.5,0,0,0,0.5,0,0,0,0,0,NO
+Mon,Chest-Supported DB Row — Lat Bias,3,0,1,0.5,0,0,0.5,0.5,0,0,0,0,0,0,NO
+Mon,Low-Incline DB Press,2,1,0,0,0.5,0,0,0,0.5,0,0,0,0,0,NO
+Mon,Neutral Close-Grip Lat Pulldown,2,0,1,0,0,0,0,0.5,0,0,0,0,0,0,NO
+Mon,Lean-In DB Lateral Raise,3,0,0,0,0,1,0,0,0,0,0,0,0,0,NO
+Mon,Incline DB Supinating Curl (SS1),2,0,0,0,0,0,0,1,0,0,0,0,0,0,NO
+Mon,Lying DB Triceps Extension (SS1),2,0,0,0,0,0,0,0,1,0,0,0,0,0,NO
+Thu,Incline DB Press,3,1,0,0,0.5,0,0,0,0.5,0,0,0,0,0,NO
+Thu,Bench-Supported One-Arm DB Row — Lat Bias,3,0,1,0.5,0,0,0.5,0.5,0,0,0,0,0,0,NO
+Thu,Back-Supported DB Shoulder Press,2,0,0,0,1,0.5,0,0,0.5,0,0,0,0,0,NO
+Thu,Half-Kneeling One-Arm Lat Pulldown,2,0,1,0,0,0,0,0.5,0,0,0,0,0,0,NO
+Thu,Chest-Supported DB High Row — Upper Back,1,0,0,1,0,0,0.5,0.5,0,0,0,0,0,0,NO
+Thu,Chest-Supported DB Reverse Fly,2,0,0,0.5,0,0,1,0,0,0,0,0,0,0,NO
+Thu,Lean-In DB Lateral Raise,3,0,0,0,0,1,0,0,0,0,0,0,0,0,NO
+Thu,DB Preacher Hammer Curl (SS1),2,0,0,0,0,0,0,1,0,0,0,0,0,0,NO
+Thu,Supported DB Overhead Triceps Ext (SS1),2,0,0,0,0,0,0,0,1,0,0,0,0,0,NO
+Tue,Heel-Elevated Goblet Squat [PT],2,0,0,0,0,0,0,0,0,1,0,0.5,0,0,YES
+Tue,Front-Foot-Elevated DB Split Squat (per leg) [PT],2,0,0,0,0,0,0,0,0,1,0,0.5,0,0,YES
+Tue,DB Hip Thrust [PT],2,0,0,0,0,0,0,0,0,0,0,1,0,0,YES
+Tue,Standing DB Calf Raise [PT],2,0,0,0,0,0,0,0,0,0,0,0,1,0,YES
+Tue,Dead Bug (reps/side) [PT],1,0,0,0,0,0,0,0,0,0,0,0,0,1,YES
+Tue,Bird Dog (reps/side) [PT],1,0,0,0,0,0,0,0,0,0,0,0,0,1,YES
+Fri,Bulgarian Split Squat (per leg) [PT],2,0,0,0,0,0,0,0,0,1,0,0.5,0,0,YES
+Fri,Single-Leg DB Hip Thrust (per leg) [PT],2,0,0,0,0,0,0,0,0,0,0,1,0,0,YES
+Fri,Partial Slider Hamstring Curl [PT],2,0,0,0,0,0,0,0,0,0,1,0.5,0,0,YES
+Fri,Seated DB Calf Raise [PT],2,0,0,0,0,0,0,0,0,0,0,0,1,0,YES
+Fri,Modified Side Plank (seconds/side) [PT],1,0,0,0,0,0,0,0,0,0,0,0,0,1,YES
