@@ -1,6 +1,7 @@
 // Pure selectors: saved working sets only. No training records or targets are mutated.
 export const STRENGTH_RULE_VERSION = "strength-v1";
 import { linkedSources } from "./exercise-equivalence.js";
+import { expectedSetCount } from "./active-sets.js";
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const isWorking = row => row && row.isWarmup !== true && row.kind !== "warmup";
 const isValid = row => isWorking(row) && DATE.test(row.date) &&
@@ -81,7 +82,12 @@ export function recommendNextExercise(state, {templateId, exerciseIndex, date}) 
   if (!DATE.test(date)) throw Error("Next workout date must be YYYY-MM-DD.");
   const journey = getExerciseJourney(state, templateId, exerciseIndex);
   const {template, exercise} = journey;
-  const sessions = journey.sessions.filter(row => row.date < date);
+  // Only sets 1..expected count; sets above the owner's active count are ignored.
+  const expected = expectedSetCount(state, templateId, exerciseIndex);
+  const sessions = journey.sessions.filter(row => row.date < date)
+    .map(row => row.sets.some(set => set.set > expected) ?
+      {...row, sets:row.sets.filter(set => set.set <= expected)} : row)
+    .filter(row => row.sets.length);
   const latest = sessions.at(-1) || null;
   const base = {version:STRENGTH_RULE_VERSION, status:"review", targets:[],
     reason:"", priorDate:latest?.date || null, sampleSessions:sessions.length};
@@ -103,7 +109,7 @@ export function recommendNextExercise(state, {templateId, exerciseIndex, date}) 
   const hold = reason => ({...base, status:"hold", targets:repeat, reason});
   if (responseStatus(state, latest.date, templateId, exerciseIndex) === "concerning")
     return {...base, status:"symptom-review", reason:"Concerning symptoms were recorded. No target is suggested."};
-  if (latest.sets.length !== exercise.sets)
+  if (latest.sets.length !== expected)
     return hold("The previous workout has incomplete working sets. Repeat or adjust the recorded loads manually.");
   if (latest.sets.some(row => row.technique === "unstable" || row.difficulty === "too_hard"))
     return hold("Technique or difficulty feedback indicates excessive challenge. Review the load before progressing.");
@@ -131,7 +137,7 @@ export function recommendNextExercise(state, {templateId, exerciseIndex, date}) 
         "Recovery and effort gates passed. Trial: one more rep within each set range."};
   }
   const previous = sessions.at(-2);
-  if (!previous || previous.sets.length !== exercise.sets ||
+  if (!previous || previous.sets.length !== expected ||
       responseStatus(state, previous.date, templateId, exerciseIndex) !== "complete" ||
       previous.sets.some((row, index) => row.kg !== latest.sets[index].kg ||
         row.reps < targets[index].max || !Number.isFinite(row.rpe) || row.rpe > 8 ||
