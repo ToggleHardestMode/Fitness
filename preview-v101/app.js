@@ -24,6 +24,8 @@ import { strengthDashboard, strengthNextSession } from './strength-journey-ui.js
 import { equivalencePanel } from './exercise-equivalence-ui.js';
 import { activeSetsPanel, activeSetsLabel } from './active-sets-ui.js';
 import { setActiveSets } from './active-sets.js';
+import { clearancePanel } from './exercise-clearance-ui.js';
+import { recordExerciseClearance, revokeExerciseClearance } from './exercise-clearance.js';
 import { addExerciseEquivalence, removeExerciseEquivalence, linkCandidates } from './exercise-equivalence.js';
 import {previewCompletedCsv, applyCompletedCsv, blankCompletedCsv} from './completed-workout-csv.js';
 import { verifyLocalSnapshot, inspectBackupFileText } from './recovery-check.js';
@@ -276,6 +278,7 @@ function train() {
     ${ex.sourceNote?`<div class="notice"><strong>Exercise instructions:</strong> ${esc(ex.sourceNote)}</div>`:''}
     ${strengthNextSession(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise})}
     ${equivalencePanel(state,{templateId:selected,exerciseIndex:chosenExercise})}
+    ${clearancePanel(state,{templateId:selected,exerciseIndex:chosenExercise,date:activeDate,today:today()})}
     ${activeSetsPanel(state,{templateId:selected,exerciseIndex:chosenExercise})}
     <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">EFFORT</span><span class="micro">✓</span></div>${setFields}<p class="fp-effort-help"><strong>How hard did it feel?</strong> ${esc(effortHint)}</p>${repeatButton}${quickControls}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><div class="metrics-grid"><label><span class="form-label">How did this exercise feel?</span><select class="field" name="difficulty"><option value="">Not rated</option><option value="too_easy" ${feedbackOld?.difficulty==='too_easy'?'selected':''}>Too easy</option><option value="on_target" ${feedbackOld?.difficulty==='on_target'?'selected':''}>On target</option><option value="too_hard" ${feedbackOld?.difficulty==='too_hard'?'selected':''}>Too hard</option></select></label><label><span class="form-label">Technique quality</span><select class="field" name="technique"><option value="">Not rated</option><option value="controlled" ${feedbackOld?.technique==='controlled'?'selected':''}>Controlled</option><option value="unstable" ${feedbackOld?.technique==='unstable'?'selected':''}>Unstable</option></select></label></div><p class="hint">Feedback applies to each set you save now. Effort is how hard it felt; leave the score blank if unsure.</p><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">Rest ${ex.rest}s · floating timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
   } else {exMarkup=`<div class="card empty"><strong>${state.templates.length?'No workout selected':'No templates yet'}</strong>${state.templates.length?'Choose any workout above or assign a day in Plan.':'Go to Dashboard and load the example plan, or import your own CSV in Plan.'}</div>`;}
@@ -490,6 +493,23 @@ document.addEventListener('click', event=>{
       const count=intRange($('#active-sets-count')?.value,'Active sets',1,here.sets);
       if(!confirm(`Do ${count} of ${here.sets} planned sets of "${here.name}" for now? You are setting this yourself; the app never changes it. Saved sets stay exactly as they are, and next-session targets will compare against ${count} set(s).`))return;
       commit(setActiveSets(state,{templateId:chosenTemplate,exerciseIndex:chosenExercise,count},{confirmed:true}),`Active sets saved: ${count} of ${here.sets}. No saved sets were changed.`);
+      return;
+    }
+    if(act==='clearance-record'){
+      const here=state.templates.find(t=>t.id===chosenTemplate)?.exercises[chosenExercise];
+      if(!here)throw Error('Choose an exercise first.');
+      const clearedBy=$('#clearance-by')?.value??'',clearedDate=$('#clearance-date')?.value??'',note=$('#clearance-note')?.value??'';
+      dateFromKey(clearedDate);
+      if(clearedDate>today())throw Error('Clearance date cannot be in the future.');
+      if(!clearedBy.trim())throw Error('Enter who gave the clearance.');
+      if(!confirm(`You are recording a clearance that a clinician (${clearedBy.trim()}) gave you on ${clearedDate} for "${here.name}". FitnessPilot does not verify this and it is not medical advice. Progression suggestions for this exercise will then follow the normal symptom, recovery and effort checks. Record it?`))return;
+      commit(recordExerciseClearance(state,{templateId:chosenTemplate,exerciseIndex:chosenExercise,clearedDate,clearedBy,note},undefined,{confirmed:true}),'Clearance recorded as given by a clinician. Not verified by the app. No saved sets were changed.');
+      return;
+    }
+    if(act==='clearance-revoke'){
+      const id=button.dataset.clearanceId;
+      if(!confirm('Revoke this clearance? The exercise returns to [PT Review] reference-only status. The record stays visible as revoked; no saved sets are changed.'))return;
+      commit(revokeExerciseClearance(state,id,today(),{confirmed:true}),'Clearance revoked. No saved sets were changed.');
       return;
     }
     if(act==='equivalence-unlink'){

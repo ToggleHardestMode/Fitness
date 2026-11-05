@@ -1,4 +1,5 @@
 import { linkedSources } from './exercise-equivalence.js';
+import { activeClearance } from './exercise-clearance.js';
 
 // Read-only candidate planning. Not a strength prescription or medical clearance.
 const isPT = template => Boolean(template?.requiresClinicalReview || template?.name?.includes('[PT Review]'));
@@ -51,7 +52,7 @@ export function manualProgression(state, {date, templateId, exerciseIndex, set})
       reason:'No comparable earlier set for this exercise. Linked earlier history is a reference for choosing a starting weight, not a target. Enter real values manually.'};
     return {...base,status:'no-history',reason:'No comparable earlier set. Enter real values manually.'};
   }
-  if (isPT(template) || /\[PT\]/i.test(exercise.name)) {
+  if ((isPT(template) || /\[PT\]/i.test(exercise.name)) && !activeClearance(state, templateId, exerciseIndex, date)) {
     return {...base,status:'pt-review',reason:'Lower-body PT review: previous results are reference only. No progression suggestion.'};
   }
   if (exercise.repUnit === 'seconds_per_side') {
