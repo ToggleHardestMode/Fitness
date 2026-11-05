@@ -182,10 +182,10 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 ## Suggested implementation order
 
 1. **Acceptance + data safety:** Verify V15.22.2 on a real device (B001–B008), and preserve existing backups; document app safety behavior (B009–B010).
-2. **Minimal day-to-day workflow:** Implement selected program clarity, Today screen and effortless explicit set save (B011–B028); measure real time to log a session.
+2. **Minimal day-to-day workflow:** Implement selected program clarity, Today screen and effortless explicit set save (B011–B028); measure real time to log a session. When calendar work is requested, stabilize and validate one-way reminders (B105–B106).
 3. **Finalize V10.3:** Confirm proposed exercise variations and training parameters independently of automated medical clearance; never rewrite historical workout logs (B038–B052).
-4. **Close reliability gap:** Finish native regressions, physical Safari/Pages/offline and export/restore checks; review open PR overlap (B093–B104).
-5. **Do sync safely:** Provider, auth, secure storage, encrypted/restricted data and merge conflicts (B053–B065). Never begin by uploading unencrypted backups to public repo.
+4. **Close reliability gap:** Finish native regressions, physical Safari/Pages/offline and export/restore checks; review open PR overlap (B093–B104). Add scoped CI and private failure-event coverage only with independent evidence (B108–B109).
+5. **Do sync safely:** Provider, auth, secure storage, encrypted/restricted data and merge conflicts (B053–B065). Any optional one-way calendar publisher (B107) requires a separate explicit request. Never begin by uploading unencrypted backups to public repo.
 6. **Expand from real data:** Weight Journey, source-aware metric dictionary, food diary evidence review and carefully chosen cosmetics (B066–B092).
 
 ## Known blockers and non-goals
@@ -193,6 +193,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 - A web page on iPhone cannot guarantee a timely audible alarm when Safari is backgrounded, screen locked or audio restricted. Use an OS alarm if that guarantee is essential; a user-visible overlay is the app's fallback when foreground.
 - No clinical diagnosis or automatic clearance for neurologically provocative movements based on a symptom-free workout or an app-generated 48-hour score.
 - No fake workout logs, invented strength progression, hidden overwrites, automatic cross-device merge or destructive archive/delete of current templates.
+- A calendar reminder or event is not evidence of a completed training session; two-way calendar-to-FitnessPilot rescheduling remains deferred until explicitly requested.
 - This is an exhaustive **known-work inventory from accessible artifacts**, not a claim of every possible future idea or that all open PR content is safe to merge.
 
 ## Evidence links
