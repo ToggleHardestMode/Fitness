@@ -8,7 +8,8 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 
 - Latest preview merged as V15.22.2; PR #67 merged at `9c130eb5d48b32ec42bad8af761ef1b8d7a45980`. Previous compact Strength Journey PR #66 and progress import PRs are also merged. Preview URL: https://togglehardestmode.github.io/Fitness/preview-v101/?v=59.
 - Preview source already implements floating rest timer, separate completion overlay, readable quick effort labels, Strength Journey, V10.2 versioned template and recovery tracking, logbook, CSV completed-set import, nutrition/diary features, and download backups. **Implemented in source does not equal verified on iPhone.**
-- Nine open public-repo PRs observed; relevant later PRs #62, #61, #60, #59, #57 plus older #9–6. No open issues returned by repository search. Reconcile branch overlap before further merges.
+- *(Historical, 2026-11-03)* Nine open public-repo PRs observed; relevant later PRs #62, #61, #60, #59, #57 plus older #9–6. No open issues returned by repository search.
+- **Current (2026-11-05):** #6–#9, #57, #60 and #62 closed unmerged with branches kept (B093); the two retained implementation PRs, #59 and #61, remain open for rebase and review (B094). Documentation PRs are tracked separately.
 - Current release's 9 focused V8 source-behavior checks passed historically and merged source was read back; latest native whole-repo Node `npm test` and physical iPhone audio/cache/backup acceptance remain unverified.
 - The app is static GitHub Pages and keeps private workout data locally. Public GitHub repo is inappropriate for uploading raw private records or embedding access tokens. Cross-device sync remains deferred; manual backup is not sync.
 - The most important usability risks are many selectable template versions, a Plan/Train/Library distinction users have struggled with, misleading numeric effort without explanation, and missing end-to-end device acceptance.
@@ -31,7 +32,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B005 | Create disposable backup export->validate->restore on separate empty browser profile, no real data overwrite | Pending |
 | B006 | Verify imported backup preserves set records, source notes, program versions, assigned days, feedback and symptom schema | Pending |
 | B007 | Ensure completion/undo/export never silently overwrite, duplicate or invent training history | Ongoing invariant |
-| B111 | Tracking reset must also clear `strengthJourneyStartDate` (port from closed PR #62) without touching templates or weekday assignments; add test | Proposed; fix identified |
+| B111 | Tracking reset must also clear the current-schema `strengthJourneyStartDate` without touching templates or weekday assignments. Write a new fix — closed PR #62 cleared a different schema (`strengthJourneyStarts`, `strengthFeedback`) and cannot be copied unchanged. Regression test must prove the start date is cleared and templates/assignments survive | Proposed; fix not written |
 | B008 | Audit consent/privacy for any training or health-like records before any backend, analytics or syncing feature | Pending |
 | B009 | Let users suspend or exclude any exercise that causes a concerning response; do not diagnose symptoms or imply medical clearance | Proposed safety design |
 | B010 | Document user-facing stop/hold and symptom-entry prompts for unusual exercise responses, without diagnostic automation | Proposed safety design |
@@ -120,7 +121,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B063 | Preserve downloadable self-contained JSON and CSV exports regardless of remote provider | Current invariant |
 | B064 | Add emergency read-only export even when UI partially fails, with validation and operator recovery instructions | Proposed |
 | B065 | Measure sync provider cost, limits, retention and maintenance before choosing architecture | Deferred 2026-11-05: no sync planned |
-| B110 | Build passphrase-encrypted backup export: clean-profile restore, wrong-passphrase and corrupted-file rejection, restored-record match, recovery copy of passphrase kept off the phone; existing plain JSON/CSV exports stay (B063) | New feature; not implemented |
+| B110 | Build passphrase-encrypted backup export covering BOTH stores — workout data (`fitnesspilot.preview.v101.v1`) and Food Diary (`fitnesspilot.preview.v101.foodDiary.v1`). Tests: clean-profile restore with the passphrase typed from memory, wrong-passphrase and corrupted-file rejection, restored records match the originals for both stores; keep a recovery copy of the passphrase off the phone. Existing plain JSON/CSV exports stay (B063) | New feature; not implemented |
 
 ## P2 — charts, analytics and progress history
 
@@ -189,8 +190,8 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 2. **Minimal day-to-day workflow:** Implement selected program clarity, Today screen and effortless explicit set save (B011–B028); measure real time to log a session. When calendar work is requested, stabilize and validate one-way reminders (B105–B106).
 3. **Finalize V10.3:** Confirm proposed exercise variations and training parameters independently of automated medical clearance; never rewrite historical workout logs (B038–B052).
 4. **Close reliability gap:** Finish native regressions, physical Safari/Pages/offline and export/restore checks; review open PR overlap (B093–B104). Add scoped CI and private failure-event coverage only with independent evidence (B108–B109).
-5. **Sync not planned (owner decision 2026-11-05):** build local encrypted backup instead (B110); B054–B065 sync items are deferred or dropped. Former scope: provider, auth, secure storage, encrypted/restricted data and merge conflicts (B053–B065). Any optional one-way calendar publisher (B107) requires a separate explicit request. Never begin by uploading unencrypted backups to public repo.
-6. **Expand from real data:** Weight Journey, source-aware metric dictionary, food diary evidence review and carefully chosen cosmetics (B066–B092).
+5. **Sync not planned (owner decision 2026-11-05):** build local encrypted backup instead (B110). Dropped: B055–B056. Deferred: B054, B060–B062, B065. Not applicable: B059. Decided as local-only: B057–B058. Still active: B053 (local-first state), B063 (plain JSON/CSV exports), B064 (emergency export). Any optional one-way calendar publisher (B107) requires a separate explicit request. Never begin by uploading unencrypted backups to public repo.
+6. **Expand from real data:** Weight Journey, source-aware metric dictionary and food diary evidence review (B066–B084). Cosmetics (B085–B092): fixes and accessibility checks only; new RPG/cosmetic features (B089–B091) stay frozen until a 4-week measurement of adherence, logging completeness and logging time shows benefit without added friction.
 
 ## Known blockers and non-goals
 
