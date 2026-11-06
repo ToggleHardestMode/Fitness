@@ -1,5 +1,5 @@
 // Source: user-supplied package nutrition label; product name not confirmed.
-// Values are for one 70 g piece. Six pieces are one habitual portion, not an automatic log.
+// Values are for one 70 g piece. Six pieces are the optional quick-add portion, not an automatic log.
 export const LABELLED_PROTEIN_PIECE = Object.freeze({
   name: 'High-protein 70 g piece (unbranded)',
   occasion: 'snack',
