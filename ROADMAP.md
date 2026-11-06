@@ -214,3 +214,14 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 - [Completed-set CSV import PR #64](https://github.com/ToggleHardestMode/Fitness/pull/64)
 - [V15.22.2 rest timer and effort source PR #67](https://github.com/ToggleHardestMode/Fitness/pull/67)
 - Historical planning decisions and QA evidence are retained separately from this public, implementation-facing backlog.
+
+
+## 2026-11-06 — V15.26.1 candidate: exercise identity and transparent weekly totals
+
+- **Status: Open PR, not deployed** — [PR #77](https://github.com/ToggleHardestMode/Fitness/pull/77); keep this section until device acceptance and merge evidence are recorded.
+- **B073 / B067:** Strength Journey lists exercises independently of plan versions; exact normalized exercise names and rep units share read-only load and repetition history. Saved sets retain source template IDs. Differently named movements still require an explicitly approved equivalence; automatic load increases remain gated by comparable same-plan sets and recovery.
+- **B045:** Train has a compact expandable **all-exercise next-session guide** for the selected workout date. Every exercise gets its own suggested target or hold/review explanation; no proposed value is recorded automatically.
+- **B050:** Dashboard can show previous, current and latest-recorded Monday–Sunday weeks. Saved off-plan sets count as logged; current weekday assignments define projected planned sets and are not misrepresented as an old schedule snapshot.
+- **B079:** Food Diary dashboard emphasizes **this week's recorded calories so far**, differentiates known from unknown food calories, and reduces 28-day food/energy coverage counters.
+- **Evidence:** Isolated V8 source-level regression checks performed against exact candidate files (14/14 selected cases passed following correction of a test expectation regarding off-plan Tuesday sets). Existing version-specific visual and strength assertions updated, new focused tests added.
+- **Not run:** Full native `npm test`, deployed Pages functional test, physical iPhone checks and real backup/restore. Preview-only changes; no production or saved record migration.
