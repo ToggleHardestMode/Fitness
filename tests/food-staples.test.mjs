@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { LABELLED_PROTEIN_PIECE } from '../preview-v101/food-staples.js';
 import { EMPTY_DIARY, saveEntry, totalsForDate } from '../preview-v101/food-diary-core.js';
 
@@ -35,4 +36,9 @@ test('quantity remains editable: one piece logs one serving only', () => {
   const totals = totalsForDate(logFor(1), '2026-11-06');
   assert.equal(totals.nutrients.kcal.value, 73);
   assert.equal(totals.nutrients.protein.value, 14.6);
+});
+
+test('offline shell precaches the imported food-staples module', () => {
+  const sw = readFileSync(new URL('../preview-v101/sw.js', import.meta.url), 'utf8');
+  assert.match(sw, /'\.\/food-staples\.js'/);
 });
