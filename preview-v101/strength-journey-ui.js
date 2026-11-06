@@ -41,3 +41,43 @@ export function strengthNextSession(state, selection) {
     'Progression requires completed before/after/next-day observations, current recovery and appropriate effort. ' +
     '[PT Review] restrictions remain unchanged.</p></section>';
 }
+
+
+// Entire selected workout, not just the currently focused exercise.
+// A suggested target is read-only and never becomes a saved workout set.
+export function strengthWorkoutDay(state, {templateId, date}) {
+  const template = (state.templates || []).find(item => item.id === templateId);
+  if (!template) return '';
+  const rows = template.exercises.map((exercise, exerciseIndex) => {
+    const plan = recommendNextExercise(state, {templateId, exerciseIndex, date});
+    const safeTarget = plan.status === 'rep' || plan.status === 'load';
+    const target = safeTarget
+      ? plan.targets.map(set => 'Set ' + set.set + ': ' + fmt(set.kg) + ' kg × ' +
+          set.reps + ' reps').join(' · ')
+      : plan.status === 'timed' ? 'Record actual seconds per side'
+      : plan.status === 'pt-review' || plan.status === 'symptom-review'
+        ? 'On hold — review first'
+        : plan.status === 'hold' ? 'Repeat or adjust manually; no increase'
+        : 'Choose a trial load manually';
+    const outcome = plan.status === 'load' ? 'Possible weight increase' :
+      plan.status === 'rep' ? 'Possible rep increase' :
+      plan.status === 'pt-review' ? 'PT review required' :
+      plan.status === 'symptom-review' ? 'Symptom review required' :
+      plan.status === 'hold' ? 'Hold / repeat' :
+      plan.status === 'timed' ? 'Timed exercise' : 'No comparable history';
+    return '<tr><th scope="row">' + esc(exercise.name) +
+      '</th><td><strong>' + esc(outcome) + '</strong><small>' +
+      esc(target) + '</small></td><td><details><summary>Why?</summary><p>' +
+      esc(plan.reason) + '</p></details></td></tr>';
+  }).join('');
+  return '<section class="card fp-workout-next" aria-label="Full workout next-session guide">' +
+    '<div class="card-head"><div><h2>Next-session guide · all exercises</h2><p>' +
+    esc(template.name) + ' · ' + esc(date) +
+    ' · Nothing here is automatically saved or counted as completed.</p></div></div>' +
+    '<div class="fp-workout-next-scroll"><table><thead><tr><th>Exercise</th>' +
+    '<th>Next attempt</th><th>Reason</th></tr></thead><tbody>' + rows +
+    '</tbody></table></div>' +
+    '<p class="hint">Suggestions use this plan’s completed comparable sets and recorded recovery. ' +
+    'Matching exercise history from other workout plans is shown as a reference, ' +
+    'not automatic permission to increase weight. If you did not complete a movement, skip it.</p></section>';
+}
