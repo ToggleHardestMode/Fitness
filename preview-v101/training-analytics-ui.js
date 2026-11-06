@@ -27,14 +27,15 @@ export function trainingAnalyticsPanel(state, monday, today) {
     : '<p class="hint">No symptom entry or [PT Review] session identified this week. Recovery status is unknown, not medically cleared.</p>';
   return `<div class="section-label"><h2>Training accounting</h2><span>Logged does not mean cleared</span></div>
     <section class="card codex-progress"><div class="card-head"><div><div class="eyebrow">WEEKLY SETS</div><h2>Planned vs logged sets</h2>
-    <p>Based on your current weekday assignments</p></div></div>
+    <p>Selected week: ${esc(report.days[0].date)} to ${esc(report.days[6].date)} · scheduled sets use today's saved weekday assignments, not a historical schedule snapshot</p></div></div>
     <div class="kpis grid">
       <div><div class="kpi-label">Scheduled sets</div><div class="kpi-value">${report.planned}</div></div>
       <div><div class="kpi-label">Recorded sets</div><div class="kpi-value">${report.completed}</div></div>
       <div><div class="kpi-label">On-schedule sets</div><div class="kpi-value">${report.assignedCompleted}</div></div>
       <div><div class="kpi-label">Off-plan sets</div><div class="kpi-value">${report.offPlan}</div></div>
     </div>
-    <p class="hint">Counts are saved working sets, not finished workout sessions. An imported template without assigned days adds zero scheduled sets. Timed holds count as sets, not lifting repetitions.</p>
+    <p class="hint">Counts are saved working sets, not finished workout sessions. Recorded includes off-plan sets. An imported template without assigned weekdays adds zero planned sets. Timed holds count as sets, not lifting repetitions.</p>
+    ${report.planned===0?'<p class="hint">No weekdays are assigned in Plan. You can still record workouts; those saved sets appear under Off-plan until a matching day is assigned.</p>':''}
     <div class="section-label"><h2>Muscle sets this week</h2><span>Direct working sets logged</span></div>
     ${categories.length ? categories.map(([muscle,counts])=>
       `<div class="codex-muscle-row"><div class="codex-muscle-line"><strong>${esc(muscle)}</strong><span>${counts.completed} logged / ${counts.planned} planned</span></div><div class="progress-track"><div class="progress-fill" style="width:${counts.planned?Math.min(100,Math.round(counts.completed/counts.planned*100)):0}%"></div></div></div>`).join('')
