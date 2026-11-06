@@ -26,3 +26,27 @@ assert.deepEqual(j.sessions.map(x=>x.source.templateId),['a','b']);
 test('PT review is checked even when there is no prior workout',()=>{
 assert.equal(recommendNextExercise(state(),{templateId:'pt',exerciseIndex:0,date:'2026-11-06'}).status,'pt-review');
 });
+test('full workout guide includes every prescribed exercise',()=>{
+ const s=state(),before=structuredClone(s);
+ const html=strengthWorkoutDay(s,{templateId:'b',date:'2026-11-06'});
+ assert.match(html,/DB Press/);assert.match(html,/DB Curl/);
+ assert.deepEqual(s,before);
+});
+test('Strength Journey shows one exercise choice, even with two plan versions',()=>{
+ const html=renderStrengthJourney(state(),0,{today:'2026-11-06'});
+ assert.match(html,/data-session-count="2"/);
+ const selection=html.slice(html.indexOf('id="strength-exercise"'),html.indexOf('</select>',html.indexOf('id="strength-exercise"')));
+ assert.equal((selection.match(/DB Press/g)||[]).length,1);
+});
+test('week selection and latest saved week are calendar-based',()=>{
+ assert.equal(shiftWeek('2026-11-06',-1),'2026-10-26');
+ assert.equal(latestLoggedWeek(state()),'2026-11-02');
+});
+test('weekly food subtotal excludes previous Sunday and labels partial week',()=>{
+ const report={recordedDays:3,numericDays:3,entries:[
+ {date:'2026-11-01',foods:1,known:1,unknown:0,kcal:800},
+ {date:'2026-11-02',foods:2,known:1,unknown:1,kcal:300},
+ {date:'2026-11-06',foods:1,known:1,unknown:0,kcal:550}]};
+ assert.equal(recordedCaloriesThisWeek(report).recordedKcal,850);
+ assert.match(foodDiaryChartMarkup(report),/so far/);
+});
