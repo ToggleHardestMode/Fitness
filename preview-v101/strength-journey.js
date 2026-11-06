@@ -102,6 +102,11 @@ export function recommendNextExercise(state, {templateId, exerciseIndex, date}) 
   const latest = sessions.at(-1) || null;
   const base = {version:STRENGTH_RULE_VERSION, status:"review", targets:[],
     reason:"", priorDate:latest?.date || null, sampleSessions:sessions.length};
+  // Safety gates apply even when no previous set exists; missing history is not clearance.
+  if (ptReview(template, exercise) && !activeClearance(state, templateId, exerciseIndex, date))
+    return {...base, status:'pt-review', reason:'[PT Review]: no load recommendation until this specific exercise is reviewed.'};
+  if (exercise.repUnit === 'seconds_per_side')
+    return {...base, status:'timed', reason:'Timed holds have no kilogram target. Record the actual seconds per side.'};
   if (!latest) {
     const sameExercise = journey.sessions.filter(row => row.date < date &&
       (row.source.templateId !== templateId || row.source.exerciseIndex !== exerciseIndex)).at(-1);
@@ -118,10 +123,6 @@ export function recommendNextExercise(state, {templateId, exerciseIndex, date}) 
         linked.source.exerciseName + ", " + linked.date + ", " + linked.kg + " kg x " + linked.reps +
         " reps) is a reference for choosing a starting weight, not a target. Select a trial weight manually."};
   }
-  if (ptReview(template, exercise) && !activeClearance(state, templateId, exerciseIndex, date)) return {...base, status:"pt-review",
-    reason:"[PT Review]: previous sets are reference only. No loading recommendation."};
-  if (exercise.repUnit === "seconds_per_side") return {...base, status:"timed",
-    reason:"Timed holds use seconds/side and cannot receive a kilogram progression target."};
   const repeat = latest.sets.map(row => ({set:row.set, kg:row.kg, reps:row.reps}));
   const hold = reason => ({...base, status:"hold", targets:repeat, reason});
   if (responseStatus(state, latest.date, templateId, exerciseIndex) === "concerning")
