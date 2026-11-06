@@ -1,4 +1,5 @@
 import {getExerciseJourney, recommendNextExercise} from './strength-journey.js';
+import {distinctExercises, matchingExerciseReferences} from './exercise-universe.js';
 
 // Presentation only. Every point and set comes from persisted completed-workout logs.
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g,
@@ -136,7 +137,7 @@ function progressSummary(sessions) {
     '</strong></div></div><p class="sj-footnote">Entered load trend only; not a muscle-growth estimate.</p>';
 }
 
-function sessionHistoryMarkup(sessions,range,templateName) {
+function sessionHistoryMarkup(sessions,range,state) {
   const visible=range==='recent3'?sessions.slice(-3):range==='recent10'?sessions.slice(-10):sessions;
   return '<div class="sj-history-list">'+visible.slice().reverse().map((session,i)=>{
     const number=sessions.indexOf(session)+1;
@@ -150,7 +151,7 @@ function sessionHistoryMarkup(sessions,range,templateName) {
     return '<details class="sj-history-row"><summary>'+
       '<span class="sj-history-date">'+escapeHtml(dateLabel(session.date))+'<small>Day '+number+
       '</small></span><span class="sj-history-main"><strong>'+fmt(session.kg)+' kg × '+
-      session.reps+' reps</strong><small>'+escapeHtml(templateName)+' · '+session.sets.length+
+      session.reps+' reps</strong><small>'+escapeHtml(state.templates.find(t=>t.id===session.source?.templateId)?.name || 'Saved workout')+' · '+session.sets.length+
       ' set'+(session.sets.length===1?'':'s')+'</small></span><span class="sj-rpe sj-rpe-'+
       classOfRpe(session.rpe)+'">'+escapeHtml(rpe)+'</span><span class="sj-history-feedback">'+escapeHtml(feedback)+'</span><span class="sj-chevron" aria-hidden="true">⌄</span>'+
       '</summary><div class="sj-session-expanded"><p>'+escapeHtml(dateLong(session.date))+
@@ -194,14 +195,12 @@ function recommendationMarkup(state,journey,today) {
 export function renderStrengthJourney(state, selectedIndex=0, settings={}) {
   const options={today:settings.today || new Date().toLocaleDateString('en-CA'),
     metric:safeMode(settings.metric),range:safeRange(settings.range)};
-  const choices=[];
-  for(const template of state.templates || []){
-    template.exercises.forEach((exercise,exerciseIndex)=>{
-      if(exercise.repUnit==='seconds_per_side')return;
-      choices.push({template,exercise,exerciseIndex,
-        journey:getExerciseJourney(state,template.id,exerciseIndex)});
-    });
-  }
+  // One display entry per exercise. Preserved logs retain their template source.
+  const choices=distinctExercises(state).map(item=>{
+    const refs=matchingExerciseReferences(state,item.exercise);
+    const selected=refs.find(ref=>Object.values(state.assignments||{}).includes(ref.templateId)) || refs[0];
+    return {...selected,journey:getExerciseJourney(state,selected.templateId,selected.exerciseIndex)};
+  });
   choices.sort((a,b)=>Number(Boolean(b.journey.sessions.length))-Number(Boolean(a.journey.sessions.length)));
   if(!choices.length)return '<section class="sj-journey sj-empty" aria-label="Strength Journey">'+
     '<div class="sj-kicker">✦ Strength Journey</div><h2>Your strength journey starts here</h2>'+
@@ -215,16 +214,16 @@ export function renderStrengthJourney(state, selectedIndex=0, settings={}) {
     row.reps===candidate.reps && row.kg>candidate.kg ? row : candidate,null);
   const loadChange=sessions.length>1 ?
     (journey.calibrated.loadChange>0?'+':'')+fmt(journey.calibrated.loadChange)+' kg':'—';
-  const exerciseItems=choices.map(({template:t,exercise:e},i)=>
+  const exerciseItems=choices.map(({exercise:e},i)=>
     '<option value="'+i+'"'+(i===index?' selected':'')+'>'+
-    escapeHtml(e.name+' · '+t.name)+'</option>').join('');
+    escapeHtml(e.name)+'</option>').join('');
   return '<section class="sj-journey" aria-label="Strength Journey" data-session-count="'+sessions.length+'">'+
     '<div class="sj-kicker"><span aria-hidden="true">✦</span> Strength Journey <span class="sj-kicker-tail">Saved working sets only</span></div>'+
     '<div class="sj-hero"><div class="sj-hero-symbol" aria-hidden="true">⚒</div><div class="sj-hero-text">'+
-    '<h2>'+escapeHtml(exercise.name)+'</h2><p>'+escapeHtml(template.name)+' · '+
+    '<h2>'+escapeHtml(exercise.name)+'</h2><p>All matching workout plans · '+ 
     escapeHtml(exercise.muscle||'Exercise')+'</p></div></div>'+
     '<label class="sj-switch" for="strength-exercise"><span>⇄ Change Exercise</span>'+
-    '<select class="field" id="strength-exercise" aria-label="Choose exercise and workout version">'+
+    '<select class="field" id="strength-exercise" aria-label="Choose exercise">'+
     exerciseItems+'</select></label>'+
     '<div class="sj-metrics">'+
     metricCard('Journey Day 1',journey.day1?dateLabel(journey.day1):'—',
@@ -233,7 +232,7 @@ export function renderStrengthJourney(state, selectedIndex=0, settings={}) {
     metricCard('Load change',loadChange,sessions.length>1?
       fmt(sessions[0].kg)+' → '+fmt(latest.kg)+' kg':'More sessions needed','↗')+
     metricCard('Rep best',best?best.reps+' reps':'—',best?fmt(best.kg)+' kg logged':'No records','▥')+
-    metricCard('Current best',latest?fmt(latest.kg)+' kg':'—',
+    metricCard('Latest exercise load',latest?fmt(latest.kg)+' kg':'—',
       latest?'× '+latest.reps+' reps · '+dateLabel(latest.date):'No records','✦')+'</div>'+
     '<section class="sj-chart-panel"><div class="sj-panel-title"><h3>⚒ Load progression</h3>'+
     '<label class="sj-view-choice"><span class="sr-only">Chart measurement</span>'+
@@ -242,10 +241,10 @@ export function renderStrengthJourney(state, selectedIndex=0, settings={}) {
     '<option value="volume"'+(options.metric==='volume'?' selected':'')+'>Volume (kg × reps)</option>'+
     '</select></label></div><p class="sj-chart-subtitle">'+
     (options.metric==='volume'?'Sum of kg × reps across saved sets, per session':
-    'Heaviest saved working-set load per exercise session')+'</p>'+
+    'Heaviest saved working-set load for this exercise, per session')+'</p>'+
     chartMarkup(journey.allSessions,options.metric==='volume'?'volume':'kg',exercise.name)+
     '<div class="sj-chart-divider"></div><div class="sj-panel-title"><h3>⌄ Repetition trend</h3>'+
-    '<span class="sj-small-note">Reps on heaviest set</span></div>'+
+    '<span class="sj-small-note">Reps on this exercise’s heaviest set (loads may differ)</span></div>'+
     chartMarkup(journey.allSessions,'reps',exercise.name)+
     '<p class="sj-footnote">Every point represents an actual saved exercise session. Planned and suggested loads are excluded. Values are kg exactly as entered.</p>'+
     '</section>'+
@@ -259,10 +258,10 @@ export function renderStrengthJourney(state, selectedIndex=0, settings={}) {
     '<option value="recent10"'+(options.range==='recent10'?' selected':'')+'>Latest 10</option>'+
     '<option value="recent3"'+(options.range==='recent3'?' selected':'')+'>Latest 3</option>'+
     '</select></label></div>'+
-    sessionHistoryMarkup(sessions,options.range,template.name)+'</section>'+
+    sessionHistoryMarkup(sessions,options.range,state)+'</section>'+
     recommendationMarkup(state,journey,options.today)+
     '<div class="sj-bottom-note"><span>Calibration: '+escapeHtml(journey.calibrated.evidence)+
     ' · '+journey.calibrated.ratedSets+'/'+journey.calibrated.totalSets+
-    ' sets with RPE.</span><span>Workout versions stay separate.</span></div>'+
+    ' sets with RPE.</span><span>Matching exercises share trends; saved workout versions remain separate.</span></div>'+
     startDateForm(state)+'</section>';
 }
