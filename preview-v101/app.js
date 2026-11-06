@@ -20,7 +20,8 @@ import { createFloatingRestTimer, restClock, effortHint, effortQuickLabel } from
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
 import { workoutLogbookHtml, workoutLogbookCsv } from './workout-logbook.js';
-import { strengthDashboard, strengthNextSession } from './strength-journey-ui.js';
+import { strengthDashboard, strengthNextSession, strengthWorkoutDay } from './strength-journey-ui.js';
+import { mondayOf, shiftWeek, latestLoggedWeek } from './week-window.js';
 import { equivalencePanel } from './exercise-equivalence-ui.js';
 import { activeSetsPanel, activeSetsLabel } from './active-sets-ui.js';
 import { setActiveSets } from './active-sets.js';
@@ -62,6 +63,7 @@ try {
 let page='dashboard', activeDate=today(), chosenTemplate=null, chosenExercise=0, pendingWorkouts=null, pendingBackup=null;
 let focusMode=false, focusSet=0, customizing=null;
 let strengthJourneyIndex=0;
+let selectedWeekStart=null; // UI-only; null always follows the current week.
 let strengthViewMetric='load', strengthHistoryFilter='all';
 let pendingCompletedCsv=null, pendingCompletedSnapshot=null;
 let toastHandle=null;
@@ -107,7 +109,7 @@ function startWalkerApply(){
 }
 function dashboardAdventurer(){return dashboardWalkerBanner(walkerDataUrl);}
 
-function gildedSummary(analysis, nextDay, lifetimeSets) {
+function gildedSummary(analysis, nextDay, lifetimeSets, dates) {
   const milestone = setMilestoneProgress(lifetimeSets);
   const daysLogged = analysis.days.filter(day => day.completed > 0).length;
   // Off-plan sets are included in the logged total, but not in schedule completion.
@@ -126,12 +128,12 @@ function gildedSummary(analysis, nextDay, lifetimeSets) {
       <small>${milestone.earned ? `Last milestone reached: ${fmt(milestone.earned)} sets` : 'First milestone: 25 saved working sets'}. No deadline or extra sets required.</small>
     </div>
     <div class="v151-gold-stats">
-      <div><span>This week</span><strong>${analysis.completed} sets</strong></div><div><span>Planned sets</span><strong>${analysis.planned}</strong></div>
+      <div><span>Selected week</span><strong>${analysis.completed} sets</strong></div><div><span>Planned sets</span><strong>${analysis.planned}</strong></div>
       <div><span>Schedule completion</span><strong>${completion}</strong></div>
       <div><span>Days with logs</span><strong>${daysLogged}</strong></div>
     </div>
     <div class="v151-gold-next"><span>Next scheduled workout</span><strong>${nextName}</strong><small>${nextDate}</small></div>
-    <p>Completion uses assigned workout sets logged, not off-plan sets. Recording one set counts as a day with logs, not a finished session. Missing data is not assumed complete.</p>
+    <p>Displayed period: ${nice(dates[0])} – ${nice(dates[6])}. Scheduled sets use the current weekday assignments; saved off-plan sets still count toward logged totals. One saved set makes one logged day, not a finished workout.</p>
   </section>`;
 }
 function inWeekCards(s, analysis) {return `<div class="kpis grid">
@@ -152,7 +154,13 @@ function dailyAverageRows(s) {
   return `${rows}<details class="volume-explanation"><summary>Which dates contribute to these averages?</summary><p class="hint">Only recorded dates in the displayed Monday–Sunday week count. Each measurement has its own number of days. Earlier weeks are excluded. To correct an entry, open Train, choose its workout date, and save the daily check-in again.</p>${dates}</details>`;
 }
 function dashboard() {
-  const s=weeklyStats(state,today()), analysis=weeklyTrainingAnalysis(state,s.dates[0]);
+  const s=weeklyStats(state,selectedWeekStart||today()), analysis=weeklyTrainingAnalysis(state,s.dates[0]);
+  const latestWeek=latestLoggedWeek(state);
+  const outsideWeek=Math.max(0,lifetimeTrainingSets(state)-analysis.completed);
+  const earlierHint=analysis.completed===0 && outsideWeek>0
+    ? '<p class="hint fp-week-hint">No sets in this selected week, but '+outsideWeek+' saved set(s) exist in other weeks. Tap <strong>Latest logged week</strong> to find them.</p>'
+    : analysis.completed===0 ? '<p class="hint fp-week-hint">No sets logged for these dates in this preview. Imported templates are plans, not completed sets; the production app uses separate browser storage.</p>'
+    : '<p class="hint fp-week-hint">'+analysis.completed+' saved set(s) on '+analysis.days.filter(day=>day.completed>0).length+' date(s) in this week.'+(outsideWeek?' '+outsideWeek+' other saved set(s) are outside this week.':'')+'</p>';
   const best=bestSets(state).filter(log=>state.templates.find(t=>t.id===log.templateId)?.exercises[log.exerciseIndex]?.repUnit!=='seconds_per_side').slice(0,4);
   const chart=setsBarsMarkup(analysis.days);
   const breakdown=analysis.volumeEntries.length
@@ -161,10 +169,12 @@ function dashboard() {
   const volumeExplanation=`<details class="volume-explanation"><summary>Show calculation · weight × reps (secondary)</summary><p class="hint">Each saved set contributes its entered kg × completed reps. Dumbbell weights are not automatically doubled; totals are not total repetitions.</p>${breakdown}<div class="volume-detail-total"><strong>Weekly total</strong><strong>${fmt(analysis.loadVolume)} kg × reps</strong></div></details>`;
   const days=DAYS.map((d,i)=>{const t=state.templates.find(t=>t.id===state.assignments[i]);return `<div class="day-tile ${t?'active':''}"><strong>${d}</strong><span>${esc(t?.name||'Rest')}</span></div>`;}).join('');
   const nextDay=(()=>{for(let i=0;i<7;i++){const day=weekdayOf(addDays(today(),i));const t=state.templates.find(t=>t.id===state.assignments[day]);if(t)return {date:addDays(today(),i),t};}return null;})();
-  return `${shellHeading()}<nav class="fp-top-nutrition" aria-label="Nutrition quick links"><a class="btn fp-top-nutrition-link" href="./nutrition.html">Nutrition</a><a class="btn secondary fp-top-nutrition-link" href="./nutrition-cheatsheet.html">Cheatsheet</a></nav>${strengthDashboard(state,strengthJourneyIndex,{today:today(),metric:strengthViewMetric,range:strengthHistoryFilter})}${dashboardAdventurer()}${gildedSummary(analysis,nextDay,lifetimeTrainingSets(state))}${!state.templates.length?initialCard():`<section class="hero codex-quest"><div class="quest-topline"><span>✦ NEXT WORKOUT</span><span class="quest-date">${nextDay?(nextDay.date===today()?'TODAY':nice(nextDay.date)):'UNASSIGNED'}</span></div><h1>${nextDay?esc(nextDay.t.name):'Your weekly plan is ready to set up.'}</h1><p class="quest-subtitle">${nextDay?'Your next scheduled workout. Only saved working sets count as progress.':'Choose your training days in Plan before heading into the training hall.'}</p><div class="quest-facts">${nextDay?`<span>${nextDay.t.exercises.length} exercises</span><span>${nextDay.t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</span><span>${isPTReview(nextDay.t)?'PT review required':'Scheduled'}</span>`:'<span>Choose a plan</span><span>Log actual sets</span>'}</div><button class="btn" data-page="${nextDay?'train':'plan'}">${nextDay?'Open Workout →':'Open Plan →'}</button>${nextDay&&isPTReview(nextDay.t)?'<span class="quest-caution">PT Review is not medical clearance.</span>':''}</section>`}
-  <div class="section-label"><h2>This week</h2><span>${nice(s.dates[0])} – ${nice(s.dates[6])}</span></div>${inWeekCards(s,analysis)}
+  return `${shellHeading()}<nav class="fp-top-nutrition" aria-label="Nutrition quick links"><a class="btn fp-top-nutrition-link" href="./nutrition.html">Nutrition</a><a class="btn secondary fp-top-nutrition-link" href="./nutrition-cheatsheet.html">Cheatsheet</a></nav>${strengthDashboard(state,strengthJourneyIndex,{today:today(),metric:strengthViewMetric,range:strengthHistoryFilter})}${dashboardAdventurer()}${gildedSummary(analysis,nextDay,lifetimeTrainingSets(state),s.dates)}${!state.templates.length?initialCard():`<section class="hero codex-quest"><div class="quest-topline"><span>✦ NEXT WORKOUT</span><span class="quest-date">${nextDay?(nextDay.date===today()?'TODAY':nice(nextDay.date)):'UNASSIGNED'}</span></div><h1>${nextDay?esc(nextDay.t.name):'Your weekly plan is ready to set up.'}</h1><p class="quest-subtitle">${nextDay?'Your next scheduled workout. Only saved working sets count as progress.':'Choose your training days in Plan before heading into the training hall.'}</p><div class="quest-facts">${nextDay?`<span>${nextDay.t.exercises.length} exercises</span><span>${nextDay.t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</span><span>${isPTReview(nextDay.t)?'PT review required':'Scheduled'}</span>`:'<span>Choose a plan</span><span>Log actual sets</span>'}</div><button class="btn" data-page="${nextDay?'train':'plan'}">${nextDay?'Open Workout →':'Open Plan →'}</button>${nextDay&&isPTReview(nextDay.t)?'<span class="quest-caution">PT Review is not medical clearance.</span>':''}</section>`}
+  <div class="section-label"><h2>Selected training week</h2><span>${nice(s.dates[0])} – ${nice(s.dates[6])}</span></div>
+  <div class="fp-week-actions" role="group" aria-label="Choose training week"><button type="button" class="btn secondary small-btn" data-action="week-prev">← Previous week</button><button type="button" class="btn secondary small-btn" data-action="week-current">Current week</button><button type="button" class="btn secondary small-btn" data-action="week-latest" ${latestWeek?'':'disabled'}>Latest logged week</button><button type="button" class="btn secondary small-btn" data-action="week-next">Next week →</button></div>
+  ${earlierHint}${inWeekCards(s,analysis)}
   <div class="two-panels" style="margin-top:12px"><section class="card"><div class="card-head"><div><h2>Completed sets by day</h2><p>Working sets logged each day</p></div><span class="badge">7 DAYS</span></div><div class="day-bars" role="img" aria-label="Completed sets by day: ${analysis.days.map((v,i)=>`${DAYS[i]} ${v.completed} sets`).join('; ')}">${chart}</div><div class="inline-meta"><span class="dot"></span>Chart counts unique logged working sets, not finished sessions.</div>${volumeExplanation}</section>
-  <section class="card"><div class="card-head"><div><h2>Your training week</h2><p>Workout assignments</p></div><button class="btn ghost small-btn" data-page="plan">Edit plan →</button></div><div class="day-calendar">${days}</div><div class="inline-meta">${analysis.days.filter(d=>d.assignedCompleted>0).length} assigned day(s) with logged sets · ${s.planned} scheduled. This is not a workout-completion score.</div></section></div>
+  <section class="card"><div class="card-head"><div><h2>Your assigned workout days</h2><p>Current weekday assignments (not a historical snapshot)</p></div><button class="btn ghost small-btn" data-page="plan">Edit plan →</button></div><div class="day-calendar">${days}</div><div class="inline-meta">${analysis.days.filter(d=>d.assignedCompleted>0).length} assigned day(s) with logged sets · ${s.planned} scheduled. This is not a workout-completion score.</div></section></div>
   ${trainingAnalyticsPanel(state,s.dates[0],today())}
   ${v102OverlapPanel(state,s.dates[0])}
   <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>Nutrition & Weight Journey</h2><p>Record meals and derive daily calories/protein/carbs/fat in a separate diary. Existing check-ins are unchanged.</p></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><a class="btn" href="./food-diary.html">Open Food Diary →</a><a class="btn secondary" href="./nutrition.html">Nutrition trends →</a></div></section>
@@ -287,6 +297,7 @@ function train() {
   ${completedCsvPanel()}
   ${workout?`<section class="codex-session"><div class="codex-session-heading"><div><div class="eyebrow">CURRENT WORKOUT · ${DAY_NAMES[day]}</div><h2>${esc(workout.name)}</h2></div><div class="codex-count"><strong>${state.logs.filter(l=>l.date===activeDate&&l.templateId===selected).length} / ${workout.exercises.reduce((n,e)=>n+e.sets,0)}</strong><div>sets logged</div></div></div><div class="progress-track"><div class="progress-fill" style="width:${Math.min(100,Math.round(state.logs.filter(l=>l.date===activeDate&&l.templateId===selected).length/workout.exercises.reduce((n,e)=>n+e.sets,0)*100))}%"></div></div><p class="hint">Saved working sets only. No clinical clearance is implied.</p></section>`:'' }
   ${workout?`<div class="v152-mode-toggle"><button type="button" class="btn secondary small-btn" data-action="focus-toggle" aria-pressed="${focusMode}">${focusMode?'Use standard logging':'Try Focus Mode'}</button><span>${focusMode?'One set at a time, with editable values':'Standard log — multiple sets at once'}</span></div>`:''}
+  ${workout?strengthWorkoutDay(state,{templateId:selected,date:activeDate}):''}
   ${exMarkup}<div class="section-label"><h2>Daily check-in</h2><span>${nice(activeDate)}</span></div><section class="card"><form id="metrics-form"><div class="metrics-grid">${[['weight','Body weight (kg)','0.1'],['calories','Calories (kcal)','1'],['protein','Protein (g)','1'],['sleep','Sleep (hours)','0.1'],['recovery','Recovery (1–5)','1']].map(([key,label,step])=>`<label><span class="form-label">${label}</span><input class="field" type="number" inputmode="decimal" step="${step}" name="${key}" value="${esc(metrics[key]??'')}" placeholder="Not recorded"></label>`).join('')}</div><div class="form-actions"><button class="btn secondary" type="submit">Save daily check-in</button></div><p class="hint" style="margin-top:10px">Only enter values you measured. Blank fields are not guessed.</p></form></section>${symptomPanel(activeDate,state,selected)}`;
 }
 function plan() {
@@ -474,6 +485,15 @@ document.addEventListener('click', event=>{
     floatingRest.start(seconds);toast(`Rest timer started: ${seconds} seconds.`);});return;}
   const act=button.dataset.action;
   tryAction(()=>{
+    if(['week-prev','week-next','week-current','week-latest'].includes(act)) {
+      if(act==='week-current') selectedWeekStart=null;
+      else if(act==='week-latest') {
+        const recent=latestLoggedWeek(state);
+        if(!recent) throw Error('No saved working sets found in this preview yet.');
+        selectedWeekStart=recent;
+      } else selectedWeekStart=shiftWeek(selectedWeekStart||mondayOf(today()),act==='week-prev'?-1:1);
+      render();return;
+    }
     if(act==='cancel-customize'){customizing=null;render();return;}
     if(act==='equivalence-link'){
       const choice=$('#equivalence-candidate')?.value||'';

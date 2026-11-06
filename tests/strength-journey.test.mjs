@@ -34,8 +34,10 @@ test("Day 1 counts only actual working sets; retains original workout identity",
   data.logs.push({...entry("2026-10-28",1,44,10),id:"other",templateId:"new-version"});
   const actual=getExerciseJourney(data,"upper-a",0);
   assert.equal(actual.day1,"2026-10-28");
-  assert.deepEqual(actual.sessions.map(s=>s.date),["2026-10-30","2026-11-01"]);
-  assert.equal(actual.calibrated.loadChange,0);
+  assert.deepEqual(actual.sessions.map(s=>s.date),["2026-10-28","2026-10-30","2026-11-01"]);
+  assert.deepEqual(actual.ownSessions.map(s=>s.date),["2026-10-30","2026-11-01"]);
+  assert.equal(actual.calibrated.loadChange,-32);
+  assert.equal(actual.sessions[0].source.templateId,"new-version");
 });
 
 test("two full, recovered sessions and a confirmed increment suggest next load",()=>{

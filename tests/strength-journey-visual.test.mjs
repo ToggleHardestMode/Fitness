@@ -55,7 +55,7 @@ test('nine real session groups show two charts and five summary tiles',()=>{
   assert.equal((html.match(/class="sj-stat"/g)||[]).length,5);
   assert.equal((html.match(/class="sj-svg-chart/g)||[]).length,2);
   assert.equal((html.match(/class="sj-history-row"/g)||[]).length,9);
-  assert.match(html,/Current best/);
+  assert.match(html,/Latest exercise load/);
   assert.match(html,/Session history/);
 });
 test('history filter limits only the history list and retains all chart points',()=>{
@@ -70,13 +70,13 @@ test('volume graph is computed from actual saved kg times repetitions',()=>{
   assert.match(html,/class="sj-svg-chart sj-svg-volume"/);
   assert.match(html,/total 240 kg × reps/);
 });
-test('one logged exercise and another workout version never combine counts',()=>{
+test('versions share universal exercise name without creating extra sessions',()=>{
   const state=base();state.logs=sessions(3);
   state.templates.push({...structuredClone(state.templates[0]),id:'upper-v2',name:'Upper A custom'});
   const html=markup(state);
   assert.match(html,/data-session-count="3"/);
-  assert.match(html,/Upper A custom/);
-  assert.match(html,/Workout versions stay separate/);
+  assert.match(html,/Matching exercises share trends/);
+  assert.doesNotMatch(html,/Upper A custom/);
 });
 test('explicit restart date filters rendered history without erasing source logs',()=>{
   const state=base();state.logs=sessions(9);state.strengthJourneyStartDate='2026-11-20';
@@ -144,7 +144,7 @@ test('compact metrics abbreviate display only, while preserving full Day 1 in sa
   assert.match(html,/Journey Day 1/);
   assert.match(html,/Nov 02/);
   assert.match(html,/2026/);
-  assert.match(html,/Current best/);
+  assert.match(html,/Latest exercise load/);
   assert.equal(data.logs[0].date,'2026-11-02');
   assert.equal((html.match(/class="sj-stat"/g)||[]).length,5);
 });
