@@ -8,6 +8,7 @@ import {strengthWorkoutDay} from '../preview-v101/strength-journey-ui.js';
 import {renderStrengthJourney} from '../preview-v101/strength-journey-visual.js';
 import {shiftWeek,latestLoggedWeek} from '../preview-v101/week-window.js';
 import {recordedCaloriesThisWeek,foodDiaryChartMarkup} from '../preview-v101/food-diary-chart.js';
+import {weeklyTrainingAnalysis} from '../preview-v101/training-analytics.js';
 const ex=name=>({name,muscle:'Chest',sets:1,min:8,max:12,rest:90});
 const t=(id,name,exercises)=>({id,name,exercises});
 const state=()=>({templates:[t('a','V10.2 Upper A',[ex('DB Press'),ex('DB Row')]),
@@ -49,4 +50,16 @@ test('weekly food subtotal excludes previous Sunday and labels partial week',()=
  {date:'2026-11-06',foods:1,known:1,unknown:0,kcal:550}]};
  assert.equal(recordedCaloriesThisWeek(report).recordedKcal,850);
  assert.match(foodDiaryChartMarkup(report),/so far/);
+});
+
+test('off-plan saved sets still count for the chosen week',()=>{
+ const s=state();
+ s.logs.push({id:'third',templateId:'b',exerciseIndex:1,set:1,date:'2026-11-03',kg:8,reps:10});
+ const now=weeklyTrainingAnalysis(s,'2026-11-02');
+ assert.equal(now.completed,2);
+ assert.equal(now.assignedCompleted,1);
+ assert.equal(now.offPlan,1);
+ const previous=weeklyTrainingAnalysis(s,'2026-10-26');
+ assert.equal(previous.completed,1);
+ assert.equal(previous.offPlan,1);
 });
