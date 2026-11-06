@@ -70,14 +70,14 @@ export function strengthWorkoutDay(state, {templateId, date}) {
       esc(target) + '</small></td><td><details><summary>Why?</summary><p>' +
       esc(plan.reason) + '</p></details></td></tr>';
   }).join('');
-  return '<section class="card fp-workout-next" aria-label="Full workout next-session guide">' +
-    '<div class="card-head"><div><h2>Next-session guide · all exercises</h2><p>' +
-    esc(template.name) + ' · ' + esc(date) +
-    ' · Nothing here is automatically saved or counted as completed.</p></div></div>' +
+  return '<details class="card fp-workout-next" aria-label="Full workout next-session guide">' +
+    '<summary><strong>Next-session guide · all exercises</strong><span>' +
+    template.exercises.length + ' exercises · ' + esc(template.name) + '</span></summary>' +
+    '<p class="hint">For ' + esc(date) + ' · Nothing here is automatically saved or counted as completed.</p>' +
     '<div class="fp-workout-next-scroll"><table><thead><tr><th>Exercise</th>' +
     '<th>Next attempt</th><th>Reason</th></tr></thead><tbody>' + rows +
     '</tbody></table></div>' +
     '<p class="hint">Suggestions use this plan’s completed comparable sets and recorded recovery. ' +
     'Matching exercise history from other workout plans is shown as a reference, ' +
-    'not automatic permission to increase weight. If you did not complete a movement, skip it.</p></section>';
+    'not automatic permission to increase weight. If you did not complete a movement, skip it.</p></details>';
 }
