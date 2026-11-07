@@ -185,7 +185,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B103 | Benchmark 30 synthetic set entries for completion time, tap count, corrections and missed sets | Decided 2026-11-05: required as baseline before B011–B028 UI changes |
 | B104 | Keep separate private research notes, QA evidence, and change decisions, with verified commits | Existing policy |
 | B108 | Pilot independent, sanitized failure-event capture and private coverage reconciliation for FitnessPilot coding/QA failures; link observed events to regression receipts without putting raw chats or private logs in this public repository | Proposed Fitness integration; reusable tooling exists separately, no genuine Fitness ledger verified |
-| B109 | Add and verify a narrow Fitness CI workflow for native Node regressions and read-only integrity checks on relevant changes, preserving real-device acceptance as a separate gate | Proposed; no workflow on current main, Actions availability unverified |
+| B109 | Add and verify a narrow Fitness CI workflow for native Node regressions and read-only integrity checks on relevant changes, preserving real-device acceptance as a separate gate | Implemented: .github/workflows/ci.yml runs npm test + verify-preview-assets on every PR and push to main |
 
 ## Suggested implementation order
 
