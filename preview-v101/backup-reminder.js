@@ -1,6 +1,5 @@
 // Backup tracking is device-local metadata, separate from workout and Food Diary records.
 export const WORKOUT_BACKUP_DATE_KEY = 'fitnesspilot.preview.v101.workoutBackupChecked.v1';
-const PERSISTENCE_ATTEMPT_KEY = 'fitnesspilot.preview.v101.persistenceAttempt.v1';
 const DAY_MS = 86400000;
 
 function dayNumber(value) {
@@ -28,12 +27,14 @@ export function markWorkoutBackupChecked(storage, currentDay) {
   catch { throw Error('Could not save the workout backup date; workout records were not changed.'); }
 }
 
-export async function requestPersistentStorageOnce(storage, manager) {
+export async function persistentStorageStatus(manager) {
+  if (typeof manager?.persisted !== 'function') return 'unsupported';
+  try { return (await manager.persisted()) ? 'granted' : 'not-granted'; }
+  catch { return 'failed'; }
+}
+
+export async function requestPersistentStorage(manager) {
   if (typeof manager?.persist !== 'function') return 'unsupported';
-  try {
-    if (storage.getItem(PERSISTENCE_ATTEMPT_KEY) === 'attempted') return 'already-requested';
-    storage.setItem(PERSISTENCE_ATTEMPT_KEY, 'attempted');
-  } catch { return 'unavailable'; }
   try { return (await manager.persist()) ? 'granted' : 'denied'; }
   catch { return 'failed'; }
 }
