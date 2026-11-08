@@ -146,13 +146,13 @@ test('suggestions are identical with or without links once the current exercise 
 test('chart merges linked sessions and shows a marker where the exercise changed', () => {
   const state = build();
   state.logs.push(row('v3', '2026-10-20', 1, 14, 12), row('v3', '2026-10-20', 2, 14, 12));
-  const html = renderStrengthJourney(state, 1, {today:'2026-11-03'});
+  const html = renderStrengthJourney(state, 2, {today:'2026-11-03'});
   assert.match(html, /sj-svg-change/);
   assert.match(html, /Exercise changed/);
   assert.match(html, /sj-svg-dot-linked/);
   assert.match(html, /Synthetic Press/);
   const plain = build(); delete plain.exerciseEquivalences;
-  assert.doesNotMatch(renderStrengthJourney(plain, 1, {today:'2026-11-03'}), /sj-svg-change|sj-svg-dot-linked/);
+  assert.doesNotMatch(renderStrengthJourney(plain, 2, {today:'2026-11-03'}), /sj-svg-change|sj-svg-dot-linked/);
 });
 
 test('link candidates list identical names first and exclude invalid targets', () => {

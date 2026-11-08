@@ -78,6 +78,6 @@ export function strengthWorkoutDay(state, {templateId, date}) {
     '<th>Next attempt</th><th>Reason</th></tr></thead><tbody>' + rows +
     '</tbody></table></div>' +
     '<p class="hint">Suggestions use this plan’s completed comparable sets and recorded recovery. ' +
-    'Matching exercise history from other workout plans is shown as a reference, ' +
+    'Only explicitly owner-linked earlier exercise history is shown as a reference, ' +
     'not automatic permission to increase weight. If you did not complete a movement, skip it.</p></details>';
 }

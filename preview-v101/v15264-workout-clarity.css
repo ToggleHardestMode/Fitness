@@ -1,4 +1,4 @@
-/* V15.26.1: clear weekly scope, universal exercise and all-exercise recommendations. */
+/* V15.26.4: selected-week clarity and read-only workout guidance; manual exercise links only. */
 .fp-week-actions{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 5px}
 .fp-week-actions .btn{flex:1 1 auto;min-width:105px;min-height:44px}
 .fp-week-hint{margin:6px 0 12px;line-height:1.55}

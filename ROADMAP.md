@@ -185,7 +185,7 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 | B103 | Benchmark 30 synthetic set entries for completion time, tap count, corrections and missed sets | Decided 2026-11-05: required as baseline before B011–B028 UI changes |
 | B104 | Keep separate private research notes, QA evidence, and change decisions, with verified commits | Existing policy |
 | B108 | Pilot independent, sanitized failure-event capture and private coverage reconciliation for FitnessPilot coding/QA failures; link observed events to regression receipts without putting raw chats or private logs in this public repository | Proposed Fitness integration; reusable tooling exists separately, no genuine Fitness ledger verified |
-| B109 | Add and verify a narrow Fitness CI workflow for native Node regressions and read-only integrity checks on relevant changes, preserving real-device acceptance as a separate gate | Proposed; no workflow on current main, Actions availability unverified |
+| B109 | Add and verify a narrow Fitness CI workflow for native Node regressions and read-only integrity checks on relevant changes, preserving real-device acceptance as a separate gate | Implemented: .github/workflows/ci.yml runs npm test + verify-preview-assets on every PR and push to main |
 
 ## Suggested implementation order
 
@@ -214,14 +214,13 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 - [Completed-set CSV import PR #64](https://github.com/ToggleHardestMode/Fitness/pull/64)
 - [V15.22.2 rest timer and effort source PR #67](https://github.com/ToggleHardestMode/Fitness/pull/67)
 - Historical planning decisions and QA evidence are retained separately from this public, implementation-facing backlog.
+ 
+## 2026-11-08 — V15.26.4 candidate: manually linked history, selected weeks and workout guidance
 
-
-## 2026-11-06 — V15.26.1 candidate: exercise identity and transparent weekly totals
-
-- **Status: Open PR, not deployed** — [PR #77](https://github.com/ToggleHardestMode/Fitness/pull/77); keep this section until device acceptance and merge evidence are recorded.
-- **B073 / B067:** Strength Journey lists exercises independently of plan versions; exact normalized exercise names and rep units share read-only load and repetition history. Saved sets retain source template IDs. Differently named movements still require an explicitly approved equivalence; automatic load increases remain gated by comparable same-plan sets and recovery.
-- **B045:** Train has a compact expandable **all-exercise next-session guide** for the selected workout date. Every exercise gets its own suggested target or hold/review explanation; no proposed value is recorded automatically.
-- **B050:** Dashboard can show previous, current and latest-recorded Monday–Sunday weeks. Saved off-plan sets count as logged; current weekday assignments define projected planned sets and are not misrepresented as an old schedule snapshot.
-- **B079:** Food Diary dashboard emphasizes **this week's recorded calories so far**, differentiates known from unknown food calories, and reduces 28-day food/energy coverage counters.
-- **Evidence:** Isolated V8 source-level regression checks performed against exact candidate files (14/14 selected cases passed following correction of a test expectation regarding off-plan Tuesday sets). Existing version-specific visual and strength assertions updated, new focused tests added.
-- **Not run:** Full native `npm test`, deployed Pages functional test, physical iPhone checks and real backup/restore. Preview-only changes; no production or saved record migration.
+- **Status: PR #77 reconciled against V15.26.3; CI and device acceptance to be verified.** [PR #77](https://github.com/ToggleHardestMode/Fitness/pull/77) remains unmerged; root production unchanged.
+- **Decision 7 / B073:** Exercise history remains identified by original plan and exercise index. No automatic same-name matching; owner-approved equivalence links alone show earlier historical sessions as reference. No saved records are re-keyed, and loading recommendations require current-plan comparability, recovery and PT gates.
+- **B045:** Train has an expandable, read-only full-workout next-session guide. It never fills/saves a set or bypasses safety restrictions.
+- **B050:** Dashboard provides previous/current/latest logged Monday–Sunday week navigation. Saved off-plan sets are included in logged counts; planned totals use the current assignments, not a historical schedule snapshot.
+- **B079:** Food Diary highlights this week's known recorded calories, preserves unknown-calorie foods as unknown and keeps unlogged dates distinct from zero.
+- **Version and assets:** V15.26.4 banner, manifest and preview-scoped cache retain the checked-backup helper and add the week module and its stylesheet.
+- **Regression changes:** The original #77 same-name grouping assertions were rejected under Decision 7; new `tests/exercise-week-clarity.test.mjs` covers explicit owner confirmation, preserved per-plan histories, week summaries, PT guardrails and PR #89 backup preservation. Previously protected version-isolation tests remain unchanged.
