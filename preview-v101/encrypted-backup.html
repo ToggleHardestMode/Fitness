@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; connect-src 'self'">
+<title>FitnessPilot V15.26.5 · Encrypted Backup Vault</title>
+<link rel="stylesheet" href="./encrypted-backup.css">
+<link rel="manifest" href="./manifest.webmanifest">
+</head>
+<body>
+<main class="vault">
+<p class="eyebrow">FITNESSPILOT V15.26.5 PREVIEW · LOCAL ENCRYPTION</p>
+<h1>Encrypted backup vault</h1>
+<p>One passphrase-protected file containing both workout history and Food Diary. Encryption happens on this device; nothing is uploaded.</p>
+<p><a href="./">Back to FitnessPilot</a></p>
+<section>
+<h2>1. Export both stores</h2>
+<label>Passphrase, 12–256 characters<input id="export-pass" type="password" autocomplete="new-password" maxlength="256"></label>
+<label>Confirm passphrase<input id="export-confirm" type="password" autocomplete="new-password" maxlength="256"></label>
+<button id="export-button" type="button">Download encrypted backup (.json)</button>
+<p>Save the encrypted file in Files or on your PC, and keep an exact recovery copy of the passphrase <strong>off the phone</strong>. If you lose that passphrase, the file cannot be recovered. Plain JSON exports remain available in Tools and Food Diary.</p>
+</section>
+<section>
+<h2>2. Restore into a clean browser profile only</h2>
+<p><strong>Never use restore on your populated iPhone.</strong> Restore is blocked when either local FitnessPilot store exists. Use an entirely new browser profile for recovery testing.</p>
+<label>Encrypted JSON file<input id="restore-file" type="file" accept=".json,application/json"></label>
+<label>Passphrase<input id="restore-pass" type="password" autocomplete="off" maxlength="256"></label>
+<label>Type RESTORE BOTH<input id="restore-word" type="text" autocomplete="off"></label>
+<button id="restore-button" type="button">Decrypt, inspect and restore into empty profile</button>
+<p>Both stores are validated before any writes. Browser localStorage is not transactional across keys: if interrupted, preserve this backup and retry in a clean profile.</p>
+</section>
+<p id="vault-status" role="status" aria-live="polite">No backup operation started.</p>
+</main>
+<script type="module" src="./encrypted-backup-ui.js"></script>
+</body>
+</html>
