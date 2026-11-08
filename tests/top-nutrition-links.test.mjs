@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {previewVersion,cacheVersionToken,cacheName} from './preview-version.mjs';
 const src = name => readFileSync(new URL('../preview-v101/'+name, import.meta.url),'utf8');
 
-test('dashboard places top Nutrition and Cheatsheet links directly below heading',()=>{
+test('dashboard places top Nutrition and Nutrition guide links directly below heading',()=>{
   const app=src('app.js');
   const dashboard=app.match(/function dashboard\(\) \{[\s\S]*?(?=\nfunction rangeSummary\()/);
   assert.ok(dashboard,'dashboard source exists');
@@ -15,7 +15,7 @@ test('dashboard places top Nutrition and Cheatsheet links directly below heading
   assert.ok(nav,'has semantic navigation');
   assert.match(nav[0],/aria-label="Nutrition quick links"/);
   assert.match(nav[1],/<a class="btn fp-top-nutrition-link" href="\.\/nutrition\.html">Nutrition<\/a>/);
-  assert.match(nav[1],/<a class="btn secondary fp-top-nutrition-link" href="\.\/nutrition-cheatsheet\.html">Cheatsheet<\/a>/);
+  assert.match(nav[1],/<a class="btn secondary fp-top-nutrition-link" href="\.\/nutrition-cheatsheet\.html">Nutrition guide<\/a>/);
   assert.ok(code.indexOf('fp-top-nutrition')<code.indexOf('dashboardAdventurer()'),'buttons are above dashboard art');
 });
 test('responsive style provides two touch-friendly shortcuts',()=>{
