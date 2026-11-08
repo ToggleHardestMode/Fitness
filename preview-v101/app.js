@@ -655,7 +655,7 @@ document.addEventListener('click', event=>{
     if(act==='backup-export'){
       if(storageError)throw Error('Cannot export invalid records safely.');
       resetBackupReady=false;
-      download(`FitnessPilot-PREVIEW-backup-${today()}.json`,JSON.stringify(state,null,2)+'\\n','application/json');
+      download(`FitnessPilot-PREVIEW-backup-${today()}.json`,JSON.stringify(state,null,2)+'\n','application/json');
       backupExportPending=true;
       render();
       toast('Workout JSON prepared. Save the file, then use Check downloaded backup (.json).');
