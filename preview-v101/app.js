@@ -29,6 +29,7 @@ import { recordExerciseClearance, revokeExerciseClearance } from './exercise-cle
 import { addExerciseEquivalence, removeExerciseEquivalence, linkCandidates } from './exercise-equivalence.js';
 import {previewCompletedCsv, applyCompletedCsv, blankCompletedCsv} from './completed-workout-csv.js';
 import { verifyLocalSnapshot, inspectBackupFileText } from './recovery-check.js';
+import { workoutBackupStatus, markWorkoutBackupChecked, requestPersistentStorageOnce } from './backup-reminder.js';
 import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, dateFromKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
 
 const $ = selector => document.querySelector(selector);
@@ -46,7 +47,7 @@ const svg = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name]}<
 const navItems = [['dashboard','Dashboard'],['train','Train'],['plan','Plan'],['tools','Tools']];
 
 let state, storageError = null;
-let resetBackupReady = false;
+let resetBackupReady = false, backupExportPending = false;
 let walkerDataUrl=null, pendingWalkerFile=null;
 try{
   const savedWalker=localStorage.getItem(WALKER_KEY);
@@ -88,7 +89,7 @@ function commit(next,message) {
   const clean=validateBackup(next);
   try {localStorage.setItem(STORAGE_KEY,JSON.stringify(clean));}
   catch(error) {throw Error(`Could not save locally (${error.name}). Check available device storage; the old records were left untouched.`);}
-  state=clean; resetBackupReady=false; render(); if(message)toast(message);
+  state=clean; resetBackupReady=false; backupExportPending=false; render(); if(message)toast(message);
 }
 function tryAction(fn) {try {fn();}catch(error){toast(error.message||'Operation failed.',true);}}
 function goto(next) {page=next;render();$('#main').focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}
@@ -151,6 +152,14 @@ function dailyAverageRows(s) {
   }).join('');
   return `${rows}<details class="volume-explanation"><summary>Which dates contribute to these averages?</summary><p class="hint">Only recorded dates in the displayed Monday–Sunday week count. Each measurement has its own number of days. Earlier weeks are excluded. To correct an entry, open Train, choose its workout date, and save the daily check-in again.</p>${dates}</details>`;
 }
+function backupReminderCard() {
+  const backup = workoutBackupStatus(localStorage,today());
+  return `<section class="card" style="margin:12px 0" aria-label="Workout backup status">
+    <div class="card-head"><div><h2>Workout backup</h2><p>${esc(backup.label)}</p></div><button class="btn secondary small-btn" data-page="tools">Backup tools →</button></div>
+    ${backup.due?'<p class="hint">A checked workout backup is due. Export and verify the downloaded JSON in Tools.</p>':'<p class="hint">The checked-file date is a reminder, not proof of recovery on another device.</p>'}
+    <p class="hint">Food Diary uses a separate JSON export. Keep both files somewhere safe.</p>
+  </section>`;
+}
 function dashboard() {
   const s=weeklyStats(state,today()), analysis=weeklyTrainingAnalysis(state,s.dates[0]);
   const best=bestSets(state).filter(log=>state.templates.find(t=>t.id===log.templateId)?.exercises[log.exerciseIndex]?.repUnit!=='seconds_per_side').slice(0,4);
@@ -161,7 +170,7 @@ function dashboard() {
   const volumeExplanation=`<details class="volume-explanation"><summary>Show calculation · weight × reps (secondary)</summary><p class="hint">Each saved set contributes its entered kg × completed reps. Dumbbell weights are not automatically doubled; totals are not total repetitions.</p>${breakdown}<div class="volume-detail-total"><strong>Weekly total</strong><strong>${fmt(analysis.loadVolume)} kg × reps</strong></div></details>`;
   const days=DAYS.map((d,i)=>{const t=state.templates.find(t=>t.id===state.assignments[i]);return `<div class="day-tile ${t?'active':''}"><strong>${d}</strong><span>${esc(t?.name||'Rest')}</span></div>`;}).join('');
   const nextDay=(()=>{for(let i=0;i<7;i++){const day=weekdayOf(addDays(today(),i));const t=state.templates.find(t=>t.id===state.assignments[day]);if(t)return {date:addDays(today(),i),t};}return null;})();
-  return `${shellHeading()}<nav class="fp-top-nutrition" aria-label="Nutrition quick links"><a class="btn fp-top-nutrition-link" href="./nutrition.html">Nutrition</a><a class="btn secondary fp-top-nutrition-link" href="./nutrition-cheatsheet.html">Cheatsheet</a></nav>${strengthDashboard(state,strengthJourneyIndex,{today:today(),metric:strengthViewMetric,range:strengthHistoryFilter})}${dashboardAdventurer()}${gildedSummary(analysis,nextDay,lifetimeTrainingSets(state))}${!state.templates.length?initialCard():`<section class="hero codex-quest"><div class="quest-topline"><span>✦ NEXT WORKOUT</span><span class="quest-date">${nextDay?(nextDay.date===today()?'TODAY':nice(nextDay.date)):'UNASSIGNED'}</span></div><h1>${nextDay?esc(nextDay.t.name):'Your weekly plan is ready to set up.'}</h1><p class="quest-subtitle">${nextDay?'Your next scheduled workout. Only saved working sets count as progress.':'Choose your training days in Plan before heading into the training hall.'}</p><div class="quest-facts">${nextDay?`<span>${nextDay.t.exercises.length} exercises</span><span>${nextDay.t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</span><span>${isPTReview(nextDay.t)?'PT review required':'Scheduled'}</span>`:'<span>Choose a plan</span><span>Log actual sets</span>'}</div><button class="btn" data-page="${nextDay?'train':'plan'}">${nextDay?'Open Workout →':'Open Plan →'}</button>${nextDay&&isPTReview(nextDay.t)?'<span class="quest-caution">PT Review is not medical clearance.</span>':''}</section>`}
+  return `${shellHeading()}<nav class="fp-top-nutrition" aria-label="Nutrition quick links"><a class="btn fp-top-nutrition-link" href="./nutrition.html">Nutrition</a><a class="btn secondary fp-top-nutrition-link" href="./nutrition-cheatsheet.html">Cheatsheet</a></nav>${backupReminderCard()}${strengthDashboard(state,strengthJourneyIndex,{today:today(),metric:strengthViewMetric,range:strengthHistoryFilter})}${dashboardAdventurer()}${gildedSummary(analysis,nextDay,lifetimeTrainingSets(state))}${!state.templates.length?initialCard():`<section class="hero codex-quest"><div class="quest-topline"><span>✦ NEXT WORKOUT</span><span class="quest-date">${nextDay?(nextDay.date===today()?'TODAY':nice(nextDay.date)):'UNASSIGNED'}</span></div><h1>${nextDay?esc(nextDay.t.name):'Your weekly plan is ready to set up.'}</h1><p class="quest-subtitle">${nextDay?'Your next scheduled workout. Only saved working sets count as progress.':'Choose your training days in Plan before heading into the training hall.'}</p><div class="quest-facts">${nextDay?`<span>${nextDay.t.exercises.length} exercises</span><span>${nextDay.t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</span><span>${isPTReview(nextDay.t)?'PT review required':'Scheduled'}</span>`:'<span>Choose a plan</span><span>Log actual sets</span>'}</div><button class="btn" data-page="${nextDay?'train':'plan'}">${nextDay?'Open Workout →':'Open Plan →'}</button>${nextDay&&isPTReview(nextDay.t)?'<span class="quest-caution">PT Review is not medical clearance.</span>':''}</section>`}
   <div class="section-label"><h2>This week</h2><span>${nice(s.dates[0])} – ${nice(s.dates[6])}</span></div>${inWeekCards(s,analysis)}
   <div class="two-panels" style="margin-top:12px"><section class="card"><div class="card-head"><div><h2>Completed sets by day</h2><p>Working sets logged each day</p></div><span class="badge">7 DAYS</span></div><div class="day-bars" role="img" aria-label="Completed sets by day: ${analysis.days.map((v,i)=>`${DAYS[i]} ${v.completed} sets`).join('; ')}">${chart}</div><div class="inline-meta"><span class="dot"></span>Chart counts unique logged working sets, not finished sessions.</div>${volumeExplanation}</section>
   <section class="card"><div class="card-head"><div><h2>Your training week</h2><p>Workout assignments</p></div><button class="btn ghost small-btn" data-page="plan">Edit plan →</button></div><div class="day-calendar">${days}</div><div class="inline-meta">${analysis.days.filter(d=>d.assignedCompleted>0).length} assigned day(s) with logged sets · ${s.planned} scheduled. This is not a workout-completion score.</div></section></div>
@@ -338,11 +347,12 @@ function plan() {
 }
 function tools() {
   const resetCounts=resetTrackingData(state).counts;
+  const backupStatus=workoutBackupStatus(localStorage,today());
   const reminder=state.reminder, time=`${String(reminder.hour).padStart(2,'0')}:${String(reminder.minute).padStart(2,'0')}`;
   const backupInfo=pendingBackup?`<div class="notice warn"><strong>Backup checked:</strong> ${pendingBackup.templates.length} templates, ${pendingBackup.logs.length} saved sets, ${pendingBackup.metrics.length} daily entries, ${(pendingBackup.symptomLogs??[]).length} symptom observations. <strong>Restore replaces all data currently in this app.</strong><label><span class="form-label">Type REPLACE to confirm</span><input class="field" type="text" id="restore-word" autocomplete="off" placeholder="REPLACE"></label><div class="form-actions"><button class="btn danger" data-action="restore-confirm">Replace with this backup</button><button class="btn secondary" data-action="restore-cancel">Cancel</button></div></div>`:'';
   return `${shellHeading()}${heading('ADVENTURER\'S KIT','Tools & data','Back up your progress first, then customize sounds, rest times and calendar reminders.')}
   <div class="codex-utility-intro"><strong>Keep your journey safe</strong><span>Your logs stay on this device. Download a backup before testing restores or changing devices.</span></div>
-  <div class="section-label"><h2>Data vault</h2><span>Local to this browser</span></div><section class="card stack codex-vault"><div class="notice"><strong>Saved on this device only.</strong> Your sets and templates stay in this browser's local storage. They are not sent to us or synced to another device. Clearing website data, deleting the Home Screen app, or switching devices can remove access to them.</div><div class="quick-actions"><button class="btn" data-action="backup-export">Download full backup (.json)</button><button class="btn secondary" data-action="backup-verify">Check saved data integrity</button><button class="btn secondary" data-action="backup-file-check">Check downloaded backup (.json) — no restore</button><button class="btn secondary" data-action="backup-pick">Restore backup</button></div>${backupInfo}<p class="hint">Export a backup after every important training week. Keep the JSON file in iCloud Drive or another place you control. Restoring is destructive, so this app will preview the file and require an explicit confirmation. The saved-data check reads browser storage. The downloaded-backup check reads a chosen file without restoring it; separate-device restore still needs acceptance testing.</p></section>
+  <div class="section-label"><h2>Data vault</h2><span>Local to this browser</span></div><section class="card stack codex-vault"><div class="notice"><strong>Saved on this device only.</strong> Your sets and templates stay in this browser's local storage. They are not sent to us or synced to another device. Clearing website data, deleting the Home Screen app, or switching devices can remove access to them.</div><div class="quick-actions"><button class="btn" data-action="backup-export">Download full backup (.json)</button><button class="btn secondary" data-action="backup-verify">Check saved data integrity</button><button class="btn secondary" data-action="backup-file-check">Check downloaded backup (.json) — no restore</button><button class="btn secondary" data-action="backup-pick">Restore backup</button></div>${backupInfo}<p class="hint"><strong>${esc(backupStatus.label)}</strong> Date is recorded only after you export and check a matching workout JSON file.</p>${backupExportPending?`<div class="quick-actions">${resetBackupReady?'<button class="btn secondary" data-action="backup-check-confirm">Record checked workout backup date</button>':'<p class="hint">Save the workout JSON file, then use Check downloaded backup (.json) above. The date is not recorded by download alone.</p>'}</div>`:''}<div class="quick-actions"><button class="btn secondary" data-action="storage-persist">Request stronger device storage (once)</button><a class="btn secondary" href="./food-diary.html">Open Food Diary backup →</a></div><p class="hint">Storage persistence is browser-controlled and can be unavailable or denied; it never replaces backups. The workout JSON does not include Food Diary entries: export the Food Diary JSON separately on that page.</p><p class="hint">Export a backup after every important training week. Keep the JSON file in iCloud Drive or another place you control. Restoring is destructive, so this app will preview the file and require an explicit confirmation. The saved-data check reads browser storage. The downloaded-backup check reads a chosen file without restoring it; separate-device restore still needs acceptance testing.</p></section>
   <div class="section-label"><h2>Reset tracking records</h2><span>Keep uploaded workouts</span></div>
   <section class="card stack"><div class="notice warn"><strong>Destructive reset — no automatic undo.</strong> Remove saved working sets, daily weight/nutrition/sleep/recovery check-ins and symptom observations from this preview. The Strength Journey start date is also cleared. Preserve all uploaded workout templates, exercise targets, weekday assignments and reminder settings.</div>
     <p class="hint">Preview: ${resetCounts.setsRemoved} saved sets, ${resetCounts.checkinsRemoved} daily check-ins and ${resetCounts.symptomsRemoved} symptom observations would be erased. ${resetCounts.restartDateCleared?'The Strength Journey start date would be cleared. ':'No Strength Journey start date is set. '}${resetCounts.templatesKept} workout templates and ${resetCounts.assignmentsKept} weekday assignments will be kept.</p>
@@ -642,7 +652,38 @@ document.addEventListener('click', event=>{
       toast(`Saved data checked: ${report.templates} templates, ${report.sets} sets, ${report.symptoms} symptom observations. No data changed.`);
     }
     if(act==='logbook-export'){download(`FitnessPilot-workout-history-${today()}.csv`,workoutLogbookCsv(state),'text/csv;charset=utf-8');toast('Workout logbook CSV prepared. Store this personal file privately.');}
-    if(act==='backup-export'){if(storageError)throw Error('Cannot export invalid records safely.');download(`FitnessPilot-PREVIEW-backup-${today()}.json`,JSON.stringify(state,null,2)+'\n','application/json');toast('Backup file prepared. Store it in Files or iCloud Drive.');}
+    if(act==='backup-export'){
+      if(storageError)throw Error('Cannot export invalid records safely.');
+      resetBackupReady=false;
+      download(`FitnessPilot-PREVIEW-backup-${today()}.json`,JSON.stringify(state,null,2)+'\\n','application/json');
+      backupExportPending=true;
+      render();
+      toast('Workout JSON prepared. Save the file, then use Check downloaded backup (.json).');
+      return;
+    }
+    if(act==='backup-check-confirm'){
+      if(!backupExportPending||!resetBackupReady)throw Error('Export and check a matching workout backup file first.');
+      if(storageError||localStorage.getItem(STORAGE_KEY)!==JSON.stringify(state))throw Error('Workout data changed since the file was checked. Export and check another backup.');
+      markWorkoutBackupChecked(localStorage,today());
+      backupExportPending=false;
+      render();
+      toast('Checked workout backup date recorded on this device. Food Diary backup remains separate.');
+      return;
+    }
+    if(act==='storage-persist'){
+      requestPersistentStorageOnce(localStorage,navigator.storage).then(result=>{
+        const messages={
+          granted:'Browser granted persistent storage. Keep downloading backups.',
+          denied:'Browser declined persistent storage. Keep downloading backups.',
+          unsupported:'This browser does not support persistent storage requests. Keep downloading backups.',
+          'already-requested':'Persistent storage was already requested in this browser. Keep downloading backups.',
+          unavailable:'Could not save the one-time request status; no browser request was made.',
+          failed:'Browser storage request failed. Keep downloading backups.'
+        };
+        toast(messages[result],result==='unavailable'||result==='failed');
+      }).catch(()=>toast('Persistent storage request could not be completed.',true));
+      return;
+    }
     if(act==='backup-pick')$('#backup-file').click();
     if(act==='backup-file-check')$('#backup-check-file').click();
     if(act==='restore-cancel'){pendingBackup=null;render();}
