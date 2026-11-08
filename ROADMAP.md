@@ -214,3 +214,13 @@ Status: **planning/inventory only**. No app configuration, saved workout records
 - [Completed-set CSV import PR #64](https://github.com/ToggleHardestMode/Fitness/pull/64)
 - [V15.22.2 rest timer and effort source PR #67](https://github.com/ToggleHardestMode/Fitness/pull/67)
 - Historical planning decisions and QA evidence are retained separately from this public, implementation-facing backlog.
+ 
+## 2026-11-08 — V15.26.4 candidate: manually linked history, selected weeks and workout guidance
+
+- **Status: PR #77 reconciled against V15.26.3; CI and device acceptance to be verified.** [PR #77](https://github.com/ToggleHardestMode/Fitness/pull/77) remains unmerged; root production unchanged.
+- **Decision 7 / B073:** Exercise history remains identified by original plan and exercise index. No automatic same-name matching; owner-approved equivalence links alone show earlier historical sessions as reference. No saved records are re-keyed, and loading recommendations require current-plan comparability, recovery and PT gates.
+- **B045:** Train has an expandable, read-only full-workout next-session guide. It never fills/saves a set or bypasses safety restrictions.
+- **B050:** Dashboard provides previous/current/latest logged Monday–Sunday week navigation. Saved off-plan sets are included in logged counts; planned totals use the current assignments, not a historical schedule snapshot.
+- **B079:** Food Diary highlights this week's known recorded calories, preserves unknown-calorie foods as unknown and keeps unlogged dates distinct from zero.
+- **Version and assets:** V15.26.4 banner, manifest and preview-scoped cache retain the checked-backup helper and add the week module and its stylesheet.
+- **Regression changes:** The original #77 same-name grouping assertions were rejected under Decision 7; new `tests/exercise-week-clarity.test.mjs` covers explicit owner confirmation, preserved per-plan histories, week summaries, PT guardrails and PR #89 backup preservation. Previously protected version-isolation tests remain unchanged.
