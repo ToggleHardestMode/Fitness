@@ -18,7 +18,7 @@ function fixture() {
 test('preview is read-only and shows exact deletion/preservation counts',()=>{
   const source=fixture(),before=structuredClone(source);
   const {counts,nextState}=resetTrackingData(source);
-  assert.deepEqual(counts,{templatesKept:4,assignmentsKept:4,setsRemoved:1,checkinsRemoved:1,symptomsRemoved:0});
+  assert.deepEqual(counts,{templatesKept:4,assignmentsKept:4,setsRemoved:1,checkinsRemoved:1,symptomsRemoved:0,restartDateCleared:0});
   assert.equal(nextState,null);
   assert.deepEqual(source,before);
 });
@@ -48,4 +48,40 @@ test('invalid data rejects both preview and apply rather than repairing it',()=>
   broken.assignments[0]='missing';
   assert.throws(()=>resetTrackingData(broken),/missing workout/i);
   assert.throws(()=>resetTrackingData(broken,{apply:true}),/missing workout/i);
+});
+
+test('reset clears the Strength Journey start date and reports it',()=>{
+  const source={...fixture(),strengthJourneyStartDate:'2026-10-19'},before=structuredClone(source);
+  const preview=resetTrackingData(source);
+  assert.equal(preview.counts.restartDateCleared,1);
+  const {nextState}=resetTrackingData(source,{apply:true});
+  assert.equal(Object.hasOwn(nextState,'strengthJourneyStartDate'),false);
+  assert.deepEqual(nextState.logs,[]);
+  assert.deepEqual(source,before);
+  assert.deepEqual(validateBackup(JSON.parse(JSON.stringify(nextState))),nextState);
+});
+
+test('reset keeps templates, assignments, reminder and increment unchanged when a start date existed',()=>{
+  const source={...fixture(),strengthJourneyStartDate:'2026-10-19',progressionStepKg:2.5},before=structuredClone(source);
+  const {nextState}=resetTrackingData(source,{apply:true});
+  assert.deepEqual(nextState.templates,before.templates);
+  assert.deepEqual(nextState.assignments,before.assignments);
+  assert.deepEqual(nextState.reminder,before.reminder);
+  assert.equal(nextState.progressionStepKg,2.5);
+});
+
+test('state without a start date still resets and reports zero cleared',()=>{
+  const source=fixture();
+  assert.equal(Object.hasOwn(source,'strengthJourneyStartDate'),false);
+  const {counts,nextState}=resetTrackingData(source,{apply:true});
+  assert.equal(counts.restartDateCleared,0);
+  assert.equal(Object.hasOwn(nextState,'strengthJourneyStartDate'),false);
+  assert.deepEqual(nextState.logs,[]);
+});
+
+test('preview mode (apply:false) leaves the start date and records untouched',()=>{
+  const source={...fixture(),strengthJourneyStartDate:'2026-10-19'},before=structuredClone(source);
+  const result=resetTrackingData(source,{apply:false});
+  assert.equal(result.nextState,null);
+  assert.deepEqual(source,before);
 });

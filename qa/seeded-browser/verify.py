@@ -92,6 +92,8 @@ def test_local_app(repo, chromium_binary=None, headed=False):
                     page.locator('#fd-form').wait_for()
                     set_seed(page, dataset)
                     page.reload(wait_until='domcontentloaded')
+                    # Today may have no entries; the fixture's last day is historical.
+                    select_day(page, LAST_DAY)
                     page.locator('#fd-list .fd-entry').first.wait_for()
                     check_day(page)
                     findings.append('Loaded 60 seeded Food Diary entries and verified exact 28-Oct partial nutrient totals (unknown != zero).')

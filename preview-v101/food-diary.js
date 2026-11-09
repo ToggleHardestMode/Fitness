@@ -1,5 +1,6 @@
 import {FOOD_KEY,EMPTY_DIARY,NUTRIENTS,validateDiary,saveEntry,deleteEntry,totalsForDate,emptyOnlyRestore,recentFoods,repeatEntryToDate} from './food-diary-core.js';
 import { initSgFoodLookup } from './sg-food-lookup.js';
+import { LABELLED_PROTEIN_PIECE } from './food-staples.js';
 const $=id=>document.getElementById(id);
 const number=value=>Number(value).toLocaleString('en-SG',{maximumFractionDigits:1});
 const numeric=value=>value===''?null:Number(value);
@@ -123,6 +124,17 @@ export function initFoodDiary(storage=localStorage){
       persist(imported);undo=null;reset();render();inform('Diary restored from backup.');
     }catch(error){inform(error.message,true);}
   });
+  function prefillStaple(servings){
+    reset();
+    $('fd-name').value=LABELLED_PROTEIN_PIECE.name;
+    $('fd-occasion').value=LABELLED_PROTEIN_PIECE.occasion;
+    $('fd-servings').value=servings;
+    for(const key of NUTRIENTS)$('fd-'+key).value=LABELLED_PROTEIN_PIECE[key];
+    form.scrollIntoView({behavior:'smooth',block:'start'});
+    inform((servings===3?'Three':'Six')+' pieces prefilled. Review and tap Save food to record this day. Nothing was saved yet.');
+  }
+  $('fd-staple-six').addEventListener('click',()=>prefillStaple(6));
+  $('fd-staple-three').addEventListener('click',()=>prefillStaple(3));
   reset();render();initSgFoodLookup();inform('Food Diary is saved only in this preview browser. Export a backup regularly.');
 }
 if(typeof document!=='undefined'&&document.getElementById('fd-form'))initFoodDiary();

@@ -31,3 +31,22 @@ This does **not** yet test the full Dashboard, symptom UI, vitamin conversions, 
 - A failing assertion aborts the test. There are no automatic retries after unexpected mutation or input mismatch.
 
 The Python Playwright package and managed Chromium must be installed locally. `npm test` remains the existing native FitnessPilot suite; the browser runner supplements it rather than replacing it.
+
+## B096 integrated preview smoke (online workflows only)
+
+Run the same setup shown above, then use:
+
+    py .\qa\seeded-browser\integrated.py --repo-root .
+
+Optional: add --headed or --chromium PATH. The new runner reuses the exact
+synthetic fixture and disposable local Chromium contexts from this PR.
+
+It checks Plan saved assignments, CSV preview/import, Train saved sets and
+duplicate prevention, rest timer across pages, downloaded workout JSON and
+checked-file workflow, then encrypted both-store export, invalid passphrase
+and ciphertext rejection, and clean-profile recovery with record comparison.
+
+Both runners block service workers and bind ONLY to 127.0.0.1.
+Offline, service-worker upgrades, iPhone Safari, and sound audibility are
+NOT tested. Offline B098 is explicitly KIV and cannot be treated as passed.
+Do not clear any phone or browser website data. No repository files change.

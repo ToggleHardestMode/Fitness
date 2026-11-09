@@ -1,0 +1,47 @@
+/* Rest timer stays outside #main so exercise rerenders don't hide the countdown. */
+.fp-floating-rest{position:fixed;right:12px;bottom:calc(83px + env(safe-area-inset-bottom));z-index:65;
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#fff0d4}
+.fp-floating-rest[hidden],.fp-floating-rest [hidden]{display:none!important}
+.fp-rest-fab{min-height:48px;max-width:190px;display:flex;gap:7px;align-items:center;
+  padding:7px 12px;border:1px solid #e0b67f;border-radius:999px;
+  background:rgba(34,32,52,.92);color:#ffe5b0;font-weight:750;font-size:12px;
+  box-shadow:0 4px 14px #0009;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.fp-rest-fab.running{background:rgba(57,48,58,.94);border-color:#f4cb79}
+.fp-rest-fab strong{font-variant-numeric:tabular-nums;font-size:17px;letter-spacing:.015em}
+.fp-rest-fab:focus-visible,.fp-floating-rest button:focus-visible{outline:3px solid #ffe8b1;outline-offset:2px}
+.fp-rest-panel{width:min(340px,calc(100vw - 24px));margin-bottom:9px;padding:13px;border-radius:16px;
+  border:1px solid #bd965d;background:rgba(24,26,45,.95);backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);box-shadow:0 10px 35px #000b}
+.fp-rest-head{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#ffe5ac}
+.fp-rest-head strong{font-family:Georgia,serif;font-size:18px}
+.fp-rest-head button{border:0;color:#ffe2b2;background:transparent;font-size:26px;min-width:44px;min-height:44px}
+.fp-rest-count{font-size:43px;text-align:center;line-height:1.2;color:#ffe7b5;
+  font-weight:750;font-variant-numeric:tabular-nums;margin:2px 0 9px}
+.fp-rest-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.fp-rest-actions button,.fp-rest-sound-row button,.fp-rest-done button{min-height:44px;padding:7px 5px;
+  border-radius:10px;border:1px solid #997953;background:#363044;color:#f8e6c9;font-weight:750;font-size:12px}
+.fp-rest-actions button:active,.fp-rest-fab:active{transform:translateY(1px)}
+.fp-rest-sound-row{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-top:11px;font-size:12px}
+.fp-rest-sound-row label{display:flex;align-items:center;gap:7px}
+.fp-rest-sound-row input{accent-color:#c99857;width:18px;height:18px}
+.fp-rest-note{font-size:11px;line-height:1.5;color:#ded0d6;margin:9px 0 0}
+.fp-rest-done{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;
+  padding:18px;background:rgba(5,9,19,.66);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.fp-rest-done-card{width:min(330px,100%);display:flex;flex-direction:column;align-items:center;
+  gap:11px;padding:26px 20px;border:2px solid #f0c177;border-radius:22px;
+  background:linear-gradient(145deg,#302b44,#141c33);box-shadow:0 0 42px #ffcb5b40}
+.fp-rest-done-card>strong{font-family:Georgia,serif;font-size:27px;color:#ffe9b5}
+.fp-rest-done-card>span:not(.fp-rest-spark){font-size:14px;color:#e2d6d9}
+.fp-rest-spark{font-size:36px;color:#ffe3a4}
+.fp-rest-done button{padding:10px 24px;min-width:140px;border-color:#efc891;
+  background:#edce9b;color:#2d2533;font-size:14px}
+.fp-effort-help{font-size:12px;line-height:1.55;margin:9px 0;color:#f0dbb8}
+.fp-effort-help strong{color:#ffe7b3}
+@media(max-width:390px){
+  .fp-floating-rest{right:9px;bottom:calc(78px + env(safe-area-inset-bottom))}
+  .fp-rest-panel{width:min(318px,calc(100vw - 18px))}
+  .fp-rest-fab{font-size:11px;min-height:46px}
+}
+@media(prefers-reduced-motion:reduce){
+  .fp-rest-actions button:active,.fp-rest-fab:active{transform:none}
+}

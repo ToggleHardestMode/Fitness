@@ -30,8 +30,30 @@ export function diaryCalorieHistory(rawDiary, endDate, days = 28) {
   return { entries, recordedDays, numericDays, incompleteDays: entries.filter(d => d.unknown > 0).length };
 }
 
+// Monday–Sunday totals from recorded foods; unknown values remain unknown, not zero.
+export function recordedCaloriesThisWeek(report) {
+  const entries = report?.entries;
+  if (!Array.isArray(entries) || !entries.length)
+    throw Error('Week summary requires a dated Food Diary history.');
+  const end = entries.at(-1).date;
+  const day = new Date(end + 'T12:00:00Z');
+  const weekday = (day.getUTCDay()+6)%7;
+  day.setUTCDate(day.getUTCDate()-weekday);
+  const monday = day.toISOString().slice(0,10);
+  const days = entries.filter(row => row.date >= monday && row.date <= end);
+  return {start:monday,end,recordedKcal:days.reduce((total,row)=>total+row.kcal,0),
+    daysWithFood:days.filter(row=>row.foods>0).length,
+    daysWithCalorieValues:days.filter(row=>row.known>0).length,
+    unknownFoods:days.reduce((n,row)=>n+row.unknown,0),
+    knownFoods:days.reduce((n,row)=>n+row.known,0)};
+}
+
 export function foodDiaryChartMarkup(report) {
-  if (!report.recordedDays) return `<section class="card fd-chart-panel" aria-label="Food Diary calories"><div class="card-head"><div><h2>Food Diary · Daily calories</h2><p>Last 28 days · separate from manual check-ins</p></div></div><p class="hint">No Food Diary entries in the last 28 days. Manual Daily check-ins are shown separately below.</p><a class="btn secondary" href="./food-diary.html">Open Food Diary →</a></section>`;
+  const week = recordedCaloriesThisWeek(report);
+  const recorded = week.knownFoods ? (week.unknownFoods ? '≥ ' : '')+fmt(week.recordedKcal)+' kcal' : 'Not recorded';
+  const weekCard = '<div class="fd-week-summary"><div><small>This week · '+week.start+' – '+week.end+'</small>'+ 
+    '<strong>'+recorded+'</strong><span>Recorded calories so far'+(week.unknownFoods?' · '+week.unknownFoods+' food(s) with unknown calories':'')+'</span></div></div>';
+  if (!report.recordedDays) return `<section class="card fd-chart-panel" aria-label="Food Diary calories"><div class="card-head"><div><h2>Food Diary · Daily calories</h2><p>Last 28 days · separate from manual check-ins</p></div></div>${weekCard}<p class="hint">No Food Diary entries in the last 28 days. Missing records are not zero calories.</p><a class="btn secondary" href="./food-diary.html">Open Food Diary →</a></section>`;
 
   const rows = report.entries;
   const scale = Math.max(500, Math.ceil(Math.max(...rows.map(d => d.known ? d.kcal : 0)) / 500) * 500);
@@ -58,7 +80,7 @@ export function foodDiaryChartMarkup(report) {
   const latest = recent ? `${fmt(recent.kcal)} kcal · ${recent.date}` : 'No calorie values';
   const table = rows.map(d => `<tr><th scope="row">${d.date}</th><td>${d.known ? `${fmt(d.kcal)} kcal` : d.foods ? 'Unknown' : 'Not logged'}</td><td>${d.unknown ? `${d.unknown} unknown-calorie food(s)` : d.foods ? `${d.foods} food(s) recorded` : 'No entry'}</td></tr>`).join('');
   return `<section class="card fd-chart-panel" aria-label="Food Diary daily calories"><div class="card-head"><div><h2>Food Diary · Daily calories</h2><p>Last 28 days · sums from logged meals only</p></div><a class="btn secondary" href="./food-diary.html">Open diary →</a></div>
-  <div class="fd-chart-summary"><span><strong>${report.recordedDays}/28</strong> days with food entries</span><span><strong>${report.numericDays}/28</strong> days with calories</span><span><strong>${escapeHtml(latest)}</strong> latest recorded</span></div>
+  ${weekCard}<div class="fd-chart-summary fd-chart-summary-compact"><span><strong>${report.recordedDays}/28</strong> days with food entries</span><span><strong>${report.numericDays}/28</strong> days with calorie values</span></div><p class="hint fd-chart-recent">Most recent recorded day: ${escapeHtml(latest)}</p>
   <div class="fd-chart-scroll" tabindex="0" role="region" aria-label="Scrollable 28-day Food Diary calorie bar chart"><svg class="fd-chart-svg" viewBox="0 0 720 205" role="img" aria-label="28-day chart of calories derived from Food Diary entries. Gaps are unlogged days, question marks are days with unknown calories; faded bars have incomplete calorie values.">${ticks}${bars}</svg></div>
   <p class="hint fd-chart-note">Gold = recorded food calories · dimmed = some foods have unknown calories · gap = no entry (not zero). A recorded total may still omit meals. This chart <strong>does not include</strong> the separate manual Daily check-ins.</p>
   <details class="volume-explanation"><summary>View all 28 daily calorie values</summary><div class="fd-chart-table-scroll"><table><thead><tr><th>Date</th><th>Recorded kcal</th><th>Coverage</th></tr></thead><tbody>${table}</tbody></table></div></details></section>`;

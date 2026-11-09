@@ -1,18 +1,32 @@
 # FitnessPilot workout templates
 
-**Current canonical workout source:** [V10.2 Home CSV](V10.2_Home_FitnessPilot_Import.csv) (four workouts, 24 exercise entries, **62 planned physical working sets**: Monday 17, Tuesday 13, Thursday 21, Friday 11).
+**Current target for manual import:** [V10.3 Home CSV](V10.3_Home_FitnessPilot_Import.csv) (four workouts, 27 exercise entries, **56 planned physical working sets**: Monday 17, Tuesday 10, Thursday 20, Friday 9). The older V10.2 templates remain available and are still embedded in the preview.
 
 | Source | Purpose |
 | --- | --- |
+| [V10.3 workout CSV](V10.3_Home_FitnessPilot_Import.csv) | **Target program (owner decision 2026-11-05).** 27 exercise entries, 56 physical sets: Upper A 17, Lower A 10, Upper B 20, Lower B 9. Not yet embedded in the app |
+| [V10.3 overlap coefficient CSV](V10.3_Overlap_Coefficients.csv) | Per-exercise direct (1) / secondary (0.5) muscle contributions for V10.3 (B112) |
 | [V10.2 workout CSV](V10.2_Home_FitnessPilot_Import.csv) | Exercise names, prescribed sets, rep targets, rest and source instructions |
 | [V10.2 overlap coefficient CSV](V10.2_Overlap_Coefficients.csv) | Approximate direct/indirect muscle-dose coefficients for training-planning comparisons |
 | [V10.2 optimization guide](V10.2_Overlap_Optimization_Guide.md) | Counting method, exercise emphasis and known constraints |
 | [Archived workouts](../archive/workouts/README.md) | Historical V10/V10.1 and earlier sources retained for reference |
 
+## V10.3 notes
+
+- Import through the preview's **Plan** CSV import as a new versioned template; it must not replace or rewrite V10.2 history.
+- Upper days are final. Lower days are **future targets under [PT Review]**; keep current lower sessions until each new loaded movement is individually cleared.
+- The two loaded RDL variations from the V10.3 draft are **deliberately excluded** while deferred pending assessment; add them as a new version (V10.4) if cleared.
+- `equipment` column: dumbbells are logged as **kg per dumbbell**; pulldowns as **kg shown on the cable stack**.
+- Unilateral exercises (one-arm row, one-arm pulldown, lean-in raise, preacher hammer curl, split squats, single-leg hip thrust): **one set = both sides**, counted once.
+- Supersets: arms are paired (SS1). Pressing with the pulldown is an *optional* pairing noted in each exercise's source note; straight sets are equally valid.
+- Exercise names that are unchanged from V10.2 are kept identical, so an approved equivalence map (B073) can link their history. Renamed or new movements need new IDs.
+- **Equipment:** Two pulldown exercises require access to a cable station; dumbbells and a bench alone are insufficient. Do not log a cable-stack weight for a substituted dumbbell exercise.
+- **Exercise holds:** Core accessories are optional targets and should be skipped if not well tolerated; no exercise here authorizes training through concerning symptoms.
+
 ## Application status
 
 - **Production root** [FitnessPilot](https://togglehardestmode.github.io/Fitness/) is an older separate application.
-- **V15.11.1 preview** [FitnessPilot test app](https://togglehardestmode.github.io/Fitness/preview-v101/?v=33) already embeds V10.2 and also retains the V10.1 import option. To add V10.2 in the preview, use **Plan → Add V10.2 Home templates**. Imports are opt-in and do **not** change previously logged sets or auto-assign weekdays.
+- **V15.22.2 preview** [FitnessPilot test app](https://togglehardestmode.github.io/Fitness/preview-v101/?v=59) still embeds V10.2 and retains V10.1 imports. To add V10.3, use **Plan → Import CSV** and select `V10.3_Home_FitnessPilot_Import.csv`. This adds four workout templates to the library; it neither changes logged sets nor assigns your weekdays. The app's parser retains per-exercise `equipment` metadata, but the current Train view does not display that field directly; the exercise notes also explain the relevant units.
 - The preview preserves exercise `sourceNote`, PT-review status and seconds-per-side holds. The older production parser does **not** preserve all the same metadata.
 - A **Custom** workout created with the V15.7+ versioned editor is separate from canonical V10.2; it must not silently reuse the original exercise's overlap coefficients.
 

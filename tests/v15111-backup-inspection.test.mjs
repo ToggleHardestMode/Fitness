@@ -25,6 +25,8 @@ test('file check handler never invokes restore or commit',()=>{
   const end=source.indexOf("\n});",start);
   assert.ok(start>0&&end>start);
   const block=source.slice(start,end);
-  assert.match(block,/inspectBackupFileText\(await file\.text\(\)\)/);
-  assert.doesNotMatch(block,/\bcommit\(|\blocalStorage\.|pendingBackup\s*=/);
+  assert.match(block,/inspectBackupFileText\(raw\)/);
+  assert.match(block,/const raw=await file\.text\(\)/);
+  // Reading localStorage to compare against the saved copy is allowed; any write, restore or state assignment is not.
+  assert.doesNotMatch(block,/\bcommit\(|\brestore\w*\(|localStorage\.(?:setItem|removeItem|clear)|\bstate\s*=[^=]|pendingBackup\s*=/);
 });

@@ -16,12 +16,22 @@ import { WALKER_KEY, validateWalkerFile, validateWalkerDataUrl, dashboardWalkerB
 import { applyWalkerFile, checkWalkerImage, readWalkerDataUrl } from './dashboard-walker-apply.js';
 import { createWalkerStill } from './walker-still.js';
 import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
+import { createFloatingRestTimer, restClock, effortHint, effortQuickLabel } from './floating-rest.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
 import { workoutLogbookHtml, workoutLogbookCsv } from './workout-logbook.js';
-import { manualProgressionPanel } from './manual-progression-ui.js';
+import { strengthDashboard, strengthNextSession, strengthWorkoutDay } from './strength-journey-ui.js';
+import { mondayOf, shiftWeek, latestLoggedWeek } from './week-window.js';
+import { equivalencePanel } from './exercise-equivalence-ui.js';
+import { activeSetsPanel, activeSetsLabel } from './active-sets-ui.js';
+import { setActiveSets } from './active-sets.js';
+import { clearancePanel } from './exercise-clearance-ui.js';
+import { recordExerciseClearance, revokeExerciseClearance } from './exercise-clearance.js';
+import { addExerciseEquivalence, removeExerciseEquivalence, linkCandidates } from './exercise-equivalence.js';
+import {previewCompletedCsv, applyCompletedCsv, blankCompletedCsv} from './completed-workout-csv.js';
 import { verifyLocalSnapshot, inspectBackupFileText } from './recovery-check.js';
-import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
+import { workoutBackupStatus, markWorkoutBackupChecked, persistentStorageStatus, requestPersistentStorage } from './backup-reminder.js';
+import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, dateFromKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
 
 const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -39,6 +49,7 @@ const navItems = [['dashboard','Dashboard'],['train','Train'],['plan','Plan'],['
 
 let state, storageError = null;
 let resetBackupReady = false;
+let storagePersistenceStatusLabel='Checking browser storage…', storagePersistenceRequestPending=false;
 let walkerDataUrl=null, pendingWalkerFile=null;
 try{
   const savedWalker=localStorage.getItem(WALKER_KEY);
@@ -53,7 +64,11 @@ try {
 }
 let page='dashboard', activeDate=today(), chosenTemplate=null, chosenExercise=0, pendingWorkouts=null, pendingBackup=null;
 let focusMode=false, focusSet=0, customizing=null;
-let timerEnd=null,timerHandle=null, audioContext=null, toastHandle=null;
+let strengthJourneyIndex=0;
+let selectedWeekStart=null; // UI-only; null always follows the current week.
+let strengthViewMetric='load', strengthHistoryFilter='all';
+let pendingCompletedCsv=null, pendingCompletedSnapshot=null;
+let toastHandle=null;
 const SLIME_HIT_SETTING='fitnesspilot.preview.v101.ui.slime-hit.v1';
 let slimeHitEnabled=false,slimeHitTimer=null;
 try { slimeHitEnabled=localStorage.getItem(SLIME_HIT_SETTING)==='on'; } catch { /* optional visual feedback stays off */ }
@@ -96,7 +111,7 @@ function startWalkerApply(){
 }
 function dashboardAdventurer(){return dashboardWalkerBanner(walkerDataUrl);}
 
-function gildedSummary(analysis, nextDay, lifetimeSets) {
+function gildedSummary(analysis, nextDay, lifetimeSets, dates) {
   const milestone = setMilestoneProgress(lifetimeSets);
   const daysLogged = analysis.days.filter(day => day.completed > 0).length;
   // Off-plan sets are included in the logged total, but not in schedule completion.
@@ -115,12 +130,12 @@ function gildedSummary(analysis, nextDay, lifetimeSets) {
       <small>${milestone.earned ? `Last milestone reached: ${fmt(milestone.earned)} sets` : 'First milestone: 25 saved working sets'}. No deadline or extra sets required.</small>
     </div>
     <div class="v151-gold-stats">
-      <div><span>This week</span><strong>${analysis.completed} sets</strong></div><div><span>Planned sets</span><strong>${analysis.planned}</strong></div>
+      <div><span>Selected week</span><strong>${analysis.completed} sets</strong></div><div><span>Planned sets</span><strong>${analysis.planned}</strong></div>
       <div><span>Schedule completion</span><strong>${completion}</strong></div>
       <div><span>Days with logs</span><strong>${daysLogged}</strong></div>
     </div>
     <div class="v151-gold-next"><span>Next scheduled workout</span><strong>${nextName}</strong><small>${nextDate}</small></div>
-    <p>Completion uses assigned workout sets logged, not off-plan sets. Recording one set counts as a day with logs, not a finished session. Missing data is not assumed complete.</p>
+    <p>Displayed period: ${nice(dates[0])} – ${nice(dates[6])}. Scheduled sets use the current weekday assignments; saved off-plan sets still count toward logged totals. One saved set makes one logged day, not a finished workout.</p>
   </section>`;
 }
 function inWeekCards(s, analysis) {return `<div class="kpis grid">
@@ -140,8 +155,22 @@ function dailyAverageRows(s) {
   }).join('');
   return `${rows}<details class="volume-explanation"><summary>Which dates contribute to these averages?</summary><p class="hint">Only recorded dates in the displayed Monday–Sunday week count. Each measurement has its own number of days. Earlier weeks are excluded. To correct an entry, open Train, choose its workout date, and save the daily check-in again.</p>${dates}</details>`;
 }
+function backupReminderCard() {
+  const backup = workoutBackupStatus(localStorage,today());
+  return `<section class="card" style="margin:12px 0" aria-label="Workout backup status">
+    <div class="card-head"><div><h2>Workout backup</h2><p>${esc(backup.label)}</p></div><button class="btn secondary small-btn" data-page="tools">Backup tools →</button></div>
+    ${backup.due?'<p class="hint">A checked workout backup is due. Export and verify the downloaded JSON in Tools.</p>':'<p class="hint">The checked-file date is a reminder, not proof of recovery on another device.</p>'}
+    <p class="hint">Food Diary uses a separate JSON export. Keep both files somewhere safe.</p>
+  </section>`;
+}
 function dashboard() {
-  const s=weeklyStats(state,today()), analysis=weeklyTrainingAnalysis(state,s.dates[0]);
+  const s=weeklyStats(state,selectedWeekStart||today()), analysis=weeklyTrainingAnalysis(state,s.dates[0]);
+  const latestWeek=latestLoggedWeek(state);
+  const outsideWeek=Math.max(0,lifetimeTrainingSets(state)-analysis.completed);
+  const earlierHint=analysis.completed===0 && outsideWeek>0
+    ? '<p class="hint fp-week-hint">No sets in this selected week, but '+outsideWeek+' saved set(s) exist in other weeks. Tap <strong>Latest logged week</strong> to find them.</p>'
+    : analysis.completed===0 ? '<p class="hint fp-week-hint">No sets logged for these dates in this preview. Imported templates are plans, not completed sets; the production app uses separate browser storage.</p>'
+    : '<p class="hint fp-week-hint">'+analysis.completed+' saved set(s) on '+analysis.days.filter(day=>day.completed>0).length+' date(s) in this week.'+(outsideWeek?' '+outsideWeek+' other saved set(s) are outside this week.':'')+'</p>';
   const best=bestSets(state).filter(log=>state.templates.find(t=>t.id===log.templateId)?.exercises[log.exerciseIndex]?.repUnit!=='seconds_per_side').slice(0,4);
   const chart=setsBarsMarkup(analysis.days);
   const breakdown=analysis.volumeEntries.length
@@ -150,10 +179,12 @@ function dashboard() {
   const volumeExplanation=`<details class="volume-explanation"><summary>Show calculation · weight × reps (secondary)</summary><p class="hint">Each saved set contributes its entered kg × completed reps. Dumbbell weights are not automatically doubled; totals are not total repetitions.</p>${breakdown}<div class="volume-detail-total"><strong>Weekly total</strong><strong>${fmt(analysis.loadVolume)} kg × reps</strong></div></details>`;
   const days=DAYS.map((d,i)=>{const t=state.templates.find(t=>t.id===state.assignments[i]);return `<div class="day-tile ${t?'active':''}"><strong>${d}</strong><span>${esc(t?.name||'Rest')}</span></div>`;}).join('');
   const nextDay=(()=>{for(let i=0;i<7;i++){const day=weekdayOf(addDays(today(),i));const t=state.templates.find(t=>t.id===state.assignments[day]);if(t)return {date:addDays(today(),i),t};}return null;})();
-  return `${shellHeading()}<nav class="fp-top-nutrition" aria-label="Nutrition quick links"><a class="btn fp-top-nutrition-link" href="./nutrition.html">Nutrition</a><a class="btn secondary fp-top-nutrition-link" href="./nutrition-cheatsheet.html">Cheatsheet</a></nav>${dashboardAdventurer()}${gildedSummary(analysis,nextDay,lifetimeTrainingSets(state))}${!state.templates.length?initialCard():`<section class="hero codex-quest"><div class="quest-topline"><span>✦ NEXT WORKOUT</span><span class="quest-date">${nextDay?(nextDay.date===today()?'TODAY':nice(nextDay.date)):'UNASSIGNED'}</span></div><h1>${nextDay?esc(nextDay.t.name):'Your weekly plan is ready to set up.'}</h1><p class="quest-subtitle">${nextDay?'Your next scheduled workout. Only saved working sets count as progress.':'Choose your training days in Plan before heading into the training hall.'}</p><div class="quest-facts">${nextDay?`<span>${nextDay.t.exercises.length} exercises</span><span>${nextDay.t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</span><span>${isPTReview(nextDay.t)?'PT review required':'Scheduled'}</span>`:'<span>Choose a plan</span><span>Log actual sets</span>'}</div><button class="btn" data-page="${nextDay?'train':'plan'}">${nextDay?'Open Workout →':'Open Plan →'}</button>${nextDay&&isPTReview(nextDay.t)?'<span class="quest-caution">PT Review is not medical clearance.</span>':''}</section>`}
-  <div class="section-label"><h2>This week</h2><span>${nice(s.dates[0])} – ${nice(s.dates[6])}</span></div>${inWeekCards(s,analysis)}
+  return `${shellHeading()}<nav class="fp-top-nutrition" aria-label="Nutrition quick links"><a class="btn fp-top-nutrition-link" href="./nutrition.html">Nutrition</a><a class="btn secondary fp-top-nutrition-link" href="./nutrition-cheatsheet.html">Cheatsheet</a></nav>${backupReminderCard()}${strengthDashboard(state,strengthJourneyIndex,{today:today(),metric:strengthViewMetric,range:strengthHistoryFilter})}${dashboardAdventurer()}${gildedSummary(analysis,nextDay,lifetimeTrainingSets(state),s.dates)}${!state.templates.length?initialCard():`<section class="hero codex-quest"><div class="quest-topline"><span>✦ NEXT WORKOUT</span><span class="quest-date">${nextDay?(nextDay.date===today()?'TODAY':nice(nextDay.date)):'UNASSIGNED'}</span></div><h1>${nextDay?esc(nextDay.t.name):'Your weekly plan is ready to set up.'}</h1><p class="quest-subtitle">${nextDay?'Your next scheduled workout. Only saved working sets count as progress.':'Choose your training days in Plan before heading into the training hall.'}</p><div class="quest-facts">${nextDay?`<span>${nextDay.t.exercises.length} exercises</span><span>${nextDay.t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</span><span>${isPTReview(nextDay.t)?'PT review required':'Scheduled'}</span>`:'<span>Choose a plan</span><span>Log actual sets</span>'}</div><button class="btn" data-page="${nextDay?'train':'plan'}">${nextDay?'Open Workout →':'Open Plan →'}</button>${nextDay&&isPTReview(nextDay.t)?'<span class="quest-caution">PT Review is not medical clearance.</span>':''}</section>`}
+  <div class="section-label"><h2>Selected training week</h2><span>${nice(s.dates[0])} – ${nice(s.dates[6])}</span></div>
+  <div class="fp-week-actions" role="group" aria-label="Choose training week"><button type="button" class="btn secondary small-btn" data-action="week-prev">← Previous week</button><button type="button" class="btn secondary small-btn" data-action="week-current">Current week</button><button type="button" class="btn secondary small-btn" data-action="week-latest" ${latestWeek?'':'disabled'}>Latest logged week</button><button type="button" class="btn secondary small-btn" data-action="week-next">Next week →</button></div>
+  ${earlierHint}${inWeekCards(s,analysis)}
   <div class="two-panels" style="margin-top:12px"><section class="card"><div class="card-head"><div><h2>Completed sets by day</h2><p>Working sets logged each day</p></div><span class="badge">7 DAYS</span></div><div class="day-bars" role="img" aria-label="Completed sets by day: ${analysis.days.map((v,i)=>`${DAYS[i]} ${v.completed} sets`).join('; ')}">${chart}</div><div class="inline-meta"><span class="dot"></span>Chart counts unique logged working sets, not finished sessions.</div>${volumeExplanation}</section>
-  <section class="card"><div class="card-head"><div><h2>Your training week</h2><p>Workout assignments</p></div><button class="btn ghost small-btn" data-page="plan">Edit plan →</button></div><div class="day-calendar">${days}</div><div class="inline-meta">${analysis.days.filter(d=>d.assignedCompleted>0).length} assigned day(s) with logged sets · ${s.planned} scheduled. This is not a workout-completion score.</div></section></div>
+  <section class="card"><div class="card-head"><div><h2>Your assigned workout days</h2><p>Current weekday assignments (not a historical snapshot)</p></div><button class="btn ghost small-btn" data-page="plan">Edit plan →</button></div><div class="day-calendar">${days}</div><div class="inline-meta">${analysis.days.filter(d=>d.assignedCompleted>0).length} assigned day(s) with logged sets · ${s.planned} scheduled. This is not a workout-completion score.</div></section></div>
   ${trainingAnalyticsPanel(state,s.dates[0],today())}
   ${v102OverlapPanel(state,s.dates[0])}
   <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>Nutrition & Weight Journey</h2><p>Record meals and derive daily calories/protein/carbs/fat in a separate diary. Existing check-ins are unchanged.</p></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><a class="btn" href="./food-diary.html">Open Food Diary →</a><a class="btn secondary" href="./nutrition.html">Nutrition trends →</a></div></section>
@@ -198,10 +229,35 @@ function selectFocusSet() {
 function mayLeaveFocusSet() {
   const form=focusMode ? $('#sets-form') : null;
   if(!form)return true;
-  const dirty=Array.from(form.querySelectorAll('input')).some(input=>
-    input.type==='checkbox' ? input.checked!==input.defaultChecked : input.value!==input.defaultValue
+  const dirty=Array.from(form.querySelectorAll('input,select')).some(input=>
+    input.type==='checkbox' ? input.checked!==input.defaultChecked :
+    input.tagName==='SELECT'
+      ? input.value !== (input.querySelector('option[selected]')?.value ?? input.options[0]?.value ?? '')
+      : input.value!==input.defaultValue
   );
   return !dirty || confirm('Discard your unsaved set changes?');
+}
+function completedCsvPanel() {
+  const pending=pendingCompletedCsv;
+  const preview=pending?'<div class="completed-csv-preview" role="status"><strong>Completed-session import preview</strong>' +
+    '<p>'+pending.add.length+' new working set(s) to add · '+pending.skipped.length+' identical set(s) already saved · dates: '+pending.days.map(esc).join(', ')+'</p>' +
+    '<div class="completed-csv-list">'+pending.add.slice(0,12).map(row=>
+      '<div><strong>'+esc(row.date)+'</strong> · '+esc(row.exerciseName)+' · set '+row.set+
+      ' · '+fmt(row.kg)+' kg × '+row.reps+' reps'+(row.rpe==null?'':' · RPE '+fmt(row.rpe))+'</div>').join('')+'</div>'+
+    (pending.add.length>12?'<p class="hint">Showing the first 12 new sets; all validated rows will be added together.</p>':'')+
+    (pending.add.length?
+      '<div class="completed-csv-review"><button class="btn secondary small-btn" type="button" data-action="completed-csv-backup">Download pre-import JSON backup</button>'+
+      '<label><input type="checkbox" id="completed-import-backup-ack"> I saved a backup of my current workout history.</label></div>'+
+      '<div class="quick-actions"><button class="btn" type="button" data-action="completed-csv-apply">Import '+pending.add.length+' completed set(s)</button>'+
+      '<button class="btn secondary" type="button" data-action="completed-csv-cancel">Cancel</button></div>'
+      :'<p class="hint">All completed rows already exist; no changes required.</p><button class="btn secondary small-btn" type="button" data-action="completed-csv-cancel">Close</button>')+
+    '</div>':'';
+  return '<section class="card completed-csv-card" aria-label="Import completed workout CSV">'+
+    '<div class="card-head"><div><h2>Import completed workout CSV</h2><p>Record sets you actually did on a specific date. This is separate from importing a workout template in Plan.</p></div></div>'+
+    '<div class="quick-actions"><button class="btn secondary" type="button" data-action="completed-csv-blank" '+(!chosenTemplate?'disabled':'')+'>Download blank session CSV</button>'+
+    '<button class="btn" type="button" data-action="completed-csv-pick">Choose completed CSV</button></div>'+
+    '<p class="hint">Choose a workout above to download a dated, exercise-matched worksheet. Fill kg and reps for completed sets, leave unperformed sets blank, then upload the CSV here. No day column required. Existing sets are never overwritten.</p>'+
+    preview+'</section>';
 }
 function train() {
   const day=weekdayOf(activeDate);
@@ -220,32 +276,38 @@ function train() {
     const setFields=visibleSetIndices.map(i=>{
       const old=current.find(l=>l.set===i+1), prior=previous.find(l=>l.set===i+1);
       const target=ex.setTargets?.[i] ?? {min:ex.min,max:ex.max};
-      return `<div class="log-grid set-row ${focusMode?'v152-focused-row':''}"><strong class="tiny set-target-label">${i+1}<small>${target.min}–${target.max}</small></strong><input class="field" inputmode="decimal" type="number" min="0" max="500" step="0.5" name="kg${i}" aria-label="Set ${i+1} kilograms" value="${esc(old?.kg??prior?.kg??'')}"><input class="field" inputmode="numeric" type="number" min="1" max="100" step="1" name="reps${i}" aria-label="Set ${i+1} ${ex.repUnit==='seconds_per_side'?'seconds per side':'reps'}" value="${esc(old?.reps??prior?.reps??'')}"><input class="field" inputmode="decimal" type="number" min="1" max="10" step="0.5" name="rpe${i}" aria-label="Set ${i+1} RPE" value="${esc(old?.rpe??'')}">${focusMode?`<span class="v152-set-status">${old?'Saved':'New'}</span>`:`<input class="tick" type="checkbox" name="done${i}" aria-label="Mark set ${i+1} complete" ${old?'checked':''}>`}</div>`;
+      return `<div class="log-grid set-row ${focusMode?'v152-focused-row':''}"><strong class="tiny set-target-label">${i+1}<small>${target.min}–${target.max}</small></strong><input class="field" inputmode="decimal" type="number" min="0" max="500" step="0.5" name="kg${i}" aria-label="Set ${i+1} kilograms" value="${esc(old?.kg??prior?.kg??'')}"><input class="field" inputmode="numeric" type="number" min="1" max="100" step="1" name="reps${i}" aria-label="Set ${i+1} ${ex.repUnit==='seconds_per_side'?'seconds per side':'reps'}" value="${esc(old?.reps??prior?.reps??'')}"><input class="field" inputmode="decimal" type="number" min="1" max="10" step="0.5" name="rpe${i}" aria-label="Set ${i+1} effort score 1 to 10 (RPE)" value="${esc(old?.rpe??'')}">${focusMode?`<span class="v152-set-status">${old?'Saved':'New'}</span>`:`<input class="tick" type="checkbox" name="done${i}" aria-label="Mark set ${i+1} complete" ${old?'checked':''}>`}</div>`;
     }).join('');
     const repeatChoice=focusMode?repeatLastSessionSet(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise,set:focusSet+1}):null;
     const repeatButton=repeatChoice?`<div class="v156-repeat"><button class="btn secondary small-btn" type="button" data-action="focus-repeat">↻ Copy saved set ${repeatChoice.sourceSet}</button><span class="hint">${esc(repeatChoice.kg)} kg × ${esc(repeatChoice.reps)} reps. Copies only kg/reps; RPE is entered separately. Review before saving.</span></div>`:'';
     const quickControls=focusMode?`<div class="v1512-quick" aria-label="Optional form-only quick entry">
        <div class="v1512-quick-row"><span>Reps</span><button class="btn secondary small-btn" type="button" data-action="quick-reps-minus" aria-label="Decrease reps by one">−1</button><button class="btn secondary small-btn" type="button" data-action="quick-reps-plus" aria-label="Increase reps by one">+1</button></div>
-       <div class="v1512-quick-row"><span>RPE</span>${QUICK_RPE.map(value=>`<button class="btn secondary small-btn" type="button" data-action="quick-rpe" data-quick-rpe="${value}" aria-label="Set RPE to ${value}">${value}</button>`).join('')}</div>
+       <div class="v1512-quick-row"><span>Effort</span>${QUICK_RPE.map(value=>`<button class="btn secondary small-btn" type="button" data-action="quick-rpe" data-quick-rpe="${value}" aria-label="Set effort to ${effortQuickLabel(value)}">${effortQuickLabel(value)}</button>`).join('')}</div>
        <p class="hint">Shortcuts only edit these fields. Review values and press Save this set to record; nothing saves automatically.</p>
      </div>`:'';
      const selectedOld=current.find(l=>l.set===focusSet+1);
+    const feedbackOld=focusMode?selectedOld:current[0];
     const selectedPrior=previous.find(l=>l.set===focusSet+1);
     const focusIntro=focusMode?`<div class="v152-focus-header"><strong>Set ${focusSet+1} of ${ex.sets}</strong><span>${selectedOld?'Editing a saved set':'Not logged yet'}</span></div><p class="v152-history">${selectedOld?'Saved today — values below are editable.':selectedPrior?`Previous: ${esc(selectedPrior.kg)} kg × ${esc(selectedPrior.reps)} ${ex.repUnit==='seconds_per_side'?'seconds/side':'reps'} (${esc(selectedPrior.date)}). Review before saving.`:'No earlier set recorded. Enter actual values before saving.'}</p>`:'';
     const focusNavigation=focusMode?`<div class="v152-set-navigation"><button class="btn secondary small-btn" data-focus-set="${focusSet-1}" type="button" ${focusSet===0?'disabled':''}>← Previous set</button><button class="btn secondary small-btn" data-focus-set="${focusSet+1}" type="button" ${focusSet===ex.sets-1?'disabled':''}>Next set →</button></div><p class="hint">Only the displayed set will be saved. Change the values to match what you actually completed; no weights are increased automatically.</p>`:'';
-    const exList=workout.exercises.map((e,i)=>{const done=state.logs.filter(l=>l.date===activeDate && l.templateId===selected && l.exerciseIndex===i).length;return `<button class="exercise-choice ${i===chosenExercise?'active':''}" type="button" data-exercise="${i}"><div><strong>${i+1}. ${esc(e.name)}</strong><span>${esc(e.muscle)} · ${e.sets} sets · ${esc(rangeSummary(e))}</span></div><b>${done}/${e.sets}</b></button>`;}).join('');
+    const exList=workout.exercises.map((e,i)=>{const done=state.logs.filter(l=>l.date===activeDate && l.templateId===selected && l.exerciseIndex===i).length;return `<button class="exercise-choice ${i===chosenExercise?'active':''}" type="button" data-exercise="${i}"><div><strong>${i+1}. ${esc(e.name)}</strong><span>${esc(e.muscle)} · ${e.sets} sets · ${esc(rangeSummary(e))}${activeSetsLabel(state,selected,i)?' · '+activeSetsLabel(state,selected,i):''}</span></div><b>${done}/${e.sets}</b></button>`;}).join('');
     exMarkup=`<div class="section-label"><h2>Exercises</h2><span>Tap to record</span></div><div class="exercise-layout"><div class="stack codex-exercises" aria-label="Choose exercise">${focusMode?`<details class="v152-exercise-picker"><summary>Exercise ${chosenExercise+1} of ${workout.exercises.length} · Change exercise</summary>${exList}</details>`:exList}</div><div class="card codex-log-panel"><div class="card-head"><div><div class="eyebrow">LOG YOUR SETS</div><h2 style="margin-top:5px">${esc(ex.name)}</h2><p>${ex.sets} sets · ${esc(rangeSummary(ex))} ${ex.repUnit==='seconds_per_side'?'seconds/side':'reps'} · ${ex.rest}s rest</p></div><span class="badge">${esc(ex.muscle).toUpperCase()}</span></div>
     ${isPTReview(workout)?'<div class="notice warn"><strong>[PT Review] — Not clinically cleared.</strong> Do not treat this template as approval to train or progress loaded lower-body movements. Seek the recommended professional review.</div>':''}
     ${workout.sourceVersion?`<div class="hint">Source: ${esc(workout.sourceVersion)}</div>`:''}
     ${workout.equipmentNote?`<div class="hint"><strong>Equipment:</strong> ${esc(workout.equipmentNote)}</div>`:''}
     ${ex.sourceNote?`<div class="notice"><strong>Exercise instructions:</strong> ${esc(ex.sourceNote)}</div>`:''}
-    ${focusMode?manualProgressionPanel(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise,set:focusSet+1}):''}
-    <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">RPE</span><span class="micro">✓</span></div>${setFields}${repeatButton}${quickControls}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">${ex.rest}s rest timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
+    ${strengthNextSession(state,{date:activeDate,templateId:selected,exerciseIndex:chosenExercise})}
+    ${equivalencePanel(state,{templateId:selected,exerciseIndex:chosenExercise})}
+    ${clearancePanel(state,{templateId:selected,exerciseIndex:chosenExercise,date:activeDate,today:today()})}
+    ${activeSetsPanel(state,{templateId:selected,exerciseIndex:chosenExercise})}
+    <form id="sets-form">${focusIntro}<div class="log-grid"><span class="micro">SET</span><span class="micro">KG</span><span class="micro">${ex.repUnit==='seconds_per_side'?'SEC/SIDE':'REPS'}</span><span class="micro">EFFORT</span><span class="micro">✓</span></div>${setFields}<p class="fp-effort-help"><strong>How hard did it feel?</strong> ${esc(effortHint)}</p>${repeatButton}${quickControls}<div class="divider"></div><div class="metrics-grid"><label><span class="form-label">Rest (seconds)</span><input class="field" type="number" min="0" max="600" inputmode="numeric" name="rest" value="${current[0]?.rest ?? ex.rest}"></label><label><span class="form-label">Tempo (optional)</span><input class="field" name="tempo" maxlength="40" placeholder="e.g. 3-1-1" value="${esc(current[0]?.tempo??'')}"></label></div><div class="metrics-grid"><label><span class="form-label">How did this exercise feel?</span><select class="field" name="difficulty"><option value="">Not rated</option><option value="too_easy" ${feedbackOld?.difficulty==='too_easy'?'selected':''}>Too easy</option><option value="on_target" ${feedbackOld?.difficulty==='on_target'?'selected':''}>On target</option><option value="too_hard" ${feedbackOld?.difficulty==='too_hard'?'selected':''}>Too hard</option></select></label><label><span class="form-label">Technique quality</span><select class="field" name="technique"><option value="">Not rated</option><option value="controlled" ${feedbackOld?.technique==='controlled'?'selected':''}>Controlled</option><option value="unstable" ${feedbackOld?.technique==='unstable'?'selected':''}>Unstable</option></select></label></div><p class="hint">Feedback applies to each set you save now. Effort is how hard it felt; leave the score blank if unsure.</p><label><span class="form-label">Session note (optional)</span><input class="field" name="notes" maxlength="250" placeholder="How did this movement feel?" value="${esc(current[0]?.notes??'')}"></label><div class="form-actions"><button class="btn" type="submit">${focusMode?'Save this set':'Save checked sets'}</button><button class="btn secondary" data-rest="${ex.rest}" type="button">Rest ${ex.rest}s · floating timer</button></div>${focusNavigation}${focusMode?'':`<p class="hint" style="margin-top:10px">Check the sets you completed. Saving updates existing checked sets for this day, not historical sets. Use 0 kg for unweighted movements.</p>`}</form></div></div>`;
   } else {exMarkup=`<div class="card empty"><strong>${state.templates.length?'No workout selected':'No templates yet'}</strong>${state.templates.length?'Choose any workout above or assign a day in Plan.':'Go to Dashboard and load the example plan, or import your own CSV in Plan.'}</div>`;}
   return `${shellHeading()}${heading('TRAINING','One set at a time','Choose an exercise, record your completed sets, then rest before the next one.')}
   <div class="card"><div class="two-panels"><label><span class="form-label" style="margin-top:0">Workout date</span><input class="field" type="date" id="active-date" value="${activeDate}"></label><label><span class="form-label" style="margin-top:0">Workout for this date</span><select class="field" id="active-workout">${options}</select></label></div><div class="inline-meta"><span class="dot"></span>${DAY_NAMES[day]} · ${state.logs.filter(l=>l.date===activeDate).length} set(s) saved</div></div>
+  ${completedCsvPanel()}
   ${workout?`<section class="codex-session"><div class="codex-session-heading"><div><div class="eyebrow">CURRENT WORKOUT · ${DAY_NAMES[day]}</div><h2>${esc(workout.name)}</h2></div><div class="codex-count"><strong>${state.logs.filter(l=>l.date===activeDate&&l.templateId===selected).length} / ${workout.exercises.reduce((n,e)=>n+e.sets,0)}</strong><div>sets logged</div></div></div><div class="progress-track"><div class="progress-fill" style="width:${Math.min(100,Math.round(state.logs.filter(l=>l.date===activeDate&&l.templateId===selected).length/workout.exercises.reduce((n,e)=>n+e.sets,0)*100))}%"></div></div><p class="hint">Saved working sets only. No clinical clearance is implied.</p></section>`:'' }
   ${workout?`<div class="v152-mode-toggle"><button type="button" class="btn secondary small-btn" data-action="focus-toggle" aria-pressed="${focusMode}">${focusMode?'Use standard logging':'Try Focus Mode'}</button><span>${focusMode?'One set at a time, with editable values':'Standard log — multiple sets at once'}</span></div>`:''}
+  ${workout?strengthWorkoutDay(state,{templateId:selected,date:activeDate}):''}
   ${exMarkup}<div class="section-label"><h2>Daily check-in</h2><span>${nice(activeDate)}</span></div><section class="card"><form id="metrics-form"><div class="metrics-grid">${[['weight','Body weight (kg)','0.1'],['calories','Calories (kcal)','1'],['protein','Protein (g)','1'],['sleep','Sleep (hours)','0.1'],['recovery','Recovery (1–5)','1']].map(([key,label,step])=>`<label><span class="form-label">${label}</span><input class="field" type="number" inputmode="decimal" step="${step}" name="${key}" value="${esc(metrics[key]??'')}" placeholder="Not recorded"></label>`).join('')}</div><div class="form-actions"><button class="btn secondary" type="submit">Save daily check-in</button></div><p class="hint" style="margin-top:10px">Only enter values you measured. Blank fields are not guessed.</p></form></section>${symptomPanel(activeDate,state,selected)}`;
 }
 function plan() {
@@ -287,7 +349,7 @@ function plan() {
   <p class="hint"><strong>Equipment:</strong> ${esc(V101_EQUIPMENT)}</p>
   <div class="quick-actions"><button type="button" class="btn" data-action="v101-add">Add V10.1 Home templates</button><button type="button" class="btn secondary" data-action="v101-csv">Download canonical V10.1 CSV</button></div>
   <p class="hint">After import, you may manually assign suitable sessions in your weekly schedule. Do not assign the lower-body templates without appropriate clinician review.</p></section>
-  <div class="section-label"><h2>Workout library</h2><span>${state.templates.length} saved templates</span></div><p class="hint codex-library-help">These are reusable workout templates—not completed workouts. Tap a loadout to inspect its exercises. Assign it to a weekday above, then save completed sets in Train.</p>
+  <div class="section-label"><h2>Workout library</h2><span>${state.templates.length} saved templates</span></div><p class="hint codex-library-help">These are reusable workout templates—not completed workouts. Tap a loadout to inspect its exercises. Assign it to a weekday above, then save completed sets in Train.</p><div class="notice"><strong>Looking for your completed workout CSV?</strong> This page imports workout templates only. To add what you actually did on a past date, open <button class="btn secondary small-btn" type="button" data-page="train">Train → Import completed workout CSV</button>.</div>
   <section class="codex-library-grid">${state.templates.length ? state.templates.map(t=>`<details class="codex-library-entry"><summary><span class="codex-entry-symbol" aria-hidden="true">✦</span><span class="codex-entry-title"><strong>${esc(t.name)}</strong><small>${t.exercises.length} exercises · ${t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</small><small>${DAYS.filter((d,i)=>state.assignments[i]===t.id).join(', ')||'Not scheduled'}${isPTReview(t)?' · PT review required':''}</small></span><span class="codex-entry-arrow" aria-hidden="true">⌄</span></summary><div class="codex-entry-body"><strong>Exercise loadout</strong><ul>${t.exercises.map((e,i)=>`<li><span>${esc(e.name)}</span><span>${e.sets} × ${esc(rangeSummary(e))} <button type="button" class="btn secondary small-btn v157-edit-button" data-template-edit="${esc(t.id)}" data-exercise-edit="${i}">Customize</button></span></li>`).join('')}</ul><p class="hint">${isPTReview(t)?'Clinical review is required for this lower-body template. Saving an assignment is not clearance.':'Select this workout in the schedule above; saved sets are recorded separately.'}</p></div></details>`).join(''):'<section class="card empty"><strong>No workout templates yet</strong>Use the V10.1 import above, or import your own CSV below.</section>'}</section>${editor}
   <details class="codex-archive"><summary>Other saved program options <span>Historical & Unified UL</span></summary><div class="codex-archive-body">  <div class="section-label"><h2>Historical training plans</h2></div><section class="card stack"><strong>Recovery-Optimized Upper/Lower · 30 Sep 2026</strong><p class="subtle small">Mon Upper A · Tue Lower A · Thu Upper B · Fri Lower B. Includes top/back-off sets and labelled superset pairs. For Face Pull/Lateral Raise, the third set is optional. Reps listed per arm/leg are per side. Rest is 90 seconds by default unless noted.</p><div class="quick-actions"><button class="btn" type="button" data-action="latest-ul">Add my Recovery UL templates</button><button class="btn secondary" type="button" data-action="latest-ul-csv">Download this plan (.csv)</button></div><p class="hint">Adds templates only. Your current weekly schedule and completed workout sets are unchanged. After import, assign the new workouts to weekdays above and save the schedule.</p></section>
   <div class="section-label"><h2>Unified Recovery UL (per-set targets)</h2></div>
@@ -297,14 +359,15 @@ function plan() {
 }
 function tools() {
   const resetCounts=resetTrackingData(state).counts;
+  const backupStatus=workoutBackupStatus(localStorage,today());
   const reminder=state.reminder, time=`${String(reminder.hour).padStart(2,'0')}:${String(reminder.minute).padStart(2,'0')}`;
   const backupInfo=pendingBackup?`<div class="notice warn"><strong>Backup checked:</strong> ${pendingBackup.templates.length} templates, ${pendingBackup.logs.length} saved sets, ${pendingBackup.metrics.length} daily entries, ${(pendingBackup.symptomLogs??[]).length} symptom observations. <strong>Restore replaces all data currently in this app.</strong><label><span class="form-label">Type REPLACE to confirm</span><input class="field" type="text" id="restore-word" autocomplete="off" placeholder="REPLACE"></label><div class="form-actions"><button class="btn danger" data-action="restore-confirm">Replace with this backup</button><button class="btn secondary" data-action="restore-cancel">Cancel</button></div></div>`:'';
   return `${shellHeading()}${heading('ADVENTURER\'S KIT','Tools & data','Back up your progress first, then customize sounds, rest times and calendar reminders.')}
   <div class="codex-utility-intro"><strong>Keep your journey safe</strong><span>Your logs stay on this device. Download a backup before testing restores or changing devices.</span></div>
-  <div class="section-label"><h2>Data vault</h2><span>Local to this browser</span></div><section class="card stack codex-vault"><div class="notice"><strong>Saved on this device only.</strong> Your sets and templates stay in this browser's local storage. They are not sent to us or synced to another device. Clearing website data, deleting the Home Screen app, or switching devices can remove access to them.</div><div class="quick-actions"><button class="btn" data-action="backup-export">Download full backup (.json)</button><button class="btn secondary" data-action="backup-verify">Check saved data integrity</button><button class="btn secondary" data-action="backup-file-check">Check downloaded backup (.json) — no restore</button><button class="btn secondary" data-action="backup-pick">Restore backup</button></div>${backupInfo}<p class="hint">Export a backup after every important training week. Keep the JSON file in iCloud Drive or another place you control. Restoring is destructive, so this app will preview the file and require an explicit confirmation. The saved-data check reads browser storage. The downloaded-backup check reads a chosen file without restoring it; separate-device restore still needs acceptance testing.</p></section>
+  <div class="section-label"><h2>Data vault</h2><span>Local to this browser</span></div><section class="card stack codex-vault"><div class="notice"><strong>Saved on this device only.</strong> Your sets and templates stay in this browser's local storage. They are not sent to us or synced to another device. Clearing website data, deleting the Home Screen app, or switching devices can remove access to them.</div><div class="quick-actions"><button class="btn" data-action="backup-export">Download full backup (.json)</button><button class="btn secondary" data-action="backup-verify">Check saved data integrity</button><button class="btn secondary" data-action="backup-file-check">Check downloaded backup (.json) — no restore</button><button class="btn secondary" data-action="backup-pick">Restore backup</button></div>${backupInfo}<p class="hint"><strong>${esc(backupStatus.label)}</strong> Date is recorded automatically when the checked workout JSON file matches current records.</p><div class="quick-actions"><button class="btn secondary" data-action="storage-persist">Request persistent storage</button><a class="btn secondary" href="./food-diary.html">Open Food Diary backup →</a><a class="btn secondary" href="./encrypted-backup.html">Encrypted backup (both stores) →</a></div><p class="hint" id="storage-persistence-status" role="status">${esc(storagePersistenceStatusLabel)}</p><p class="hint">Storage persistence is browser-controlled and can be unavailable or denied; it never replaces backups. The workout JSON does not include Food Diary entries: export the Food Diary JSON separately on that page.</p><p class="hint">Export a backup after every important training week. Keep the JSON file in iCloud Drive or another place you control. Restoring is destructive, so this app will preview the file and require an explicit confirmation. The saved-data check reads browser storage. The downloaded-backup check reads a chosen file without restoring it; separate-device restore still needs acceptance testing.</p></section>
   <div class="section-label"><h2>Reset tracking records</h2><span>Keep uploaded workouts</span></div>
-  <section class="card stack"><div class="notice warn"><strong>Destructive reset — no automatic undo.</strong> Remove saved working sets, daily weight/nutrition/sleep/recovery check-ins and symptom observations from this preview. Preserve all uploaded workout templates, exercise targets, weekday assignments and reminder settings.</div>
-    <p class="hint">Preview: ${resetCounts.setsRemoved} saved sets, ${resetCounts.checkinsRemoved} daily check-ins and ${resetCounts.symptomsRemoved} symptom observations would be erased. ${resetCounts.templatesKept} workout templates and ${resetCounts.assignmentsKept} weekday assignments will be kept.</p>
+  <section class="card stack"><div class="notice warn"><strong>Destructive reset — no automatic undo.</strong> Remove saved working sets, daily weight/nutrition/sleep/recovery check-ins and symptom observations from this preview. The Strength Journey start date is also cleared. Preserve all uploaded workout templates, exercise targets, weekday assignments and reminder settings.</div>
+    <p class="hint">Preview: ${resetCounts.setsRemoved} saved sets, ${resetCounts.checkinsRemoved} daily check-ins and ${resetCounts.symptomsRemoved} symptom observations would be erased. ${resetCounts.restartDateCleared?'The Strength Journey start date would be cleared. ':'No Strength Journey start date is set. '}${resetCounts.templatesKept} workout templates and ${resetCounts.assignmentsKept} weekday assignments will be kept.</p>
     <p class="hint"><strong>Before resetting:</strong> use Download full backup (.json), then Check downloaded backup (.json) above and select the file you just saved. It must match the current records exactly. Verify that your file is accessible in Files. ${resetBackupReady?'<strong>Current backup file matches.</strong>':'<strong>No matching backup verified yet.</strong>'}</p>
     <label><input type="checkbox" id="tracking-reset-ack"> I saved and checked my full backup, and understand the recorded data will be deleted.</label>
     <label><span class="form-label">Type RESET LOGS to confirm</span><input id="tracking-reset-word" class="field" type="text" autocomplete="off" placeholder="RESET LOGS"></label>
@@ -322,8 +385,7 @@ function tools() {
   <section class="card codex-reminders"><div class="card-head"><div><h2>Workout reminders</h2><p>Uses your iPhone Calendar — even when FitnessPilot is closed</p></div><span class="badge">CALENDAR</span></div><form id="reminder-form"><div class="metrics-grid"><label><span class="form-label">Workout time</span><input class="field" type="time" name="time" required value="${time}"></label><label><span class="form-label">Alert ahead of time</span><select class="field" name="lead"><option value="0" ${reminder.lead===0?'selected':''}>At workout time</option><option value="5" ${reminder.lead===5?'selected':''}>5 minutes before</option><option value="15" ${reminder.lead===15?'selected':''}>15 minutes before</option><option value="30" ${reminder.lead===30?'selected':''}>30 minutes before</option><option value="60" ${reminder.lead===60?'selected':''}>1 hour before</option></select></label></div><div class="form-actions"><button class="btn" type="submit">Save alert settings</button><button class="btn secondary" type="button" data-action="calendar">Export Calendar reminders (.ics)</button></div></form><p class="hint" style="margin-top:14px">First save your settings, then export the .ics file. Import it into a calendar that supports .ics events and alarms. Some iPhone import paths may require emailing the file to yourself or using a computer calendar. Check the alert in Apple Calendar after import. If you change the schedule, remove previous imported events and export again to avoid duplicate alerts.</p><div class="notice warn"><strong>Not a Clock alarm.</strong> This web app cannot force a loud full-screen ring while closed. Calendar notifications depend on your phone's notification, Focus and Silent settings. Use the iPhone Clock app if an audible alarm is essential.</div></section>
   <p class="app-footer">FitnessPilot Web v1 · No accounts · No analytics · No advertisements</p>`;
 }
-function timerRemaining(){if(!timerEnd)return '00:00';const n=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));return `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;}
-function timerTick() {const display=$('#timer-display');if(display)display.textContent=timerRemaining();if(timerEnd && timerEnd<=Date.now()){timerEnd=null;clearInterval(timerHandle);timerHandle=null;try{if(audioContext){const osc=audioContext.createOscillator();const gain=audioContext.createGain();osc.connect(gain);gain.connect(audioContext.destination);osc.frequency.value=740;gain.gain.value=.15;osc.start();osc.stop(audioContext.currentTime+.35);}}catch{}toast('Rest timer finished. Time for your next set!');}}
+function timerRemaining(){ return restClock(floatingRest.getRemaining()); }
 function inspectWalkerDisplay(){
   const image=$('.fp-walker-sprite');
   const status=$('#walker-render-status');
@@ -373,8 +435,30 @@ function inspectWalkerDisplay(){
   status.textContent='Loading one walking character…';
   useAvatar(selected,'Personal walker loaded: walking in place toward the right.');
 }
-function render(){const markup=navMarkup();$('.bottom-tabs').innerHTML=markup;$('.desktop-tabs').innerHTML=markup;$('#main').innerHTML=`${storageError?`<div class="error-strip" role="alert">${esc(storageError)}</div>`:''}${page==='dashboard'?dashboard():page==='train'?train():page==='plan'?plan():tools()}`;inspectWalkerDisplay();timerTick();}
+async function refreshPersistentStorageStatus() {
+  const result=await persistentStorageStatus(navigator.storage);
+  const labels={
+    granted:'Persistent storage: Granted by this browser.',
+    'not-granted':'Persistent storage: Not granted.',
+    unsupported:'Persistent storage status: Not supported by this browser.',
+    failed:'Persistent storage status: Could not be checked.'
+  };
+  storagePersistenceStatusLabel=labels[result];
+  const status=$('#storage-persistence-status');
+  if(status)status.textContent=storagePersistenceStatusLabel;
+}
+function render(){const markup=navMarkup();$('.bottom-tabs').innerHTML=markup;$('.desktop-tabs').innerHTML=markup;$('#main').innerHTML=`${storageError?`<div class="error-strip" role="alert">${esc(storageError)}</div>`:''}${page==='dashboard'?dashboard():page==='train'?train():page==='plan'?plan():tools()}`;inspectWalkerDisplay();floatingRest.updatePage(page);if(page==='tools')void refreshPersistentStorageStatus();}
 function download(filename,content,mime){const url=URL.createObjectURL(new Blob([content],{type:mime}));const a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}
+async function readCompletedCsv(file) {
+  if(!file||file.size>1_000_000||!/\.csv$/i.test(file.name))
+    throw Error('Choose a completed-workout .csv file smaller than 1 MB.');
+  const csv=await file.text();
+  if(storageError)throw Error('Saved workout history is locked; CSV import is disabled.');
+  const original=localStorage.getItem(STORAGE_KEY);
+  const parsed=previewCompletedCsv(state,csv);
+  pendingCompletedCsv=parsed;pendingCompletedSnapshot=original;
+  render();toast('Completed workout review ready. Nothing saved yet.');
+}
 async function readCSV(file) {
   if (!file || file.size > 1_000_000) throw Error('Choose a CSV smaller than 1 MB.');
   if (!/\.csv$/i.test(file.name)) throw Error('Choose a .csv file exported from Excel.');
@@ -420,12 +504,63 @@ document.addEventListener('click', event=>{
     });
     return;
   }
-  if(button.dataset.rest){tryAction(()=>{const seconds=intRange(button.dataset.rest,'Rest',1,600);timerEnd=Date.now()+seconds*1000;clearInterval(timerHandle);timerHandle=setInterval(timerTick,250);
-    try{const A=window.AudioContext||window.webkitAudioContext;if(A){audioContext=audioContext||new A();void audioContext.resume();}}catch{}
-    timerTick();toast(`Rest timer started: ${seconds} seconds.`);});return;}
+  if(button.dataset.rest){tryAction(()=>{const seconds=intRange(button.dataset.rest,'Rest',1,600);
+    floatingRest.start(seconds);toast(`Rest timer started: ${seconds} seconds.`);});return;}
   const act=button.dataset.action;
   tryAction(()=>{
+    if(['week-prev','week-next','week-current','week-latest'].includes(act)) {
+      if(act==='week-current') selectedWeekStart=null;
+      else if(act==='week-latest') {
+        const recent=latestLoggedWeek(state);
+        if(!recent) throw Error('No saved working sets found in this preview yet.');
+        selectedWeekStart=recent;
+      } else selectedWeekStart=shiftWeek(selectedWeekStart||mondayOf(today()),act==='week-prev'?-1:1);
+      render();return;
+    }
     if(act==='cancel-customize'){customizing=null;render();return;}
+    if(act==='equivalence-link'){
+      const choice=$('#equivalence-candidate')?.value||'';
+      const [tIndex,eIndex]=choice.split(':').map(Number);
+      const earlier=state.templates[tIndex];
+      if(!choice||!earlier||!Number.isInteger(eIndex)||!earlier.exercises[eIndex])throw Error('Choose an earlier exercise to link.');
+      const here=state.templates.find(t=>t.id===chosenTemplate)?.exercises[chosenExercise];
+      if(!here)throw Error('Choose an exercise first.');
+      if(!linkCandidates(state,chosenTemplate,chosenExercise).some(c=>c.templateId===earlier.id&&c.exerciseIndex===eIndex))throw Error('That exercise cannot be linked here.');
+      if(!confirm(`Link "${earlier.exercises[eIndex].name}" (${earlier.name}) as earlier history of "${here.name}"? Its sets will appear on this exercise's Strength Journey chart and as a starting-weight reference only. Progression still uses only this exercise's own sessions. No saved sets are changed.`))return;
+      commit(addExerciseEquivalence(state,{from:{templateId:earlier.id,exerciseIndex:eIndex},to:{templateId:chosenTemplate,exerciseIndex:chosenExercise},approvedDate:today()},undefined,{confirmed:true}),'Earlier history linked. No saved sets were changed.');
+      return;
+    }
+    if(act==='active-sets-change'){
+      const here=state.templates.find(t=>t.id===chosenTemplate)?.exercises[chosenExercise];
+      if(!here)throw Error('Choose an exercise first.');
+      const count=intRange($('#active-sets-count')?.value,'Active sets',1,here.sets);
+      if(!confirm(`Do ${count} of ${here.sets} planned sets of "${here.name}" for now? You are setting this yourself; the app never changes it. Saved sets stay exactly as they are, and next-session targets will compare against ${count} set(s).`))return;
+      commit(setActiveSets(state,{templateId:chosenTemplate,exerciseIndex:chosenExercise,count},{confirmed:true}),`Active sets saved: ${count} of ${here.sets}. No saved sets were changed.`);
+      return;
+    }
+    if(act==='clearance-record'){
+      const here=state.templates.find(t=>t.id===chosenTemplate)?.exercises[chosenExercise];
+      if(!here)throw Error('Choose an exercise first.');
+      const clearedBy=$('#clearance-by')?.value??'',clearedDate=$('#clearance-date')?.value??'',note=$('#clearance-note')?.value??'';
+      dateFromKey(clearedDate);
+      if(clearedDate>today())throw Error('Clearance date cannot be in the future.');
+      if(!clearedBy.trim())throw Error('Enter who gave the clearance.');
+      if(!confirm(`You are recording a clearance that a clinician (${clearedBy.trim()}) gave you on ${clearedDate} for "${here.name}". FitnessPilot does not verify this and it is not medical advice. Progression suggestions for this exercise will then follow the normal symptom, recovery and effort checks. Record it?`))return;
+      commit(recordExerciseClearance(state,{templateId:chosenTemplate,exerciseIndex:chosenExercise,clearedDate,clearedBy,note},undefined,{confirmed:true}),'Clearance recorded as given by a clinician. Not verified by the app. No saved sets were changed.');
+      return;
+    }
+    if(act==='clearance-revoke'){
+      const id=button.dataset.clearanceId;
+      if(!confirm('Revoke this clearance? The exercise returns to [PT Review] reference-only status. The record stays visible as revoked; no saved sets are changed.'))return;
+      commit(revokeExerciseClearance(state,id,today(),{confirmed:true}),'Clearance revoked. No saved sets were changed.');
+      return;
+    }
+    if(act==='equivalence-unlink'){
+      const id=button.dataset.linkId;
+      if(!confirm('Remove this link? Only the link is removed; all saved sets stay exactly as they are.'))return;
+      commit(removeExerciseEquivalence(state,id,{confirmed:true}),'Link removed. No saved sets were changed.');
+      return;
+    }
     if(act==='quick-reps-minus' || act==='quick-reps-plus' || act==='quick-rpe') {
       if(!focusMode)throw Error('Switch to Focus Mode for quick entry.');
       const form=$('#sets-form');
@@ -476,6 +611,35 @@ document.addEventListener('click', event=>{
     }
     if(act==='v101-csv')download('V10.1_Home_FitnessPilot_Import.csv',V101_CSV,'text/csv;charset=utf-8');
     if(act==='starter'){if(!confirm('Add the example four-day workout plan? Existing logs will not change.'))return;const out=addWorkouts(state,parseWorkouts(STARTER_CSV),true);commit(out.state,`Added ${out.added} workout templates.`);}
+    if(act==='completed-csv-blank'){
+      if(!chosenTemplate)throw Error('Select a workout in Train first.');
+      download('FitnessPilot-completed-session-'+activeDate+'.csv',blankCompletedCsv(state,activeDate,chosenTemplate),'text/csv;charset=utf-8');
+      toast('Blank completed-session CSV downloaded. Fill actual kg/reps, then import it here.');
+      return;
+    }
+    if(act==='completed-csv-pick'){$('#completed-workout-file').click();return;}
+    if(act==='completed-csv-backup'){
+      if(storageError)throw Error('Saved data is locked. Cannot back up before import.');
+      download('FitnessPilot-PREVIEW-before-session-import-'+today()+'.json',JSON.stringify(state,null,2)+'\n','application/json');
+      toast('Backup prepared. Verify it is saved before ticking confirmation.');
+      return;
+    }
+    if(act==='completed-csv-cancel'){pendingCompletedCsv=null;pendingCompletedSnapshot=null;render();return;}
+    if(act==='completed-csv-apply'){
+      if(storageError)throw Error('Saved data is locked. Import refused.');
+      if(!pendingCompletedCsv||!pendingCompletedCsv.add.length)throw Error('Preview a CSV with new completed sets first.');
+      if(!$('#completed-import-backup-ack')?.checked)throw Error('Save and acknowledge a current JSON backup before applying.');
+      if(localStorage.getItem(STORAGE_KEY)!==pendingCompletedSnapshot){
+        pendingCompletedCsv=null;pendingCompletedSnapshot=null;render();
+        throw Error('Workout history changed since CSV preview. Choose the CSV again and recheck.');
+      }
+      if(!confirm('Add '+pendingCompletedCsv.add.length+' actual completed sets to your saved history? No existing sets will be replaced.'))return;
+      const count=pendingCompletedCsv.add.length;
+      const next=applyCompletedCsv(state,pendingCompletedCsv);
+      commit(next,'Imported '+count+' completed working sets; saved history preserved.');
+      pendingCompletedCsv=null;pendingCompletedSnapshot=null;render();
+      return;
+    }
     if(act==='pick-csv')$('#csv-file').click();
     if(act==='cancel-csv'){pendingWorkouts=null;render();}
     if(act==='confirm-csv'){if(!pendingWorkouts)throw Error('Choose a CSV first.');const out=addWorkouts(state,pendingWorkouts);pendingWorkouts=null;commit(out.state,`Imported ${out.added}; skipped ${out.skipped} identical template(s).`);}
@@ -499,7 +663,7 @@ document.addEventListener('click', event=>{
       if($('#tracking-reset-word')?.value!=='RESET LOGS')throw Error('Type RESET LOGS exactly to confirm.');
       if(localStorage.getItem(STORAGE_KEY)!==JSON.stringify(state))throw Error('Saved data changed since it was loaded. Reload and verify another backup before resetting.');
       const preview=resetTrackingData(state);
-      if(!confirm(`Permanently remove ${preview.counts.setsRemoved} recorded sets, ${preview.counts.checkinsRemoved} daily check-ins and ${preview.counts.symptomsRemoved} symptom entries? Keep ${preview.counts.templatesKept} workout templates and weekday assignments? This cannot be undone without a backup.`))return;
+      if(!confirm(`Permanently remove ${preview.counts.setsRemoved} recorded sets, ${preview.counts.checkinsRemoved} daily check-ins and ${preview.counts.symptomsRemoved} symptom entries${preview.counts.restartDateCleared?' and clear the Strength Journey start date':''}? Keep ${preview.counts.templatesKept} workout templates and weekday assignments? This cannot be undone without a backup.`))return;
       const applied=resetTrackingData(state,{apply:true});
       commit(applied.nextState,'Recorded training and check-in history reset. Workout templates and schedules kept.');
       pendingBackup=null;
@@ -521,13 +685,37 @@ document.addEventListener('click', event=>{
       toast(`Saved data checked: ${report.templates} templates, ${report.sets} sets, ${report.symptoms} symptom observations. No data changed.`);
     }
     if(act==='logbook-export'){download(`FitnessPilot-workout-history-${today()}.csv`,workoutLogbookCsv(state),'text/csv;charset=utf-8');toast('Workout logbook CSV prepared. Store this personal file privately.');}
-    if(act==='backup-export'){if(storageError)throw Error('Cannot export invalid records safely.');download(`FitnessPilot-PREVIEW-backup-${today()}.json`,JSON.stringify(state,null,2)+'\n','application/json');toast('Backup file prepared. Store it in Files or iCloud Drive.');}
+    if(act==='backup-export'){
+      if(storageError)throw Error('Cannot export invalid records safely.');
+      resetBackupReady=false;
+      download(`FitnessPilot-PREVIEW-backup-${today()}.json`,JSON.stringify(state,null,2)+'\n','application/json');
+      render();
+      toast('Workout JSON prepared. Save the file, then use Check downloaded backup (.json).');
+      return;
+    }
+    if(act==='storage-persist'){
+      if(storagePersistenceRequestPending)return;
+      storagePersistenceRequestPending=true;
+      button.disabled=true;
+      requestPersistentStorage(navigator.storage).then(async result=>{
+        await refreshPersistentStorageStatus();
+        const messages={
+          granted:'Browser granted persistent storage. Keep downloading backups.',
+          denied:'Browser declined persistent storage. You can request again later.',
+          unsupported:'This browser does not support persistent storage requests. Keep downloading backups.',
+          failed:'Browser storage request failed. You can request again later.'
+        };
+        toast(messages[result],result==='failed');
+      }).catch(()=>toast('Persistent storage request could not be completed.',true))
+        .finally(()=>{storagePersistenceRequestPending=false;if(button.isConnected)button.disabled=false;});
+      return;
+    }
     if(act==='backup-pick')$('#backup-file').click();
     if(act==='backup-file-check')$('#backup-check-file').click();
     if(act==='restore-cancel'){pendingBackup=null;render();}
     if(act==='restore-confirm'){if(!pendingBackup)throw Error('Choose a backup file first.');if($('#restore-word')?.value!=='REPLACE')throw Error('Type REPLACE to confirm.');if(!confirm('Replace ALL current local sets, workouts and check-ins with this backup? Export your existing backup first.'))return;const next=pendingBackup;commit(next,'Backup restored. Previous local data replaced.');pendingBackup=null;render();}
     if(act==='calendar'){download(`FitnessPilot-weekly-reminders-${today()}.ics`,calendarICS(state),'text/calendar;charset=utf-8');toast('Calendar file prepared. Import events into your calendar.');}
-    if(act==='stop-timer'){timerEnd=null;clearInterval(timerHandle);timerHandle=null;timerTick();toast('Timer stopped.');}
+    if(act==='stop-timer'){floatingRest.stop();toast('Timer stopped.');}
   });
 });
 
@@ -554,6 +742,19 @@ document.addEventListener('change',event=>{
     }
     return;
   }
+  if(target.id==='strength-metric'){
+    if(!['load','volume'].includes(target.value)){toast('Choose a valid chart measurement.',true);return;}
+    strengthViewMetric=target.value;render();return;
+  }
+  if(target.id==='strength-history-filter'){
+    if(!['all','recent10','recent3'].includes(target.value)){toast('Choose a valid history filter.',true);return;}
+    strengthHistoryFilter=target.value;render();return;
+  }
+  if(target.id==='strength-exercise'){
+    const index=Number(target.value);
+    if(!Number.isInteger(index)||index<0)throw Error('Choose a valid strength exercise.');
+    strengthJourneyIndex=index;render();return;
+  }
   if(target.id==='active-date'){
     if(!mayLeaveFocusSet()){target.value=activeDate;return;}
     tryAction(()=>{activeDate=target.value;chosenExercise=0;chosenTemplate=null;focusSet=0;render();});
@@ -566,6 +767,13 @@ document.addEventListener('change',event=>{
     const tmpl=state.templates.find(t=>t.id===target.value);
     const list=$('#symptom-exercise');
     if(list)list.innerHTML='<option value="">Whole workout / not exercise-specific</option>'+(tmpl?tmpl.exercises.map((e,i)=>`<option value="${i}">${i+1}. ${esc(e.name)}</option>`).join(''):'');
+  }
+  if(target.id==='completed-workout-file'){
+    const file=target.files?.[0];target.value='';
+    if(file)readCompletedCsv(file).catch(error=>{
+      pendingCompletedCsv=null;pendingCompletedSnapshot=null;render();toast(error.message,true);
+    });
+    return;
   }
   if(target.id==='csv-file'){const file=target.files?.[0];target.value='';if(file)readCSV(file).catch(e=>toast(e.message,true));}
   if(target.id==='backup-file'){const file=target.files?.[0];target.value='';if(file)readBackup(file).catch(e=>{pendingBackup=null;render();toast(e.message,true);});}
@@ -580,10 +788,18 @@ document.addEventListener('change',event=>{
       const current=JSON.stringify(state);
       const checked=JSON.stringify(validateBackup(JSON.parse(raw)));
       resetBackupReady=!storageError && checked===current && localStorage.getItem(STORAGE_KEY)===current;
+      if(resetBackupReady) {
+        try { markWorkoutBackupChecked(localStorage,today()); }
+        catch(error) {
+          render();
+          toast(`Backup matches, but ${error.message}`,true);
+          return;
+        }
+      }
       render();
       toast(resetBackupReady
-        ? `Matching full backup verified: ${summary.templates} templates and ${summary.sets} recorded sets. Nothing restored.`
-        : `Backup file valid but does not match current browser records. Nothing restored; a matching backup is required to reset.`);
+        ? `Matching workout backup verified: ${summary.templates} templates and ${summary.sets} recorded sets. Checked date recorded as today; nothing restored.`
+        : 'Backup file valid but does not match current browser records. Nothing restored; a matching backup is required to reset.');
 
     })().catch(error=>{resetBackupReady=false;render();toast(error.message,true);});
   }
@@ -592,6 +808,29 @@ document.addEventListener('change',event=>{
 document.addEventListener('submit',event=>{
   event.preventDefault();const form=event.target;
   tryAction(()=>{
+    if(form.id==='strength-start-form'){
+      const start=form.elements.start.value;
+      if(start){
+        dateFromKey(start);
+        if(start>today())throw Error('Day 1 cannot be in the future.');
+      }
+      const next=structuredClone(state);
+      if(start)next.strengthJourneyStartDate=start;
+      else delete next.strengthJourneyStartDate;
+      strengthJourneyIndex=0;
+      commit(next,start?'Journey start date saved. Your earlier workout history remains intact.':'Journey start reset to first saved session. History unchanged.');
+      return;
+    }
+    if(form.id==='strength-step-form'){
+      const raw=form.elements.step.value;
+      const value=raw===''?null:Number(raw);
+      if(value!==null&&![0.5,1,2,2.5,4].includes(value))throw Error('Choose a supported available dumbbell increment.');
+      const next=structuredClone(state);
+      if(value===null)delete next.progressionStepKg;
+      else next.progressionStepKg=value;
+      commit(next,value===null?'Dumbbell increment cleared.':'Available dumbbell increment saved. Actual workout sets remain unchanged.');
+      return;
+    }
     if(form.id==='template-version-form'){
       if(!customizing)throw Error('Select a saved exercise to customize first.');
       const changes=Object.fromEntries(['name','muscle','sets','min','max','rest','sourceNote']
@@ -614,7 +853,7 @@ document.addEventListener('submit',event=>{
     if(form.id==='sets-form'){
       if(!chosenTemplate)throw Error('Select a workout first.');const template=state.templates.find(t=>t.id===chosenTemplate);
       const exercise=template?.exercises[chosenExercise];if(!exercise)throw Error('Select a valid exercise.');
-      const shared={rest:form.elements.rest.value,notes:form.elements.notes.value,tempo:form.elements.tempo.value};
+      const shared={rest:form.elements.rest.value,notes:form.elements.notes.value,tempo:form.elements.tempo.value,difficulty:form.elements.difficulty.value,technique:form.elements.technique.value};
       const entries=focusMode
         ? focusEntries(exercise.sets,focusSet,{...shared,kg:form.elements[`kg${focusSet}`].value,reps:form.elements[`reps${focusSet}`].value,rpe:form.elements[`rpe${focusSet}`].value})
         : Array.from({length:exercise.sets},(_,i)=>({...shared,completed:form.elements[`done${i}`].checked,kg:form.elements[`kg${i}`].value,reps:form.elements[`reps${i}`].value,rpe:form.elements[`rpe${i}`].value}));
@@ -660,6 +899,7 @@ document.addEventListener('submit',event=>{
     }
   });
 });
+const floatingRest = createFloatingRestTimer();
 render();
 if('serviceWorker' in navigator && location.protocol !== 'file:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
 initRoFeedback();
