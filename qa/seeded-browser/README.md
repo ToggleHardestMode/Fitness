@@ -50,3 +50,31 @@ Both runners block service workers and bind ONLY to 127.0.0.1.
 Offline, service-worker upgrades, iPhone Safari, and sound audibility are
 NOT tested. Offline B098 is explicitly KIV and cannot be treated as passed.
 Do not clear any phone or browser website data. No repository files change.
+
+## B097: Mobile viewport and complete CSS smoke
+
+Use the same Python Playwright/Chromium installation as B096. From a disposable
+checkout of the B097 PR branch, capture Dashboard, Train, Plan, Tools, Food Diary
+and the Encrypted Backup Vault at **320, 390 and 428 CSS pixels** (18 images).
+
+    py .\qa\seeded-browser\mobile_ui.py --repo-root . --target local --output ..\B097-local-evidence
+    py .\qa\seeded-browser\mobile_ui.py --repo-root . --target pages --output ..\B097-pages-evidence
+
+Use **new, different output paths** for repeat runs. The runner refuses to
+overwrite an existing evidence directory. Each output folder contains 18
+full-page screenshots and a report.json summarizing computed full-CSS
+document overflow, clipped controls, small touch targets, mobile navigation
+overlap, accessible critical controls and JavaScript errors. A nonzero exit
+signals a failure; inspect the PNGs before interpreting a PASS as visual
+acceptance. Small touch-target measurements are warnings, not automatic failures.
+
+The Pages mode uses only
+https://togglehardestmode.github.io/Fitness/preview-v101/
+and loads *synthetic* workout and Food Diary fixtures in **new, disposable
+Chromium contexts**. It never opens your regular browser profile, reads
+your real localStorage or overwrites saved records. The localhost mode
+serves source via 127.0.0.1 on an ephemeral port. Both modes **block
+service workers**; B098 offline/upgrade testing remains KIV, not passed.
+No app files, storage keys, GitHub source or external server data are
+changed by running this inspector. Captured images use fictional data.
+
