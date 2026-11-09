@@ -73,6 +73,10 @@ def inspect_layout(page):
 
 def capture(page, label, width, directory, controls):
     problems = []
+    # Capture evidence before actionability checks scroll the page.
+    screenshot = f"{width}-{label}.png"
+    page.screenshot(path=str(directory / screenshot),
+                    full_page=True, animations="disabled")
     for selector in controls:
         locator = page.locator(selector).first
         try:
@@ -94,11 +98,41 @@ def capture(page, label, width, directory, controls):
     if layout["navOverlaps"]:
         problems.append("Primary mobile navigation buttons overlap.")
 
-    screenshot = f"{width}-{label}.png"
-    page.screenshot(path=str(directory / screenshot),
-                    full_page=True, animations="disabled")
     return {"width": width, "screen": label, "screenshot": screenshot,
             "computedLayout": layout, "problems": problems}
+
+
+def navigate_section(page, name):
+    """Try the real pointer first; preserve failures even if keyboard succeeds.
+
+    Keyboard fallback is for collecting diagnostic screenshots only. It must
+    NEVER convert a blocked touch-navigation button into a passing result.
+    """
+    tab = page.locator("nav.bottom-tabs button[data-page='" + name + "']")
+    # The main page initially displays Dashboard. Do not click its active tab
+    # just to capture a screenshot; capture() tests its touch actionability.
+    if tab.get_attribute("aria-current") == "page":
+        return []
+    problems = []
+    try:
+        tab.click(timeout=4000)
+    except Exception as error:
+        blocker = tab.evaluate("""el => {
+          const r = el.getBoundingClientRect();
+          const hit = document.elementFromPoint(r.left + r.width/2,
+                                                r.top + r.height/2);
+          return hit ? hit.tagName.toLowerCase() + '.' +
+                 (hit.getAttribute('class') || '').slice(0, 90) : 'none';
+        }""")
+        problems.append("Bottom navigation touch click blocked for " + name +
+                        " (" + type(error).__name__ + ", hit=" + blocker + ").")
+        # Real keyboard navigation allows inspection of the remaining pages,
+        # but the pointer problem above still forces overall FAIL.
+        tab.focus()
+        tab.press("Enter", timeout=5000)
+    page.locator("nav.bottom-tabs button[data-page='" + name +
+                 "'][aria-current='page']").wait_for(state="visible", timeout=5000)
+    return problems
 
 
 def load(page, url, selector):
@@ -173,17 +207,17 @@ def run(root, destination, target, headed=False, chromium_binary=None):
                             ("tools", ["a[href='./encrypted-backup.html']"]),
                         ]
                         for section, important in sections:
-                            page.locator(
-                                "nav.bottom-tabs button[data-page='" + section + "']"
-                            ).click()
+                            navigation_problems = navigate_section(page, section)
                             if section == "train":
                                 page.locator("#active-workout").select_option(
                                     "fixture-upper-001"
                                 )
                                 page.locator("#sets-form").wait_for()
-                            report["screens"].append(capture(
+                            screen = capture(
                                 page, section, width, destination, important
-                            ))
+                            )
+                            screen["problems"].extend(navigation_problems)
+                            report["screens"].append(screen)
 
                         load(page, origin + "/food-diary.html", "#fd-form")
                         page.locator("#fd-date").fill(LAST_DAY)
