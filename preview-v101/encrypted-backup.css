@@ -1,0 +1,10 @@
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#111927;color:#f4eee8}
+*{box-sizing:border-box}body{margin:0;padding:16px}.vault{max-width:720px;margin:auto}
+h1,h2{color:#f5d89b}h1{font-size:clamp(26px,5vw,38px)}
+p{line-height:1.65;color:#d8d2cb}a{color:#f4d591}.eyebrow{letter-spacing:.1em;font-size:12px}
+section{border:1px solid #67553b;background:#1c2533;border-radius:15px;padding:20px;margin:20px 0}
+label{display:block;margin:14px 0;color:#eadfcd;font-weight:600}
+input{display:block;margin-top:6px;width:100%;padding:13px;background:#101827;border:1px solid #af9a75;border-radius:8px;color:#fff;font:inherit}
+input[type=file]{padding:12px}
+button{border:1px solid #d7b879;background:#e9c989;color:#171c24;padding:12px 17px;min-height:44px;border-radius:11px;font-weight:800;cursor:pointer}
+button:disabled{opacity:.65;cursor:wait}#vault-status{padding:12px;border:1px solid #75623f;border-radius:10px;overflow-wrap:anywhere}
