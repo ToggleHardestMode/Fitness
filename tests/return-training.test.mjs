@@ -73,7 +73,8 @@ test('stage save via existing template API appends, preserves logs and assignmen
 test('plan panel shows four percentages and no save action without preview',()=>{
   const state=emptyState();state.templates=sources();
   const html=returnStagePanel(state);
-  assert.match(html,/Preview all four stages/);
+  assert.match(html,/Preview training volumes/);
+  assert.match(html,/1 set per upper exercise/);
   assert.doesNotMatch(html,/data-action="return-stage-save"/);
   const pending={ids:['a','','b','','c','',''],percent:25};
   const review=returnStagePanel(state,pending);
