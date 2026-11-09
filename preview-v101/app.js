@@ -19,6 +19,8 @@ import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
 import { createFloatingRestTimer, restClock, effortHint, effortQuickLabel } from './floating-rest.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
+import { generateReturnStage } from './return-training.js';
+import { returnStagePanel } from './return-training-ui.js';
 import { workoutLogbookHtml, workoutLogbookCsv } from './workout-logbook.js';
 import { strengthDashboard, strengthNextSession, strengthWorkoutDay } from './strength-journey-ui.js';
 import { mondayOf, shiftWeek, latestLoggedWeek } from './week-window.js';
@@ -63,7 +65,7 @@ try {
   state = emptyState(); storageError = `Existing saved data could not be read: ${error.message}. This app will not overwrite it. Keep this browser's website data intact while you investigate the problem.`;
 }
 let page='dashboard', activeDate=today(), chosenTemplate=null, chosenExercise=0, pendingWorkouts=null, pendingBackup=null;
-let focusMode=false, focusSet=0, customizing=null;
+let focusMode=false, focusSet=0, customizing=null, pendingReturnStage=null;
 let strengthJourneyIndex=0;
 let selectedWeekStart=null; // UI-only; null always follows the current week.
 let strengthViewMetric='load', strengthHistoryFilter='all';
@@ -336,6 +338,7 @@ function plan() {
   return `${shellHeading()}${heading('PLAN','Plan your training','Choose workouts, assign training days, and browse your saved templates. Saved sets remain unchanged.')}
   <div class="codex-waypoints" aria-label="Planning steps"><div><b>01</b><span>Add a workout to the library</span></div><div><b>02</b><span>Assign it to training days</span></div><div><b>03</b><span>Log real sets in Train</span></div></div>
   <section class="card codex-board"><div class="card-head"><div><div class="eyebrow">WEEKLY SCHEDULE</div><h2>Choose your training days</h2><p>${Object.keys(state.assignments).filter(k=>state.assignments[k]).length} days assigned · All changes take effect only when you save</p></div></div><form id="schedule-form">${rows}<div class="form-actions"><button class="btn" type="submit">Save weekly schedule</button></div></form></section>
+  ${returnStagePanel(state,pendingReturnStage)}
   <div class="section-label"><h2>Current recommended workout · V10.2</h2><span>Optional import</span></div>
   <section class="card stack codex-program"><div class="eyebrow">V10.2 · OVERLAP-AWARE</div><h2>Adaptive Recovery UL — V10.2</h2>
   <p class="subtle small">4 workouts · 24 exercises · 62 planned physical working sets (Mon 17 / Tue 13 / Thu 21 / Fri 11). Lat and upper-back emphasis with optional direct + estimated indirect muscle-set reporting. Importing does not change logs or assignments.</p>
@@ -516,6 +519,22 @@ document.addEventListener('click', event=>{
         selectedWeekStart=recent;
       } else selectedWeekStart=shiftWeek(selectedWeekStart||mondayOf(today()),act==='week-prev'?-1:1);
       render();return;
+    }
+    if(act==='return-stage-cancel'){pendingReturnStage=null;render();return;}
+    if(act==='return-stage-save'){
+      if(storageError)throw Error('Saved data is locked; return-to-training templates cannot be added.');
+      const pending=pendingReturnStage;
+      if(!pending)throw Error('Preview a return-to-training stage first.');
+      if(localStorage.getItem(STORAGE_KEY)!==pending.snapshot){pendingReturnStage=null;render();throw Error('Saved data changed since your preview. Review the stage again.');}
+      const sources=pending.ids.filter(Boolean).map(id=>state.templates.find(t=>t.id===id));
+      const selected=generateReturnStage(sources,pending.percent);
+      if(!selected.workouts.length)throw Error('This stage contains no working sets. Choose a larger stage.');
+      const out=addWorkouts(state,selected.workouts,false);
+      if(!out.added){toast('These return-to-training templates are already in your library. Nothing changed.');return;}
+      if(!confirm(`Add ${out.added} NEW ${pending.percent}% workout templates? The original workouts, schedule and completed sets remain unchanged. No stage or load advances automatically.`))return;
+      pendingReturnStage=null;
+      commit(out.state,`Added ${out.added} return-to-training templates at ${selected.percentage}%. Assign days manually in Plan.`);
+      return;
     }
     if(act==='cancel-customize'){customizing=null;render();return;}
     if(act==='equivalence-link'){
@@ -829,6 +848,19 @@ document.addEventListener('submit',event=>{
       if(value===null)delete next.progressionStepKg;
       else next.progressionStepKg=value;
       commit(next,value===null?'Dumbbell increment cleared.':'Available dumbbell increment saved. Actual workout sets remain unchanged.');
+      return;
+    }
+    if(form.id==='return-stage-form'){
+      if(storageError)throw Error('Saved data is locked. Return-to-training preview cannot use unreadable records.');
+      const ids=DAYS.map((_,i)=>form.elements[`returnDay${i}`].value);
+      const sources=ids.filter(Boolean).map((id)=>state.templates.find(t=>t.id===id));
+      if(!sources.length)throw Error('Choose at least one source workout from your library.');
+      if(sources.some(t=>!t || t.returnStagePercent))throw Error('Choose existing source workouts, not a generated return stage.');
+      const percent=Number(form.elements.returnPercent.value);
+      generateReturnStage(sources,percent); // Read-only validation before recording a preview.
+      pendingReturnStage={ids,percent,snapshot:localStorage.getItem(STORAGE_KEY)};
+      render();
+      document.getElementById('return-stage-panel')?.scrollIntoView({block:'start'});
       return;
     }
     if(form.id==='template-version-form'){
