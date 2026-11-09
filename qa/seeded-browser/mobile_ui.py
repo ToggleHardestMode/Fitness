@@ -25,6 +25,29 @@ def inspect_layout(page):
       const width = document.documentElement.clientWidth;
       const scroll = Math.max(document.documentElement.scrollWidth,
                               document.body?.scrollWidth || 0);
+      const describeElement = el => {
+        const r = el.getBoundingClientRect(), s = getComputedStyle(el);
+        return {
+          element: el.tagName.toLowerCase(),
+          id: el.id || null,
+          className: typeof el.className === 'string'
+            ? el.className.slice(0, 110) : (el.getAttribute('class') || '').slice(0, 110),
+          left: Math.round(r.left), right: Math.round(r.right),
+          width: Math.round(r.width),
+          scrollWidth: el.scrollWidth || 0, clientWidth: el.clientWidth || 0,
+          position: s.position, overflowX: s.overflowX,
+          minWidth: s.minWidth, zIndex: s.zIndex
+        };
+      };
+      const candidateElements = [...document.body.querySelectorAll('*')]
+        .filter(el => {
+          const s = getComputedStyle(el), r = el.getBoundingClientRect();
+          return s.display !== 'none' && r.width > 0 && r.height > 0 &&
+                 (r.right > width + 2 || r.left < -2 ||
+                  (el.scrollWidth > el.clientWidth + 2 &&
+                   !['hidden','clip','scroll','auto'].includes(s.overflowX)));
+        })
+        .map(describeElement).sort((a, b) => b.right - a.right).slice(0, 40);
       const controls = [...document.querySelectorAll(
         'button, a[href], input:not([type=hidden]):not([type=file]), select, textarea'
       )].filter(el => {
@@ -53,9 +76,32 @@ def inspect_layout(page):
             overlaps.push([nav[i].dataset.page, nav[j].dataset.page]);
         }
       }
+      const tabTargets = nav.map(el => {
+        const r = el.getBoundingClientRect(), x = r.left + r.width / 2,
+              y = r.top + r.height / 2;
+        const hit = x >= 0 && x < window.innerWidth && y >= 0 &&
+                    y < window.innerHeight ? document.elementFromPoint(x,y) : null;
+        return {
+          page: el.getAttribute('data-page'),
+          tab: describeElement(el),
+          hit: hit ? describeElement(hit) : null,
+          hitInsideTab: Boolean(hit && (hit === el || el.contains(hit)))
+        };
+      });
+      const layoutRoots = ['html','body','.shell','#main','.bottom-tabs',
+                           '#main .sj-journey','#main .sj-svg-chart']
+        .map(sel => {
+          const element = document.querySelector(sel);
+          return element ? {selector:sel,...describeElement(element)} : null;
+        }).filter(Boolean);
       return {
         clientWidth: width,
+        innerWidth: window.innerWidth,
+        visualViewportWidth: window.visualViewport?.width ?? null,
         scrollWidth: scroll,
+        layoutRoots,
+        overflowCandidates: candidateElements,
+        bottomNavHitTargets: tabTargets,
         overflowPixels: Math.max(0, scroll - width),
         stylesheets: document.styleSheets.length,
         clippedControls: controls.filter(el => {
@@ -279,6 +325,16 @@ def main():
         "version": report["version"], "screenshots": len(report["screens"]),
         "problems": [s["screen"] + "@" + str(s["width"]) + "px: " + problem
                      for s in report["screens"] for problem in s["problems"]],
+        "diagnostic": [
+            {
+                "screen": s["screen"], "width": s["width"],
+                "roots": s["computedLayout"]["layoutRoots"],
+                "overflowCandidates": s["computedLayout"]["overflowCandidates"][:12],
+                "bottomNavHitTargets": s["computedLayout"]["bottomNavHitTargets"]
+            }
+            for s in report["screens"]
+            if s["screen"] == "dashboard" and s["width"] in (320, 390)
+        ],
         "browserErrors": report["browserErrors"],
         "error": report.get("error"), "output": str(args.output)
     }, indent=2))
