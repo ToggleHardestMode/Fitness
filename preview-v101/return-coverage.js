@@ -1,5 +1,4 @@
-// Optional movement-coverage entry dose. A separate mode, NOT a 25% volume stage.
-import {generateReturnStage} from './return-training.js';
+// Coverage-First is the only new return-to-training generator; old workout records are preserved.
 
 const muscleOf = exercise => exercise.muscleDetail || exercise.muscle;
 
@@ -13,8 +12,27 @@ export function isReviewOnlyWorkout(workout) {
       /\b(squat|deadlift|lunge|leg press|split squat)\b/i.test(String(ex.name ?? ''))));
 }
 
+function validateCoverageSources(sources) {
+  if (!Array.isArray(sources) || sources.length < 1 || sources.length > 7)
+    throw Error('Choose between one and seven source workouts.');
+  const days = new Set();
+  for (const source of sources) {
+    if (!source || typeof source.name !== 'string' || !Number.isInteger(source.day) ||
+        source.day < 0 || source.day > 6 || days.has(source.day))
+      throw Error('Choose at most one valid source workout per weekday.');
+    days.add(source.day);
+    if (!Array.isArray(source.exercises) || !source.exercises.length)
+      throw Error('Every source workout needs at least one exercise.');
+    for (const ex of source.exercises) {
+      if (!ex || !Number.isInteger(ex.sets) || ex.sets < 1 || ex.sets > 10 ||
+          typeof muscleOf(ex) !== 'string' || !muscleOf(ex).trim())
+        throw Error('Source exercises need a primary muscle and 1–10 working sets.');
+    }
+  }
+}
+
 export function generateOneSetCoverage(sources) {
-  generateReturnStage(sources, 100); // Existing validation of sources/exercises/days.
+  validateCoverageSources(sources);
   const upper = sources.filter(w => !isReviewOnlyWorkout(w));
   const excluded = sources.filter(isReviewOnlyWorkout).map(w => ({
     day: w.day, workout: w.name,
