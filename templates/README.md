@@ -4,6 +4,9 @@
 
 | Source | Purpose |
 | --- | --- |
+| [V10.4 proposed workout CSV](V10.4_Home_FitnessPilot_Import.csv) | **Research candidate only (2026-11-09).** 27 entries / 49 physical sets (Mon 14, Tue 10 PT, Thu 16, Fri 9 PT). Not approved as default; not embedded in app; original V10.3 retained. |
+| [V10.4 overlap coefficient CSV](V10.4_Overlap_Coefficients.csv) | Planning coefficients aligned to V10.4 exercise names and set counts; no runtime wiring |
+| [V10.4 research change log](V10.4_Amendment_Review.md) | Exact exercise and dose changes, PT gates, evidence, limitations and validation |
 | [V10.3 workout CSV](V10.3_Home_FitnessPilot_Import.csv) | **Target program (owner decision 2026-11-05).** 27 exercise entries, 56 physical sets: Upper A 17, Lower A 10, Upper B 20, Lower B 9. Not yet embedded in the app |
 | [V10.3 overlap coefficient CSV](V10.3_Overlap_Coefficients.csv) | Per-exercise direct (1) / secondary (0.5) muscle contributions for V10.3 (B112) |
 | [V10.2 workout CSV](V10.2_Home_FitnessPilot_Import.csv) | Exercise names, prescribed sets, rep targets, rest and source instructions |
