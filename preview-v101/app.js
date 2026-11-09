@@ -94,7 +94,7 @@ function commit(next,message) {
   const clean=validateBackup(next);
   try {localStorage.setItem(STORAGE_KEY,JSON.stringify(clean));}
   catch(error) {throw Error(`Could not save locally (${error.name}). Check available device storage; the old records were left untouched.`);}
-  state=clean; resetBackupReady=false; render(); if(message)toast(message);
+  state=clean; resetBackupReady=false; pendingReturnStage=null; render(); if(message)toast(message);
 }
 function tryAction(fn) {try {fn();}catch(error){toast(error.message||'Operation failed.',true);}}
 function goto(next) {page=next;render();$('#main').focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}
