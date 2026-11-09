@@ -33,8 +33,8 @@ def upload_bytes(page, selector, filename, payload, mime="application/json"):
 
 
 def assert_absent(page):
-    assert page.evaluate("localStorage.getItem(arguments[0])", WORKOUT_KEY) is None
-    assert page.evaluate("localStorage.getItem(arguments[0])", FOOD_KEY) is None
+    assert page.evaluate("(key) => localStorage.getItem(key)", WORKOUT_KEY) is None
+    assert page.evaluate("(key) => localStorage.getItem(key)", FOOD_KEY) is None
 
 
 def smoke(repo, chromium_binary=None, headed=False):
