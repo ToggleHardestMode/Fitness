@@ -4,6 +4,9 @@
 
 | Source | Purpose |
 | --- | --- |
+| [V10.3 Jeff Nippard tier annotations](V10.3_Jeff_Nippard_Tiers.csv) | **Research-only sidecar.** Tiers/match quality for the approved V10.3's 27 exercise entries; original V10.3 import is unchanged. |
+| [V10.4 Jeff Nippard tier annotations](V10.4_Jeff_Nippard_Tiers.csv) | **Research-only sidecar.** Same audit for 27 V10.4 draft entries; does not activate V10.4. |
+| [Jeff Nippard tier annotation methodology](Jeff_Nippard_Tier_Annotation_Method.md) | Provenance, exact vs approximate mapping, unranked movements and safety limitations |
 | [V10.4 proposed workout CSV](V10.4_Home_FitnessPilot_Import.csv) | **Research candidate only (2026-11-09).** 27 entries / 49 physical sets (Mon 14, Tue 10 PT, Thu 16, Fri 9 PT). Not approved as default; not embedded in app; original V10.3 retained. |
 | [V10.4 overlap coefficient CSV](V10.4_Overlap_Coefficients.csv) | Planning coefficients aligned to V10.4 exercise names and set counts; no runtime wiring |
 | [V10.4 research change log](V10.4_Amendment_Review.md) | Exact exercise and dose changes, PT gates, evidence, limitations and validation |
