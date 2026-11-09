@@ -20,6 +20,7 @@ import { createFloatingRestTimer, restClock, effortHint, effortQuickLabel } from
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
 import { generateReturnStage } from './return-training.js';
+import {generateOneSetCoverage} from './return-coverage.js';
 import { returnStagePanel } from './return-training-ui.js';
 import { workoutLogbookHtml, workoutLogbookCsv } from './workout-logbook.js';
 import { strengthDashboard, strengthNextSession, strengthWorkoutDay } from './strength-journey-ui.js';
@@ -527,13 +528,14 @@ document.addEventListener('click', event=>{
       if(!pending)throw Error('Preview a return-to-training stage first.');
       if(localStorage.getItem(STORAGE_KEY)!==pending.snapshot){pendingReturnStage=null;render();throw Error('Saved data changed since your preview. Review the stage again.');}
       const sources=pending.ids.filter(Boolean).map(id=>state.templates.find(t=>t.id===id));
-      const selected=generateReturnStage(sources,pending.percent);
+      const selected=pending.percent==='coverage' ? generateOneSetCoverage(sources) : generateReturnStage(sources,pending.percent);
       if(!selected.workouts.length)throw Error('This stage contains no working sets. Choose a larger stage.');
       const out=addWorkouts(state,selected.workouts,false);
       if(!out.added){toast('These return-to-training templates are already in your library. Nothing changed.');return;}
-      if(!confirm(`Add ${out.added} NEW ${pending.percent}% workout templates? The original workouts, schedule and completed sets remain unchanged. No stage or load advances automatically.`))return;
+      const stageName=selected.mode==='coverage' ? `one set per upper exercise (${selected.percentage}% of upper sets)` : `${pending.percent}%`;
+      if(!confirm(`Add ${out.added} NEW ${stageName} workout templates? The original workouts, schedule and completed sets remain unchanged. No stage or load advances automatically.`))return;
       pendingReturnStage=null;
-      commit(out.state,`Added ${out.added} return-to-training templates at ${selected.percentage}%. Assign days manually in Plan.`);
+      commit(out.state,`Added ${out.added} return-to-training templates: ${stageName}. Assign days manually in Plan.`);
       return;
     }
     if(act==='cancel-customize'){customizing=null;render();return;}
@@ -856,8 +858,10 @@ document.addEventListener('submit',event=>{
       const sources=ids.filter(Boolean).map((id)=>state.templates.find(t=>t.id===id));
       if(!sources.length)throw Error('Choose at least one source workout from your library.');
       if(sources.some(t=>!t || t.returnStagePercent))throw Error('Choose existing source workouts, not a generated return stage.');
-      const percent=Number(form.elements.returnPercent.value);
-      generateReturnStage(sources,percent); // Read-only validation before recording a preview.
+      const raw=form.elements.returnPercent.value;
+      const percent=raw==='coverage' ? 'coverage' : Number(raw);
+      if(percent==='coverage') generateOneSetCoverage(sources);
+      else generateReturnStage(sources,percent); // Read-only validation before recording a preview.
       pendingReturnStage={ids,percent,snapshot:localStorage.getItem(STORAGE_KEY)};
       render();
       document.getElementById('return-stage-panel')?.scrollIntoView({block:'start'});
