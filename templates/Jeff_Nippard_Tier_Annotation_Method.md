@@ -18,6 +18,7 @@ Rank or label interpretations:
 - `S (quads); A (glutes)`: context-specific ratings from **different videos**; not a contradictory single tier.
 - `Favorite; no letter`: book favorite reported by a fan compilation, **not an S-tier grade**.
 - `Unranked`: no unambiguous grade for that precise variation in checked material. If the notes mention a related exercise's tier, **do not transfer it**.
+- `ambiguous_technique`: title and instructions imply different ranked exercise variants; tier is conditional until execution is confirmed.
 - `direct_match`: same named movement and similar execution.
 - `same_exercise_family`: graded parent movement; exact personal variation not separately rated.
 - `closest_ranked_variation`: meaningful variation exists, so grade is indicative only.
@@ -25,6 +26,7 @@ Rank or label interpretations:
 - `book_favorite_no_tier`: top choice in a book list, not a video grade.
 
 ## Important disputed or contextual assignments
+- **Monday lean-in lateral raise contradiction:** The workout title says `Lean-In DB Lateral Raise`, but the `source_note` describes holding a door frame and `lean away`. Nippard's shoulder transcript gives **A** to *lean-in* and **B** to *lean-away*. Monday annotation therefore says `A if lean-in; B if lean-away` until form is confirmed. Thursday's exercise note has no lean-away instruction, so its label remains A for the named exercise. Original workout import strings remain unchanged.
 - Neutral-grip lat pulldown: original back-video transcript calls it **S**; a fan compilation marks **S+**. We use original transcript **S**.
 - Bench-supported one-arm DB row: **A** follows the one-arm dumbbell row category, despite a *different* chest-supported row family getting **S**.
 - Chest-supported reverse DB fly: **B** is borrowed from the bent-over reverse DB fly; support may improve stability, but Jeff did not separately rank this exact variation.
