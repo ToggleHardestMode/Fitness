@@ -5,6 +5,8 @@
 **Product context:** FitnessPilot is a local-first browser-based workout and Food Diary tracker.  
 **Scope:** Packaged-food barcode lookup, camera OCR of nutrition information panels, food-data sourcing, Singapore packaging, user verification, privacy and evaluation. No personal food logs or product photographs are included.
 
+**FitnessPilot-specific code audit:** [Source-level implementation and backup compatibility analysis](2026-11-10-food-capture-code-audit.md). This companion checks the actual Food Diary v1 schema, current two-store encrypted backup code, CSP, service worker and relevant tests. **The backup feature exists in source; real-device recovery remains unverified.**
+
 ## Executive recommendation
 
 Build **barcode-first, label-photo fallback, user-verified reuse**. Offer two independent, equally visible entry actions: **Scan barcode** and **Scan nutrition label**, plus manual search/entry. A barcode generally identifies a packaged product; it does **not** carry the food's calories or macros. Lookup retrieves nutrition data from a product database. Photo capture is a different path: OCR reads the actual package, then a structured parser maps values to nutrients, units, and serving basis. The user reviews values before adding them to the Food Diary. Confirmed product records can be reused without repeating capture.
