@@ -50,3 +50,24 @@ Both runners block service workers and bind ONLY to 127.0.0.1.
 Offline, service-worker upgrades, iPhone Safari, and sound audibility are
 NOT tested. Offline B098 is explicitly KIV and cannot be treated as passed.
 Do not clear any phone or browser website data. No repository files change.
+
+## B102 QA checklist UI browser smoke (V15.26.12 candidate)
+
+Use a checkout of [draft PR #100](https://github.com/ToggleHardestMode/Fitness/pull/100)
+with Python 3, Playwright and its managed Chromium installed. The test runs
+only against a localhost disposable browser, never real Safari or saved data.
+
+```powershell
+py -m pip install playwright
+py -m playwright install chromium
+py .\qa\seeded-browser\qa_checklist_smoke.py --repo-root . --output .\B102-qa-page-evidence-new
+```
+
+The output directory must not exist. The smoke checks the ten rendered manual
+cases, Pass/Fail/Blocked controls, downloaded JSON schema and counts, version
+and QA link, page reload, and preservation of synthetic workout and Food Diary
+storage sentinels. Inspect `report.json` and retain the exact checkout SHA.
+
+This smoke **does not** certify iPhone Safari layout or touch behavior, Pages
+publication, actual backup recovery, timer obstruction or offline cache upgrade
+(B098). Those have separate gates. Do not clear the phone's website data.
