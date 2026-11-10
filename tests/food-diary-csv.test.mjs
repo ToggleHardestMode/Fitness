@@ -107,7 +107,9 @@ test('blank template is valid CSV skeleton but is not mistaken for a logged meal
   const blank=blankDailyFoodCsv(date);
   assert.match(blank,/date,name,occasion,servings,kcal,protein,carbs,fat/);
   assert.match(blank,/2026-11-09/);
-  assert.throws(()=>previewDailyFoodCsv(EMPTY_DIARY(),blank,date),/Food name/);
+  assert.throws(()=>previewDailyFoodCsv(EMPTY_DIARY(),blank,date),/servings must be a positive decimal/);
+  assert.throws(()=>previewDailyFoodCsv(EMPTY_DIARY(),
+    food(['2026-11-09,,meal,1,,,,']),date),/Food name/);
 });
 
 test('Food Diary UI has explicit per-day preview, backup acknowledgement and apply gate',()=>{
