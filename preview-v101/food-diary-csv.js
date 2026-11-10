@@ -1,5 +1,5 @@
-// Daily Food Diary CSV import. Mutations are opt-in, confirmed, and append-only.
-// Unlike JSON backup restore, CSV can add one explicitly selected day to an existing diary.
+// One-day CSV import: review additions and corrections to previously CSV-imported foods.
+// Manual food entries and the empty-only JSON restore remain protected.
 import {validateDiary,validateEntry,NUTRIENTS} from './food-diary-core.js';
 
 export const FOOD_CSV_COLUMNS = Object.freeze(['date','name','occasion','servings',...NUTRIENTS]);
@@ -72,46 +72,99 @@ export function blankDailyFoodCsv(selectedDate){
   validDate(selectedDate);
   return '\uFEFF'+FOOD_CSV_COLUMNS.join(',')+'\r\n'+selectedDate+',,,,,,,\r\n';
 }
+const groupKey = entry => JSON.stringify([entry.date,entry.name.toLocaleLowerCase('en'),entry.occasion]);
+const isCsvOwned = entry => entry.id.startsWith('foodcsv-');
+
+// Preview is entirely read-only. Only uniquely matched, CSV-owned food rows
+// can be corrected; the original ID survives so history stays stable.
 export function previewDailyFoodCsv(current,csv,selectedDate){
   const diary=validateDiary(current),date=validDate(selectedDate);
-  const rows=fields(csv),existingIds=new Map(diary.entries.map(e=>[e.id,e]));
-  const occurrences=new Map(),add=[],skipped=[];
+  const rows=fields(csv),occurrences=new Map(),groups=new Map();
   for(const [index,row] of rows.entries()){
     const line=index+2;
     if(row.date!==date)throw Error('CSV row '+line+': date must match selected day '+date+'. Import one day at a time.');
     const item={date,name:row.name,occasion:row.occasion,servings:positive(row.servings,'Row '+line+' servings'),
       ...Object.fromEntries(NUTRIENTS.map(k=>[k,perServing(row[k],'Row '+line+' '+k)]))};
-    // Validate using the exact existing Food Diary shape and nutrition rules.
     const key=canonical(item),nth=(occurrences.get(key)||0)+1;
     occurrences.set(key,nth);
-    const entry=validateEntry({...item,id:stableId(key,nth)});
-    const old=existingIds.get(entry.id);
-    if(old){
-      if(canonical(old)!==canonical(entry))throw Error('CSV row '+line+': import ID conflicts with an existing food. Nothing imported.');
-      skipped.push(entry);continue;
+    const entry=validateEntry({...item,id:stableId(key,nth)}),g=groupKey(entry);
+    if(!groups.has(g))groups.set(g,[]);
+    groups.get(g).push(entry);
+  }
+  const add=[],skipped=[],updates=[],existingIds=new Map(diary.entries.map(e=>[e.id,e]));
+  for(const group of groups.values()){
+    const original=diary.entries.filter(e=>sameName(e,group[0]));
+    if(original.some(e=>!isCsvOwned(e)))
+      throw Error('Food '+group[0].name+' already exists on this day as a manual entry. Review it before importing.');
+    const used=new Set(),unmatched=[];
+    for(const entry of group){
+      // Match exact content first, including entries whose IDs were retained
+      // after an earlier explicitly confirmed correction.
+      const found=original.find(e=>!used.has(e.id)&&e.id===entry.id&&canonical(e)===canonical(entry))||
+        original.find(e=>!used.has(e.id)&&canonical(e)===canonical(entry));
+      if(found){used.add(found.id);skipped.push(found);}
+      else unmatched.push(entry);
     }
-    // Without stable import IDs, a same-day manual entry is ambiguous. Never double-log silently.
-    if(diary.entries.some(e=>sameName(e,entry)))
-      throw Error('CSV row '+line+': '+entry.name+' already exists on this day with another ID. Review the existing food before importing.');
-    add.push(entry);
+    const remaining=original.filter(e=>!used.has(e.id));
+    if(!remaining.length) {
+      // All existing versions are present unchanged: extra CSV rows are new.
+      add.push(...unmatched);
+    }else if(remaining.length===1&&unmatched.length===1){
+      const before=remaining[0],after=validateEntry({...unmatched[0],id:before.id});
+      updates.push({before,after});
+    }else if(unmatched.length) {
+      throw Error('Food '+group[0].name+' has ambiguous repeated entries. Review or edit them individually; nothing imported.');
+    }
+    // Existing rows absent from this CSV remain untouched.
+  }
+  const occupied=new Set(existingIds.keys());
+  for(const item of add){
+    if(occupied.has(item.id))
+      throw Error('Food import ID already exists with different data. Nothing imported.');
+    occupied.add(item.id);
   }
   if(diary.entries.length+add.length>3000)throw Error('Food Diary would exceed 3,000 entries.');
-  return {date,add,skipped,total:rows.length};
+  return {date,add,skipped,updates,total:rows.length};
 }
+
 export function applyDailyFoodCsv(current,preview,{apply=false,confirmed=false}={}){
   const diary=validateDiary(current);
-  if(!preview||!validDate(preview.date)||!Array.isArray(preview.add)||!Array.isArray(preview.skipped))
+  if(!preview||!validDate(preview.date)||!Array.isArray(preview.add)||
+     !Array.isArray(preview.skipped)||!Array.isArray(preview.updates))
     throw Error('Preview a valid daily CSV before importing.');
-  if(!apply)return {applied:false,added:preview.add.length,skipped:preview.skipped.length};
+  const changed=preview.updates.length;
+  const result={applied:false,added:preview.add.length,skipped:preview.skipped.length,
+    ...(changed?{updated:changed}:{})};
+  if(!apply)return result;
   if(!confirmed)throw Error('Explicit daily food import confirmation required.');
-  const ids=new Set(diary.entries.map(e=>e.id)),newRows=[];
-  for(const raw of preview.add){
-    const entry=validateEntry(raw);
-    if(entry.date!==preview.date||ids.has(entry.id)||diary.entries.some(e=>sameName(e,entry)))
-      throw Error('Food Diary changed since preview; review the CSV again. Nothing imported.');
-    ids.add(entry.id);newRows.push(entry);
+
+  const byId=new Map(diary.entries.map(e=>[e.id,e])),replaced=new Map(),added=[],handled=new Set();
+  const stale=()=>{throw Error('Food Diary changed since preview; review the CSV again. Nothing imported.');};
+  for(const item of preview.skipped){
+    const expected=validateEntry(item),saved=byId.get(expected.id);
+    if(!saved||JSON.stringify(saved)!==JSON.stringify(expected)||handled.has(expected.id))stale();
+    handled.add(expected.id);
   }
-  if(!newRows.length)return {applied:false,added:0,skipped:preview.skipped.length};
-  return {applied:true,added:newRows.length,skipped:preview.skipped.length,
-    diary:validateDiary({version:1,entries:[...diary.entries,...newRows]})};
+  for(const item of preview.updates){
+    if(!item||!item.before||!item.after)stale();
+    const before=validateEntry(item.before),after=validateEntry(item.after);
+    const original=byId.get(before.id);
+    if(!isCsvOwned(before)||after.id!==before.id||!sameName(before,after)||
+       canonical(before)===canonical(after)||!original||
+       JSON.stringify(original)!==JSON.stringify(before)||handled.has(before.id)||
+       diary.entries.some(e=>sameName(e,before)&&!isCsvOwned(e)))stale();
+    handled.add(before.id);replaced.set(before.id,after);
+  }
+  for(const row of preview.add){
+    const entry=validateEntry(row);
+    if(entry.date!==preview.date||byId.has(entry.id)||handled.has(entry.id)||
+       diary.entries.some(e=>sameName(e,entry)&&!isCsvOwned(e)))stale();
+    handled.add(entry.id);added.push(entry);
+  }
+  if(!added.length&&!replaced.size)return {applied:false,added:0,skipped:preview.skipped.length};
+  return {applied:true,added:added.length,skipped:preview.skipped.length,
+    ...(replaced.size?{updated:replaced.size}:{}),
+    diary:validateDiary({version:1,entries:[
+      ...diary.entries.map(e=>replaced.get(e.id)||e),...added
+    ]})};
 }
