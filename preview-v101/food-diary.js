@@ -35,7 +35,8 @@ export function initFoodDiary(storage=localStorage){
     const {preview}=pendingCsv;
     const count=document.createElement('p');
     count.textContent='Daily CSV preview for '+preview.date+': '+preview.add.length+
-      ' new food(s), '+preview.skipped.length+' already imported. No data has been saved.';
+      ' new, '+preview.updates.length+' corrected, '+preview.skipped.length+
+      ' unchanged. Nothing has been saved yet.';
     host.append(count);
     const list=document.createElement('ul');list.className='fd-csv-preview-list';
     for(const entry of [...preview.add,...preview.skipped]){
@@ -45,8 +46,21 @@ export function initFoodDiary(storage=localStorage){
         (preview.skipped.includes(entry)?' (already imported)':'');
       list.append(li);
     }
+    for(const {before,after} of preview.updates){
+      const li=document.createElement('li');li.className='fd-csv-change';
+      const title=document.createElement('strong');title.textContent='Correct: '+after.name;
+      li.append(title);
+      for(const key of ['servings',...NUTRIENTS]){
+        if(before[key]===after[key])continue;
+        const oldValue=before[key]===null?'unknown':number(before[key]);
+        const newValue=after[key]===null?'unknown':number(after[key]);
+        li.append(span(key+': '+oldValue+' → '+newValue+(key==='kcal'?' kcal/serving':
+          NUTRIENTS.includes(key)?' g/serving':''),'fd-detail'));
+      }
+      list.append(li);
+    }
     host.append(list);
-    if(preview.add.length){
+    if(preview.add.length+preview.updates.length){
       const backup=button('Download pre-import Food Diary backup',()=>{
         try{
           exportFoodBackup('fitnesspilot-food-diary-before-csv-'+preview.date+'.json');
@@ -60,13 +74,14 @@ export function initFoodDiary(storage=localStorage){
       acknowledge.disabled=!pendingCsv.backupDownloaded;
       label.append(acknowledge,span('I saved the Food Diary JSON backup before importing.'));
       host.append(label);
-      const apply=button('Import '+preview.add.length+' food(s)',()=>{
+      const apply=button('Add '+preview.add.length+' · Correct '+preview.updates.length,()=>{
         try{
           if(!pendingCsv?.backupDownloaded||!acknowledge.checked)
             throw Error('Download and acknowledge a Food Diary JSON backup before importing.');
           if(date.value!==preview.date)throw Error('Selected day changed; preview the CSV again.');
-          if(!confirm('Import '+preview.add.length+' food(s) on '+preview.date+
-              '? Existing food entries and workout records will not be overwritten.'))return;
+          if(!confirm('Add '+preview.add.length+' new and correct '+preview.updates.length+
+              ' previously CSV-imported food(s) on '+preview.date+
+              '? Manually entered foods, missing CSV rows and other dates remain unchanged.'))return;
           // Recheck AFTER the modal: another tab may have changed localStorage.
           if(storage.getItem(FOOD_KEY)!==pendingCsv.snapshot){
             pendingCsv=null;renderCsvPreview();
@@ -74,14 +89,15 @@ export function initFoodDiary(storage=localStorage){
           }
           const out=applyDailyFoodCsv(diary,preview,{apply:true,confirmed:true});
           persist(out.diary);undo=null;reset();render();
-          inform('Imported '+out.added+' food(s) on '+preview.date+
-                 '; '+out.skipped+' already present. Original diary entries preserved.');
+          inform('Added '+out.added+', corrected '+(out.updated||0)+
+                 ', skipped '+out.skipped+' on '+preview.date+
+                 '. Manual foods and other dates were preserved.');
         }catch(error){inform(error.message,true);}
       });
       apply.className='btn';host.append(apply);
     }else{
       const p=document.createElement('p');p.className='hint';
-      p.textContent='All rows already exist in the diary. Nothing to import.';
+      p.textContent='All rows already match saved entries. Nothing to change.';
       host.append(p);
     }
     host.append(button('Cancel CSV preview',()=>{pendingCsv=null;renderCsvPreview();inform('Daily CSV import canceled. No data changed.');}));

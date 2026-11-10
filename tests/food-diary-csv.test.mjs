@@ -125,3 +125,129 @@ test('Food Diary UI has explicit per-day preview, backup acknowledgement and app
   assert.match(sw,/'\.\/food-diary-csv\.js'/);
   assert.match(js,/emptyOnlyRestore\(diary/);
 });
+
+
+test('reuploading a revised CSV shows one reviewed correction, unchanged meal, and new meal',()=>{
+  const prior=applyDailyFoodCsv(old(),previewDailyFoodCsv(old(),sample,date),
+    {apply:true,confirmed:true}).diary;
+  const oldMeal=prior.entries.find(e=>e.name==='Chicken rice, small');
+  const revised=food([
+    '2026-11-09,"Chicken rice, small",meal,1.5,600,32,65,19',
+    '2026-11-09,Kopi,drink,2,90,,12,',
+    '2026-11-09,Prata,meal,1,300,7,40,12'
+  ]);
+  const p=previewDailyFoodCsv(prior,revised,date);
+  assert.deepEqual([p.add.length,p.skipped.length,p.updates.length],[1,1,1]);
+  assert.equal(p.updates[0].before.id,oldMeal.id);
+  assert.equal(p.updates[0].after.id,oldMeal.id);
+  assert.equal(p.updates[0].before.kcal,550);
+  assert.equal(p.updates[0].after.kcal,600);
+  assert.equal(p.updates[0].after.servings,1.5);
+  assert.deepEqual(applyDailyFoodCsv(prior,p),{applied:false,added:1,skipped:1,updated:1});
+  assert.deepEqual(prior.entries.find(e=>e.id===oldMeal.id),oldMeal);
+  const out=applyDailyFoodCsv(prior,p,{apply:true,confirmed:true});
+  assert.deepEqual([out.added,out.updated,out.skipped],[1,1,1]);
+  assert.equal(out.diary.entries.length,4);
+  assert.equal(out.diary.entries.find(e=>e.id===oldMeal.id).servings,1.5);
+  assert.deepEqual(totalsForDate(out.diary,'2026-11-08').rows,old().entries);
+  assert.equal(totalsForDate(out.diary,date).nutrients.kcal.value,1380);
+  const again=previewDailyFoodCsv(out.diary,revised,date);
+  assert.deepEqual([again.add.length,again.updates.length,again.skipped.length],[0,0,3]);
+  assert.deepEqual(applyDailyFoodCsv(out.diary,again,{apply:true,confirmed:true}),
+    {applied:false,added:0,skipped:3});
+});
+
+test('corrections preserve ID, support blank to zero, and do not delete omitted meals',()=>{
+  const first=applyDailyFoodCsv(EMPTY_DIARY(),
+    previewDailyFoodCsv(EMPTY_DIARY(),sample,date),{apply:true,confirmed:true}).diary;
+  const oldId=first.entries.find(e=>e.name==='Kopi').id;
+  const correction=food(['2026-11-09,Kopi,drink,1,0,0,,0']);
+  const preview=previewDailyFoodCsv(first,correction,date);
+  assert.equal(preview.updates.length,1);
+  assert.equal(preview.add.length,0);
+  assert.equal(preview.skipped.length,0);
+  assert.equal(preview.updates[0].after.id,oldId);
+  assert.equal(preview.updates[0].after.carbs,null);
+  const out=applyDailyFoodCsv(first,preview,{apply:true,confirmed:true});
+  assert.equal(out.added,0);assert.equal(out.updated,1);
+  assert.equal(out.diary.entries.length,2);
+  assert.equal(out.diary.entries.find(e=>e.id===oldId).kcal,0);
+  assert.equal(totalsForDate(out.diary,date).nutrients.carbs.unknown,1);
+  assert.equal(totalsForDate(out.diary,date).nutrients.kcal.value,550);
+  const second=previewDailyFoodCsv(out.diary,correction,date);
+  assert.deepEqual([second.skipped.length,second.updates.length],[1,0]);
+});
+
+test('reupload adds extra duplicate food when the original CSV row is unchanged',()=>{
+  const single=food(['2026-11-09,Water,drink,1,0,0,0,0']);
+  const first=applyDailyFoodCsv(EMPTY_DIARY(),
+    previewDailyFoodCsv(EMPTY_DIARY(),single,date),{apply:true,confirmed:true}).diary;
+  const twice=food([
+    '2026-11-09,Water,drink,1,0,0,0,0',
+    '2026-11-09,Water,drink,1,0,0,0,0'
+  ]);
+  const p=previewDailyFoodCsv(first,twice,date);
+  assert.deepEqual([p.add.length,p.skipped.length,p.updates.length],[1,1,0]);
+  const result=applyDailyFoodCsv(first,p,{apply:true,confirmed:true});
+  assert.equal(result.diary.entries.length,2);
+  assert.equal(previewDailyFoodCsv(result.diary,twice,date).skipped.length,2);
+});
+
+test('ambiguous repeated CSV-owned names reject instead of guessing which record to change',()=>{
+  const double=food([
+    '2026-11-09,Water,drink,1,0,0,0,0',
+    '2026-11-09,Water,drink,1,0,0,0,0'
+  ]);
+  const prior=applyDailyFoodCsv(EMPTY_DIARY(),
+    previewDailyFoodCsv(EMPTY_DIARY(),double,date),{apply:true,confirmed:true}).diary;
+  const changed=food([
+    '2026-11-09,Water,drink,2,0,0,0,0',
+    '2026-11-09,Water,drink,3,0,0,0,0'
+  ]);
+  assert.throws(()=>previewDailyFoodCsv(prior,changed,date),/ambiguous repeated entries/);
+  assert.equal(prior.entries.length,2);
+});
+
+test('a manual entry is protected even when CSV-owned entries use the same meal name',()=>{
+  const csv=food(['2026-11-09,Oatmeal,meal,1,250,7,40,5']);
+  const imported=applyDailyFoodCsv(EMPTY_DIARY(),
+    previewDailyFoodCsv(EMPTY_DIARY(),csv,date),{apply:true,confirmed:true}).diary;
+  const withManual=saveEntry(imported,{
+    id:'manual-food-1',date,name:'Oatmeal',occasion:'meal',servings:1,
+    kcal:300,protein:8,carbs:45,fat:7
+  });
+  const changed=food(['2026-11-09,Oatmeal,meal,1,275,8,40,6']);
+  assert.throws(()=>previewDailyFoodCsv(withManual,changed,date),/manual entry/);
+  assert.equal(withManual.entries.length,2);
+});
+
+test('a concurrent or forged edit never changes stored rows during apply',()=>{
+  const initial=applyDailyFoodCsv(old(),previewDailyFoodCsv(old(),sample,date),
+    {apply:true,confirmed:true}).diary;
+  const csv=food(['2026-11-09,"Chicken rice, small",meal,1,650,30,60,18']);
+  const preview=previewDailyFoodCsv(initial,csv,date);
+  assert.equal(preview.updates.length,1);
+  const changed=saveEntry(initial,{...preview.updates[0].before,kcal:777});
+  assert.throws(()=>applyDailyFoodCsv(changed,preview,{apply:true,confirmed:true}),
+    /changed since preview/);
+  assert.equal(changed.entries.find(e=>e.name==='Chicken rice, small').kcal,777);
+  const forged=structuredClone(preview);
+  forged.updates[0].after.id='forged-entry';
+  assert.throws(()=>applyDailyFoodCsv(initial,forged,{apply:true,confirmed:true}),
+    /changed since preview/);
+  const withoutApply=applyDailyFoodCsv(initial,preview,{confirmed:true});
+  assert.equal(withoutApply.applied,false);
+});
+
+test('old and new CSV workflow UI discloses every correction and retains safety gates',()=>{
+  const html=readFileSync(new URL('../preview-v101/food-diary.html',import.meta.url),'utf8');
+  const ui=readFileSync(new URL('../preview-v101/food-diary.js',import.meta.url),'utf8');
+  assert.match(html,/changes to previously CSV-imported meals require explicit confirmation/);
+  assert.match(html,/Missing rows in the revised CSV stay saved/);
+  assert.match(ui,/for\(const \{before,after\} of preview\.updates\)/);
+  assert.match(ui,/oldValue\+' → '\+newValue/);
+  assert.match(ui,/preview\.add\.length\+preview\.updates\.length/);
+  assert.match(ui,/backupDownloaded/);
+  assert.match(ui,/storage\.getItem\(FOOD_KEY\)!==pendingCsv\.snapshot/);
+  assert.match(ui,/applyDailyFoodCsv\(diary,preview,\{apply:true,confirmed:true\}\)/);
+});

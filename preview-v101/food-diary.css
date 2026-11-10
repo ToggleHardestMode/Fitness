@@ -21,6 +21,9 @@
 .fd-csv-preview[hidden]{display:none}
 .fd-csv-preview-list{margin:10px 0;padding-left:22px;max-height:220px;overflow:auto}
 .fd-csv-preview-list li{padding:4px 0;overflow-wrap:anywhere}
+.fd-csv-change{display:grid;gap:3px;border-left:3px solid #d4b076;padding-left:10px!important}
+.fd-csv-change strong{color:#ffe1a6}
+.fd-csv-change .fd-detail{white-space:normal}
 .fd-csv-confirm{display:flex;align-items:flex-start;gap:8px;margin:12px 0}
 .fd-recent-list{display:grid;gap:10px}
 .fd-recent-entry{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff20}
