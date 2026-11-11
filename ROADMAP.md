@@ -1,226 +1,173 @@
-# FitnessPilot — Master Development Backlog (116 tasks)
+# FitnessPilot roadmap
 
-Date: 2026-11-03 SGT (reconciled 2026-11-05 SGT)
-Sources: FitnessPilot's public source and preview release history, associated pull requests, and a separate internal planning audit. No personal training records or internal conversations are reproduced here.
-Status: **planning/inventory only**. No app configuration, saved workout records, backup files, or production behavior are modified by this documentation.
+Reconciled 2026-11-11 against `main` at `d14ff2b` (preview V15.26.14, PR #102). At that commit `npm test` passes 378 of 378 and `node scripts/verify-preview-assets.mjs` passes.
 
-## What the audit established
+This file is the single place where task status lives. It replaces the 116-row backlog of 2026-11-03. Every old B-number is accounted for in the [ID ledger](#id-ledger); none were renumbered. New items start at B117.
 
-- Latest preview merged as V15.22.2; PR #67 merged at `9c130eb5d48b32ec42bad8af761ef1b8d7a45980`. Previous compact Strength Journey PR #66 and progress import PRs are also merged. Preview URL: https://togglehardestmode.github.io/Fitness/preview-v101/?v=59.
-- Preview source already implements floating rest timer, separate completion overlay, readable quick effort labels, Strength Journey, V10.2 versioned template and recovery tracking, logbook, CSV completed-set import, nutrition/diary features, and download backups. **Implemented in source does not equal verified on iPhone.**
-- *(Historical, 2026-11-03)* Nine open public-repo PRs observed; relevant later PRs #62, #61, #60, #59, #57 plus older #9–6. No open issues returned by repository search.
-- **Current (2026-11-05):** #6–#9, #57, #60 and #62 closed unmerged with branches kept (B093); the two retained implementation PRs, #59 and #61, remain open for rebase and review (B094). Documentation PRs are tracked separately.
-- Current release's 9 focused V8 source-behavior checks passed historically and merged source was read back; latest native whole-repo Node `npm test` and physical iPhone audio/cache/backup acceptance remain unverified.
-- The app is static GitHub Pages and keeps private workout data locally. Public GitHub repo is inappropriate for uploading raw private records or embedding access tokens. Cross-device sync remains deferred; manual backup is not sync.
-- The most important usability risks are many selectable template versions, a Plan/Train/Library distinction users have struggled with, misleading numeric effort without explanation, and missing end-to-end device acceptance.
+## How to read this
 
-## Priority meanings
+Work is split by who can do it.
 
-- **P0:** Must protect current records, safety boundaries and verify releases before any automatic sync or irreversible migration.
-- **P1:** Primary daily logging friction, timer usability, program clarity, data semantics, progression gates.
-- **P2:** Valuable expansion, reports, nutrition, accessory features and test depth after core workflow works.
-- **P3:** Optional RPG/cosmetic/advanced experiments; not prerequisites for effective training.
+- **Agent queue** — code and docs a coding agent can finish and prove with tests. Done top to bottom, one item per pull request.
+- **Owner checklist** — things only the owner can do: one iPhone session and four decisions.
+- **Parked** — not started unless the owner asks.
 
-## P0 — data safety, triage and acceptance
+Status words, used once per row and nowhere else:
 
-| ID | Work item | Current state |
+| Word | Meaning |
+|---|---|
+| Open | Not started |
+| PR #n | Pull request open, not merged |
+| In source | Merged to `main`; CI passed |
+| On device | Owner confirmed it on the iPhone (date given) |
+
+"In source" never implies "On device". That is said here once and not repeated in other documents.
+
+## Rules that always apply
+
+These were backlog rows (B007, B041, B048, B053, B063, B072, B084, B100, B104). They are constraints, not tasks.
+
+1. Saved records are never silently overwritten, duplicated, re-keyed or invented. Planned sets, warm-ups and examples never count as progress.
+2. Local storage on the phone is the working copy. Plain JSON and CSV export always stay available.
+3. `[PT Review]` exercises get no load suggestion without a clearance the owner recorded. A symptom-free session is not clearance. Nothing is cleared, linked, ramped or progressed automatically.
+4. In the Food Diary, unknown is not zero and one logged meal is not a complete day.
+5. Small pull requests, exact commit, honest test report. Private notes and real data stay out of this public repository.
+
+## Agent queue
+
+Take the first Open row whose "Needs" column is satisfied. Check the code before starting; if the item is already done, the pull request only updates this row with the evidence.
+
+### Stage 1 — make the record true and build a safety net
+
+| Step | ID | Work | Done when | Needs | Status |
+|---|---|---|---|---|---|
+| 1.1 | B117, B102 | Cut `README.md` to: what the app is, links, install, backup, development. Remove every hard-coded version number and "historical status" paragraph from the README; point to the banner in the app instead. Move the release notes in `preview-v101/README.md` to `CHANGELOG.md`. | No document other than `CHANGELOG.md` names a preview version. README is under 80 lines. | — | Open |
+| 1.2 | B096, B098, B099 | Extend `qa/seeded-browser/` to cover, with synthetic data in disposable browser contexts: save a set in Train and see the rest timer; plain JSON backup restored into a clean context with equal records; encrypted two-store backup restored into a clean context; wrong passphrase and corrupted file rejected; page reload while offline; a cache-name change keeps `localStorage`. Add a second CI job that runs it. | The job is green on the pull request and fails if any flow is broken on purpose (show one such failure in the PR description). | — | Open |
+| 1.3 | B124 | Bring in `qa/seeded-browser/mobile_ui.py` from draft pull request #91 (6 views × 3 widths, full-page screenshots plus an overflow and off-screen-control report). Add a comparison to the browser job: capture the pull-request build and `main` in the same run and report changed pixels per screen. Images are CI artifacts only; none are committed. | The job reports changed pixels and overflow per screen. Refactor PRs must report zero changed pixels. | 1.2 | Open |
+| 1.4 | B103 | Start from draft pull request #93 (operator-timed 30-set baseline): rebase it, keep its protocol, and add a scripted run that logs 30 synthetic sets through the Train screen. Record taps, corrections and elapsed time in `docs/qa/logging-baseline.md`. | Baseline file exists with the commit it was measured on. | 1.2 | Open |
+| 1.5 | B125 | Start from draft pull request #100 (QA checklist rebase). Rewrite `preview-v101/qa-checklist.js` so its checks are exactly steps O1–O11 below. Read the version from the banner instead of the hard-coded `V15.15.3`. | `qa.html` shows the eleven steps and exports the report. | — | Open |
+
+### Stage 2 — make the code cheap to change
+
+No behaviour change in this stage. Every pull request must show zero changed pixels (1.3) and a green browser job (1.2).
+
+| Step | ID | Work | Done when | Needs | Status |
+|---|---|---|---|---|---|
+| 2.1 | B118 | One shared `html.js` exporting `esc`. Remove the copies in `app.js`, `food-diary-chart.js`, `strength-journey-visual.js`, `exercise-clearance-ui.js`, `exercise-equivalence-ui.js`, `manual-progression-ui.js`, `return-training-ui.js`. The last one does not escape `'`; the shared one must. | One definition; a test covers all five characters. | 1.2 | Open |
+| 2.2 | B119 | Split `preview-v101/app.js` (97 KB, lines up to 2,400 characters) into `state.js` (load/save), `dashboard-view.js`, `train-view.js`, `plan-view.js`, `tools-view.js` and `actions.js` (the click handler). One pull request per file moved. Moved code is reformatted to lines of 140 characters or fewer. | `app.js` is under 150 lines and only wires modules together. | 2.1, 1.3 | Open |
+| 2.3 | B120 | Merge the 19 stylesheets loaded by `index.html` into `tokens.css`, `base.css`, `components.css`, `pages.css` and `theme.css`. One pull request per target file. | `index.html` loads five stylesheets; no file is named after a version. | 1.3 | Open |
+| 2.4 | B121 | 18 test files read source text and match strings. As each module is touched in 2.2 and 2.3, replace those assertions with tests of behaviour that protect the same guarantee. | Each replaced assertion has a `Behaviour change` note (new rule: unchanged) as the permissions record requires. No rule is dropped. | with 2.2, 2.3 | Open |
+| 2.5 | B122 | `manual-progression-ui.js` and `metric-selectors.js` are imported only by tests. For each: wire it into the app if a queue item needs it (see 4.4), otherwise delete it with its tests and cache entry. | No module in `preview-v101/` is unused by the app. | 2.2 | Open |
+
+### Stage 3 — faster daily logging
+
+Starts after step 1.4 and after the owner's iPhone session (findings from it go first). Rerun 1.4 at the end and add the comparison to the baseline file.
+
+| Step | ID | Work | Done when | Needs | Status |
+|---|---|---|---|---|---|
+| 3.1 | B011, B012, B013 | A Today entry on the Dashboard: the assigned workout for today, the program name and version, one "Start workout" button, and a way to pick a different workout. | From a cold open, the first set screen is two taps away. | 1.4, 2.2 | Open |
+| 3.2 | B023 | Undo the most recently saved set, with a confirmation that names the set. Removes exactly that record. | Test proves only that record is removed and counters follow. | 2.2 | Open |
+| 3.3 | B022 | Label weight as "kg per dumbbell" or "kg total", and time as "seconds per side" or "reps", from the exercise definition. | Labels appear in Train, logbook and CSV header. | 2.2 | Open |
+| 3.4 | B016, B018 | Optional "Save → Rest → Next set" flow. The timer starts only after a successful save. Off by default. | Failed save starts no timer (test). | 3.1 | Open |
+| 3.5 | B034 | "Keep screen awake during workout" toggle using the Screen Wake Lock API. Held only while a workout is open; released on finish, on leaving, and when the page is hidden. Hidden if the API is missing. | Tests with a fake wake-lock object cover acquire and all three releases. | 2.2 | Open |
+| 3.6 | B019, B020, B021, B026 | Effort shown as Easy / Moderate / Hard / Very hard with "reps left" help text; raw RPE kept. Old sets with missing or doubtful RPE are marked uncertain and give no load advice. Tap-to-explain for DB, RPE, RIR, ROM, PT Review, SS1. Optional notes behind a disclosure. | No progression guard is loosened (existing guard tests unchanged). | 2.2 | Open |
+| 3.7 | B014, B043 | Hide a template from pickers without deleting it or its history. Mark an exercise as skipped today; a skip is not a set and not a failure. | Hidden templates still appear in logbook and backup. | 2.2 | Open |
+| 3.8 | B024, B025 | Make "import a plan (CSV)" and "import completed sets (CSV)" visually distinct. The preview lists added, duplicate and rejected rows, and says the new plan is not yet assigned to a day. | Covered in the browser job. | 2.2 | Open |
+
+### Stage 4 — program and data
+
+| Step | ID | Work | Done when | Needs | Status |
+|---|---|---|---|---|---|
+| 4.1 | B077, B094 | Pull request #61 (food missing-versus-zero logic) is open as a draft on 2026-11-11. Rebase it onto `main`, run the checks, and report conflicts for owner review. | #61 is rebased with checks reported, or closed by the owner. | — | Open |
+| 4.2 | B112 | The Dashboard overlap panel only knows V10.2. Load `templates/V10.3_Overlap_Coefficients.csv` data for V10.3 plans (direct 1, secondary 0.5). Custom exercises get no inherited coefficients. | Weekly dose for a V10.3 fixture matches a hand-worked table in the test. | 2.2 | Open |
+| 4.3 | B105 | Calendar export: event UIDs are derived from weekday and workout, not from the export time, so re-importing updates instead of duplicating. | Two exports a day apart give identical UIDs (test). | — | Open |
+| 4.4 | B068, B069 | Show the metric dictionary on the Dashboard: each number has a "how is this counted" disclosure with direct and indirect set maths, and missing inputs are shown as missing. | Uses `metric-selectors.js` (ties to 2.5). | 2.2 | Open |
+| 4.5 | B064 | A plain `export.html` page with no dependency on `app.js` that downloads the raw contents of both storage keys as one JSON file. | Works in the browser job with `app.js` deleted from the served folder. | 1.2 | Open |
+| 4.6 | B113 | Pulldown logging units. | — | Owner decision D2 | Blocked |
+| 4.7 | B116 | Scope of a general symptom entry. Current behaviour stays until decided. | — | Owner decision D1 | Blocked |
+
+### Stage 5 — make the preview the app
+
+| Step | ID | Work | Done when | Needs | Status |
+|---|---|---|---|---|---|
+| 5.1 | B101, B123 | Root `index.html` becomes a short page linking to `preview-v101/`; old root app files move to `archive/root-app/`. The preview URL, storage keys and cache scope do not change. These are production files: the agent lists them and asks, and makes no branch or commit before the owner's explicit production approval. Follow the release gates in `docs/decisions/2026-11-05-roadmap-owner-decisions.md`. | Gate list ticked or marked not applicable in the pull request. | Owner decision D3, production approval, O1–O9 passed | Blocked |
+
+## Owner checklist
+
+### One iPhone session (about 45 minutes)
+
+Use `preview-v101/qa.html` once step 1.5 is merged; until then use this list. Steps marked ◆ use throw-away data in a private tab, never real records.
+
+| Step | Check | Covers |
 |---|---|---|
-| B001 | Accept V15.22.2 on real iPhone: timer visible in Train, toggles, 90s countdown, overlay legibility, no navigation obstruction | Pending device |
-| B002 | Test sound device volume/Silent Mode/foreground/locked/background; document that web sound is not guaranteed | Pending device |
-| B003 | Run and record complete native npm test suite on current main commit | Not run latest |
-| B004 | Confirm served Pages version, offline install/update and stale-cache behavior on physical device | Pending device |
-| B005 | Create disposable backup export->validate->restore on separate empty browser profile, no real data overwrite | Pending |
-| B006 | Verify imported backup preserves set records, source notes, program versions, assigned days, feedback and symptom schema | Pending |
-| B007 | Ensure completion/undo/export never silently overwrite, duplicate or invent training history | Ongoing invariant |
-| B111 | Tracking reset must also clear the current-schema `strengthJourneyStartDate` without touching templates or weekday assignments. Write a new fix — closed PR #62 cleared a different schema (`strengthJourneyStarts`, `strengthFeedback`) and cannot be copied unchanged. Regression test must prove the start date is cleared and templates/assignments survive | Proposed; fix not written |
-| B008 | Audit consent/privacy for any training or health-like records before any backend, analytics or syncing feature | Pending |
-| B009 | Let users suspend or exclude any exercise that causes a concerning response; do not diagnose symptoms or imply medical clearance | Proposed safety design |
-| B010 | Document user-facing stop/hold and symptom-entry prompts for unusual exercise responses, without diagnostic automation | Proposed safety design |
+| O1 | Safari and the home-screen app both show the current version banner; real records are still there after the update. | B004 |
+| O2 | Log three sets of a real upper-body session. Text is readable and nothing overflows. | B001, B027, B097 |
+| O3 | Rest timer floats in Train, counts 90 s, and the finished overlay stays until tapped. Try with ringer on, on silent, and with the screen locked; note what you hear. | B002, B029, B030 |
+| O4 | Lower-body workout shows `[PT Review]`; the next-session guide never fills or saves a set. | device check of B045, B046 |
+| O5 ◆ | Import V10.3: four workouts, not assigned to days. Link one exercise to its V10.2 history, set active sets below target, record and revoke a clearance. | device check of B038, B073, B114, B115 |
+| O6 | Dashboard: Strength Journey, week arrows and "show calculation" agree with what you logged. | B066, B067 |
+| O7 | Food Diary: search a local food, repeat a past meal, and check the 28-day chart shows unlogged days as blank, not zero. | device check of B079, B080, B081 |
+| O8 ◆ | Encrypted backup: export both stores, restore in a private tab typing the passphrase from memory, confirm a wrong passphrase is refused. | B005, B006, B076 |
+| O9 | Airplane mode: the app reopens and a set can be saved. | B004 |
+| O10 | Reduce Motion on: avatar is still. VoiceOver reads the Save button and the timer. Slime and sound stay off unless enabled. | B028, B085, B086, B087, B088, B092 |
+| O11 | After step 4.3: import the `.ics` into Calendar; right days, time and alert; importing twice makes no duplicates. | B106 |
 
-## P1 — make the app understandable in under 30 seconds
+Write the date and pass/fail for each step under "Device log" below.
 
-| ID | Work item | Current state |
+### Decisions
+
+| # | Question | Blocks |
 |---|---|---|
-| B011 | Provide a single Today / Start workout entry point instead of requiring users to understand Plan vs Library vs Train first | Proposed |
-| B012 | Show currently selected program and active version prominently on Train/Today | Proposed |
-| B013 | Show assigned day, optional manual workout choice, and clear difference between a plan and a completed session | Proposed |
-| B014 | Reduce overlapping templates via safe archive/hide, never delete records or silently merge exercise identity | Proposed |
-| B015 | Make choosing V10.2/V10.3/V10.1 opt-in and explain archived, planned and active program statuses | Decided 2026-11-05: V10.3 becomes default only after import; V10.1/V10.2 archived but selectable |
-| B016 | One active exercise and one active set, quick weight/reps entry, unmistakable Save action | Partly present Focus Mode; optimize |
-| B017 | Improve exercise picker's layout and one-hand access without creating accidental saves | Proposed |
-| B018 | Offer Save Set -> Rest -> Next Set flow as a user-selectable shortcut, without starting timers on failed saves | Proposed |
-| B019 | Replace RPE/RIR on primary surfaces with Easy/Moderate/Hard/Very Hard and reps-left explanation | Partly implemented V15.22.2 |
-| B020 | Prevent historic low or inconsistent numeric RPE values from triggering unjustified load advice; preserve raw value and mark uncertainty | Proposed |
-| B021 | Reduce redundant difficulty, effort and technique inputs; progressive disclosure for optional notes | Proposed |
-| B022 | Clearly label per-dumbbell kg vs total kg and timed seconds/side vs reps | Proposed |
-| B023 | Add prominent Undo recent saved set with record identity and confirmation semantics | Proposed |
-| B024 | Make Plan CSV template import vs Train completed-sets CSV import visually distinct | Partly exists; UX pending |
-| B025 | Show import preview, duplicate/rejected row outcomes and when a new template is not yet assigned | Partly exists; UX pending |
-| B026 | Explain training abbreviations in-context (DB, RPE, RIR, ROM, PT Review, SS1) | Proposed |
-| B027 | Audit font legibility on physical 320/390/428px devices; avoid solving complexity by making all text 10px | Pending device |
-| B028 | Test timer/widget accessibility (focus, modal semantics, VoiceOver, dynamic type, reduced motion, safe-area occlusion) | Pending device |
+| D1 | Should a general symptom entry block progression for every exercise that day, or only lower-body and PT-review ones? (B116) | 4.7 |
+| D2 | What do you use for pulldowns: cable/plates in kg, or a band? (B113) | 4.6 |
+| D3 | Retire the old root app in favour of the preview? (B101) | 5.1 |
+| D4 | Cosmetics freeze (B089–B091): keep frozen, or pick a review date? | nothing |
 
-## P1 — timer, notification and audio reliability
+### Device log
 
-| ID | Work item | Current state |
-|---|---|---|
-| B029 | Finish V15.22.2 manual acceptance for hovering floating timer and translucent finished overlay | Implemented source; device pending |
-| B030 | Test Test Sound on real Safari; independently configure rest alert and optional long slime button sound | Partly implemented |
-| B031 | Make rest-duration choice easy to edit from current exercise without navigating to Tools | Implemented preview, verify UX |
-| B032 | Display end-of-rest alert until acknowledged even when audio was blocked | Implemented source; device pending |
-| B033 | Show sound-muted and background-alert limitations visibly but concisely | Implemented source; copy review |
-| B034 | Evaluate optional keep-screen-awake feature only with platform support and battery safeguards | Decided 2026-11-05: optional toggle, active workout only, released on finish/leave; drop if unreliable on device |
-| B035 | Explore OS-managed notifications or optional native wrapper only if real locked-screen alarm is essential | Closed 2026-11-05: no native wrapper; persistent on-screen alert (B032) accepted |
-| B036 | Compare timestamp-based countdown vs delayed/background timer behavior on actual iOS | Source already uses Date.now timestamps; pending device |
-| B037 | Avoid duplicate squish MP3 playback over end-of-rest cue | Implemented source; device pending |
+*(empty — add `YYYY-MM-DD · step · pass/fail · note`)*
 
-## P1 — workout program and progressive training
+## Parked
 
-| ID | Work item | Current state |
-|---|---|---|
-| B038 | Finalize V10.3 as new selectable program; preserve V10.2 and earlier versions | Decided 2026-11-05: V10.3 is the target program; not yet in source — import and validation pending |
-| B039 | Create upper A/B phased working-set templates with exact ranges, rest and optional readiness hold | Decided 2026-11-05: upper target 37 sets/week (Mon 17, Thu 20), built up gradually; supersedes 33-set draft; template pending |
-| B040 | Keep light Lower A/B main muscular work with selected adjunct trunk/mobility only where tolerated | Draft pending |
-| B041 | Retain normal lower lifts as future goals, not automatic instruction to load previously provocative exercises | Draft guard |
-| B042 | Make exercise-specific substitutions and versioned templates (e.g., sit-to-stand for squat role) without rewriting history | Versioning exists; mapping pending |
-| B043 | Allow skipped/contraindicated/optional exercises without generating a failure or fake completed set | Proposed |
-| B044 | Record actual load, reps, rest, effort, technique and exercise-level response only when supplied | Partly exists |
-| B045 | Show simple next-session suggestion with why and explicit Accept/Skip; do not auto-enter a planned set | Implemented preview; device pending |
-| B046 | Enforce missing next-day/48-hour feedback = unknown rather than recovered | Implemented source; verify |
-| B047 | Make training dose advancement repeatable and one-variable-at-a-time; distinguish muscle progress from exercise tolerance | Proposed |
-| B048 | Limit loaded squat/hinge progression advice without assessment; retain non-diagnostic boundaries | Existing PT review, refine |
-| B049 | Allow deload or repeat-week logic when fatigue or performance warrants, without calendar-forced jumps | Proposed |
-| B050 | Separate planned weekly sets from actual sets, and direct vs indirect muscle contributions | Partially implemented |
-| B112 | Store the full per-exercise muscle contribution table (direct 1, secondary 0.5) alongside V10.3 so weekly dose estimates are reproducible | Proposed |
-| B051 | Require explicit user selection and review of exercise tolerance before adding more demanding accessory movements | Proposed |
-| B052 | Add exercise instruction cards with plain form cues, alternatives and safety notes rather than excessive jargon | Proposed |
-| B113 | Define pulldown load semantics (cable/plate kg vs resistance band level) before finalizing V10.3 pulldown logging; count unilateral sets once per side-pair | Equipment type unconfirmed |
-| B114 | Separate the sets currently being performed ("active sets") from a template's target sets, so volume can ramp toward V10.3 without progression holding as "incomplete" | Planned; spec in docs/plans/2026-11-05-v10.3-transition-plan.md |
-| B115 | Record a per-exercise clinical clearance entered by the owner (date, cleared by, revocable) so a cleared [PT Review] exercise can receive the normal gated suggestions; never inferred from logs | Planned; spec in transition plan |
-| B116 | Decide whether a general (not exercise-linked) symptom entry should block progression for all exercises that day or only lower-body/PT-review exercises | Owner decision pending; current behaviour unchanged |
+Not started unless the owner asks. Listed so nothing is lost.
 
-## P1/P2 — calendar reminders and one-way scheduling
+- **Training logic:** B040 light lower-day template, B047 one-variable-at-a-time advancement, B049 deload or repeat-week, B051 tolerance review before harder accessories, B052 exercise instruction cards, B044 optional per-set detail.
+- **Safety copy:** B009 suspend an exercise, B010 stop/hold prompts.
+- **Analytics:** B070 weight trend, B071 four-week deficit review, B074 personal bests, B075 separate trend views, B083 edited-food audit.
+- **Interface:** B017 exercise picker layout.
+- **Sync and backend (owner decided: no sync):** B008, B054, B060, B061, B062, B065.
+- **Calendar publishing:** B107.
+- **Process tooling:** B108.
+- **Cosmetics (frozen):** B089, B090, B091.
 
-| ID | Work item | Current state |
-|---|---|---|
-| B105 | Stabilize existing one-time .ics workout reminder export with deterministic event UIDs and explicit re-export/duplicate-import behavior; FitnessPilot remains schedule authority | Existing .ics export; UID stability not implemented |
-| B106 | Validate calendar-export time zone, recurring dates, duration, alert lead time and privacy-safe event content in Apple/Google/Outlook clients, including real-device acceptance | Pending real calendar-client testing |
-| B107 | Consider explicitly authorized one-way Google Calendar publishing or a revocable private subscription feed, with least-privilege access, idempotent updates, disconnect/status and no external writeback to saved workouts | Deferred option; not built; two-way integration KIV |
+## ID ledger
 
-## P1/P2 — storage, backup and genuine two-device sync
+Where every old number went.
 
-| ID | Work item | Current state |
-|---|---|---|
-| B053 | Keep offline local working state as source of in-session speed and resilience | Current architecture |
-| B054 | Define stable record IDs, created/edited timestamps, schema version, origin-device ID and explicit deletions/tombstones | Deferred 2026-11-05: no sync planned; revisit only if sync is requested |
-| B055 | Define idempotent two-device merge, duplicate prevention, deterministic conflicts and manual resolution | Dropped 2026-11-05: no two-device merge; local encrypted backup chosen (B110) |
-| B056 | Specify how an offline phone and PC reconcile edits to the same set, template, schedule or daily entry | Dropped 2026-11-05: phone is the single logging device; PC stores backups only |
-| B057 | Decide whether backed-up health-sensitive observations are in scope; minimize data by default | Decided 2026-11-05: no remote storage; observations stay local or inside encrypted backup |
-| B058 | Compare managed backend/auth providers vs encrypted private cloud file vs private GitHub snapshots | Decided 2026-11-05: local encrypted backup file; no managed backend, cloud provider or GitHub snapshots |
-| B059 | If using GitHub backups, private encrypted files only; never embed tokens in public GitHub Pages JavaScript | Not applicable 2026-11-05: no remote backups planned |
-| B060 | Build connection/authentication with revocation, least privilege and no visible/committed secrets | Deferred 2026-11-05: no sync planned |
-| B061 | Test lossless export->sync->restore, offline edits, conflicting edits, reconnect and interrupted writes | Deferred 2026-11-05: no sync planned; encrypted export/restore testing moves to B110 |
-| B062 | Show last sync success/failure and local-unsynced counts without falsely implying server success | Deferred 2026-11-05: no sync planned |
-| B063 | Preserve downloadable self-contained JSON and CSV exports regardless of remote provider | Current invariant |
-| B064 | Add emergency read-only export even when UI partially fails, with validation and operator recovery instructions | Proposed |
-| B065 | Measure sync provider cost, limits, retention and maintenance before choosing architecture | Deferred 2026-11-05: no sync planned |
-| B110 | Build passphrase-encrypted backup export covering BOTH stores — workout data (`fitnesspilot.preview.v101.v1`) and Food Diary (`fitnesspilot.preview.v101.foodDiary.v1`). Tests: clean-profile restore with the passphrase typed from memory, wrong-passphrase and corrupted-file rejection, restored records match the originals for both stores; keep a recovery copy of the passphrase off the phone. Existing plain JSON/CSV exports stay (B063) | New feature; not implemented |
+| Outcome | IDs |
+|---|---|
+| In source; no further agent work | B003, B015, B031, B032, B033, B036, B037, B038, B039, B042, B045, B046, B050, B073, B078, B079, B080, B081, B093, B095, B109, B110, B111, B114, B115 |
+| Owner iPhone session (O1–O11) | B001, B002, B004, B005, B006, B027, B028, B029, B030, B066, B067, B076, B085, B086, B087, B088, B092, B097, B106 |
+| Agent queue | B011, B012, B013, B014, B016, B018, B019, B020, B021, B022, B023, B024, B025, B026, B034, B043, B064, B068, B069, B077, B094, B096, B098, B099, B101, B102, B103, B105, B112, B113, B116 |
+| Standing rule | B007, B041, B048, B053, B063, B072, B084, B100, B104 |
+| Parked | B008, B009, B010, B017, B040, B044, B047, B049, B051, B052, B054, B060, B061, B062, B065, B070, B071, B074, B075, B083, B089, B090, B091, B107, B108 |
+| Closed by owner decision | B035, B055, B056, B057, B058, B059, B082 |
+| New in this revision | B117 docs reconcile, B118 shared escape helper, B119 split `app.js`, B120 merge stylesheets, B121 behaviour tests, B122 unused modules, B123 retire root app, B124 screenshot comparison, B125 device checklist page |
 
-## P2 — charts, analytics and progress history
+Open pull requests on 2026-11-11 that are not queue steps: #95 (V10.4 exercise amendment, draft) and #103 (food barcode/OCR research notes). Both wait for the owner; an agent does not build on them.
 
-| ID | Work item | Current state |
-|---|---|---|
-| B066 | Accept compact Strength Journey against approved visual on physical phone, not an approximate fixture | V15.22.1 source implemented; pending |
-| B067 | Verify saved-only Day 1, working-set chart points, max kg, reps and effort provenance with multiple sessions | Source tests done; device pending |
-| B068 | Expose data labels/drilldowns for muscle volume and direct/indirect set math | Metric dictionary partially implemented |
-| B069 | Wire source-aware metric dictionary to Dashboard and handle stale/missing values explicitly | F-078 partial |
-| B070 | Add read-only 7-day weight trend and 28-day graph with recorded daily weigh-ins, moving average, optional targets | F-038 unbuilt |
-| B071 | Make 4-week deficit evidence review only after enough dated food/weight data exists, not inferred compliance | F-067 unbuilt |
-| B072 | Avoid fake progress from planned sets, duplicate templates, warmups, seconds holds or generated examples | Required invariant |
-| B073 | Improve comparison across renamed/versioned exercises using explicit user-approved equivalence map | Decided 2026-11-05: user-approved map for same-movement renames only; new movements get new IDs; implementation required (strength-journey.js keys on templateId + exerciseIndex) |
-| B074 | Provide personal bests by exercise and rep range with form/effort context, no automatic promotion of a single anomalous set | Proposed |
-| B075 | Separate strength trend, training adherence, bodyweight trend and body composition inference | Proposed |
+Shipped since the last revision without a backlog number: return-to-training stages and coverage-first mode (F-093), Food Diary CSV import, backup reminder with persistent-storage control (#89), seeded browser smoke (#59).
 
-## P2 — nutrition / food diary
+## Fixed limits
 
-| ID | Work item | Current state |
-|---|---|---|
-| B076 | End-to-end disposable Food Diary backup import and recovery roundtrip | F-069 pending |
-| B077 | Review open PR #61 for read-only seven-day missingness vs recorded-food interpretation | Open PR |
-| B078 | Review open PR #59 for synthetic Playwright Food Diary + workout fixtures | Open PR |
-| B079 | Accept existing 28-day calorie and macro graphs with unrecorded-vs-zero distinction | Source implemented; device pending |
-| B080 | Verify Singapore 40-food search, portion units, corrections and saved-food repeat on real phone | Source implemented; device pending |
-| B081 | Verify vitamin Singapore/international reference and unit normalization provenance | Source implemented; device pending |
-| B082 | Review separate Nutrition and Cheatsheet actions in open PR #57; avoid duplicating current shortcuts | Open PR |
-| B083 | Add clear edited-food audit and missing nutrient handling before advanced nutrition analytics | Proposed |
-| B084 | Keep unverified calories and unrecorded meals distinct; never infer complete day from one logged meal | Required invariant |
+- A web page on an iPhone cannot guarantee a sound when Safari is in the background or the phone is locked. The on-screen alert is the alarm; use the Clock app if a sound is essential.
+- No native wrapper, no account, no server, no two-way calendar sync.
+- No diagnosis and no automatic clearance.
 
-## P2/P3 — style, game mechanics and accessibility
+## Records
 
-| ID | Work item | Current state |
-|---|---|---|
-| B085 | Accept dark-fantasy/Ragnarok look against selected visual while keeping typography readable | Partial source, device pending |
-| B086 | Verify optional audio/haptic preferences and accessible labels, not sound-only confirmation | Pending device |
-| B087 | Verify walking avatar render/animation reduced-motion fallback and image import on device | Source implemented, past issue |
-| B088 | Keep set-save visual slime reaction optional, only after persisted new set, no phantom rewards | Implemented preview; device pending |
-| B089 | Consider user-controlled cosmetic Adventure Mode with no pay-to-win/randomized monetization | Frozen 2026-11-05: no expansion; measure existing features first |
-| B090 | Consider optional avatar roster and Physique Journey only after core reliability | Frozen 2026-11-05: no expansion; measure existing features first |
-| B091 | Evaluate compact logger versus RPG view with task-time and error-rate comparison | Frozen 2026-11-05: replaced by 4-week adherence/logging-friction measurement of existing features |
-| B092 | Check color contrast, safe areas, keyboard screen-reader labels and reduced-motion across main pages | Pending QA |
-
-## P2 — code maintenance and release hygiene
-
-| ID | Work item | Current state |
-|---|---|---|
-| B093 | Rebase/close superseded open PRs instead of merging overlapping branches blindly (#62/#60/#57 and older #6–9) | Done 2026-11-05: #6–#9, #57, #60, #62 closed unmerged, branches kept |
-| B094 | Review independent worker PR #61 and browser fixture PR #59 against latest source and owner | Decided 2026-11-05: keep both; rebase onto current main, then review |
-| B095 | Run full npm test and dependency-free Node regression on exact merged main revision | Pending current revision |
-| B096 | Add integrated browser smoke for Train/Timer/Plan/Import/Backup/Offline with disposable fixtures | Pending |
-| B097 | Test 320/390/428px viewport on live served Pages including full CSS cascade | Pending device/browser |
-| B098 | Test service worker upgrades, old caches and localStorage persistence over preview versions | Pending |
-| B099 | Verify source/test/asset consistency and no preview-only imports leaking into production root | Pending |
-| B100 | Keep small PRs with exact SHA, reported synthetic versus live checks, and device acceptance | Required workflow |
-| B101 | Maintain explicit preview->production promotion checklist; never silently deploy or clear storage | Decided 2026-11-05: release gates listed in docs/decisions/2026-11-05-roadmap-owner-decisions.md |
-| B102 | Retire stale/contradictory labels and old documentation while preserving historical audit records | Pending cleanup |
-| B103 | Benchmark 30 synthetic set entries for completion time, tap count, corrections and missed sets | Decided 2026-11-05: required as baseline before B011–B028 UI changes |
-| B104 | Keep separate private research notes, QA evidence, and change decisions, with verified commits | Existing policy |
-| B108 | Pilot independent, sanitized failure-event capture and private coverage reconciliation for FitnessPilot coding/QA failures; link observed events to regression receipts without putting raw chats or private logs in this public repository | Proposed Fitness integration; reusable tooling exists separately, no genuine Fitness ledger verified |
-| B109 | Add and verify a narrow Fitness CI workflow for native Node regressions and read-only integrity checks on relevant changes, preserving real-device acceptance as a separate gate | Implemented: .github/workflows/ci.yml runs npm test + verify-preview-assets on every PR and push to main |
-
-## Suggested implementation order
-
-1. **Acceptance + data safety:** Verify V15.22.2 on a real device (B001–B008), and preserve existing backups; document app safety behavior (B009–B010).
-2. **Minimal day-to-day workflow:** Implement selected program clarity, Today screen and effortless explicit set save (B011–B028); measure real time to log a session. When calendar work is requested, stabilize and validate one-way reminders (B105–B106).
-3. **Finalize V10.3:** Confirm proposed exercise variations and training parameters independently of automated medical clearance; never rewrite historical workout logs (B038–B052).
-4. **Close reliability gap:** Finish native regressions, physical Safari/Pages/offline and export/restore checks; review open PR overlap (B093–B104). Add scoped CI and private failure-event coverage only with independent evidence (B108–B109).
-5. **Sync not planned (owner decision 2026-11-05):** build local encrypted backup instead (B110). Dropped: B055–B056. Deferred: B054, B060–B062, B065. Not applicable: B059. Decided as local-only: B057–B058. Still active: B053 (local-first state), B063 (plain JSON/CSV exports), B064 (emergency export). Any optional one-way calendar publisher (B107) requires a separate explicit request. Never begin by uploading unencrypted backups to public repo.
-6. **Expand from real data:** Weight Journey, source-aware metric dictionary and food diary evidence review (B066–B084). Cosmetics (B085–B092): fixes and accessibility checks only; new RPG/cosmetic features (B089–B091) stay frozen until a 4-week measurement of adherence, logging completeness and logging time shows benefit without added friction.
-
-## Known blockers and non-goals
-
-- A web page on iPhone cannot guarantee a timely audible alarm when Safari is backgrounded, screen locked or audio restricted. Use an OS alarm if that guarantee is essential; a user-visible overlay is the app's fallback when foreground.
-- No clinical diagnosis or automatic clearance for neurologically provocative movements based on a symptom-free workout or an app-generated 48-hour score.
-- No fake workout logs, invented strength progression, hidden overwrites, automatic cross-device merge or destructive archive/delete of current templates.
-- A calendar reminder or event is not evidence of a completed training session; two-way calendar-to-FitnessPilot rescheduling remains deferred until explicitly requested.
-- This is an exhaustive **known-work inventory from accessible artifacts**, not a claim of every possible future idea or that all open PR content is safe to merge.
-
-## Evidence links
-
-- [V10.3 transition plan, 5 November 2026](docs/plans/2026-11-05-v10.3-transition-plan.md) — B111, B073, B114, B115 implementation specs.
-- [Owner roadmap decisions 1–8, 5 November 2026](docs/decisions/2026-11-05-roadmap-owner-decisions.md) — decisions recorded; implementation pending.
-- [One-way calendar reminders scope decision, 5 November 2026](docs/decisions/2026-11-05-calendar-reminders-only.md) — code change not authorized; two-way sync remains deferred.
-- [V15.22.2 PR #67](https://github.com/ToggleHardestMode/Fitness/pull/67)
-- [V15.22.1 compact Strength Journey PR #66](https://github.com/ToggleHardestMode/Fitness/pull/66)
-- [Completed-set CSV import PR #64](https://github.com/ToggleHardestMode/Fitness/pull/64)
-- [V15.22.2 rest timer and effort source PR #67](https://github.com/ToggleHardestMode/Fitness/pull/67)
-- Historical planning decisions and QA evidence are retained separately from this public, implementation-facing backlog.
- 
-## 2026-11-08 — V15.26.4 candidate: manually linked history, selected weeks and workout guidance
-
-- **Status: PR #77 reconciled against V15.26.3; CI and device acceptance to be verified.** [PR #77](https://github.com/ToggleHardestMode/Fitness/pull/77) remains unmerged; root production unchanged.
-- **Decision 7 / B073:** Exercise history remains identified by original plan and exercise index. No automatic same-name matching; owner-approved equivalence links alone show earlier historical sessions as reference. No saved records are re-keyed, and loading recommendations require current-plan comparability, recovery and PT gates.
-- **B045:** Train has an expandable, read-only full-workout next-session guide. It never fills/saves a set or bypasses safety restrictions.
-- **B050:** Dashboard provides previous/current/latest logged Monday–Sunday week navigation. Saved off-plan sets are included in logged counts; planned totals use the current assignments, not a historical schedule snapshot.
-- **B079:** Food Diary highlights this week's known recorded calories, preserves unknown-calorie foods as unknown and keeps unlogged dates distinct from zero.
-- **Version and assets:** V15.26.4 banner, manifest and preview-scoped cache retain the checked-backup helper and add the week module and its stylesheet.
-- **Regression changes:** The original #77 same-name grouping assertions were rejected under Decision 7; new `tests/exercise-week-clarity.test.mjs` covers explicit owner confirmation, preserved per-plan histories, week summaries, PT guardrails and PR #89 backup preservation. Previously protected version-isolation tests remain unchanged.
+- [Restructure permissions, 2026-11-11](docs/decisions/2026-11-11-roadmap-restructure-permissions.md) — allows roadmap status edits, README and changelog edits, the browser CI job with screenshot comparison, and replacing source-text tests.
+- [Owner decisions 1–8](docs/decisions/2026-11-05-roadmap-owner-decisions.md)
+- [Calendar: reminders only](docs/decisions/2026-11-05-calendar-reminders-only.md)
+- [V10.3 transition plan](docs/plans/2026-11-05-v10.3-transition-plan.md) — B111, B073, B114, B115 are now in source.
+- [Agent rules](AGENTS.md)
