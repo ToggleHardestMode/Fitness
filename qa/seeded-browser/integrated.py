@@ -1,7 +1,7 @@
 """B096 local-only Chromium smoke across real FitnessPilot preview screens.
 
 Runs exclusively in disposable Playwright contexts on a localhost static checkout.
-Offline/service-worker upgrade testing is deliberately deferred (owner KIV B098).
+Offline reload and service-worker cache-name upgrades run in a separate disposable context.
 No personal browser profile, public Pages URL, server upload, or real records.
 """
 import argparse

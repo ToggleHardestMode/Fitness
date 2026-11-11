@@ -27,12 +27,12 @@ This does **not** yet test the full Dashboard, symptom UI, vitamin conversions, 
 - Playwright contexts are new, isolated and disposable. The server binds only to `127.0.0.1` on an assigned port, never to a shared production origin.
 - The fixture data is fictional and versioned; it does not read any user's browser storage or contain health information.
 - The test does not overwrite repository files, existing backups, source data or existing output reports.
-- The runner uses `service_workers='block'` to avoid caching real preview assets during the first local seeded browser checks. Offline/service-worker acceptance needs a separate test.
+- The food-only runner blocks service workers. The integrated runner allows them only in its disposable offline scenario; neither runner touches the owner's browser profile or live site cache.
 - A failing assertion aborts the test. There are no automatic retries after unexpected mutation or input mismatch.
 
 The Python Playwright package and managed Chromium must be installed locally. `npm test` remains the existing native FitnessPilot suite; the browser runner supplements it rather than replacing it.
 
-## B096 integrated preview smoke (online workflows only)
+## B096 integrated preview smoke (online and offline workflows)
 
 Run the same setup shown above, then use:
 
