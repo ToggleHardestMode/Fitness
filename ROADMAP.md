@@ -44,8 +44,8 @@ Take the first Open row whose "Needs" column is satisfied. Check the code before
 | 1.1 | B117, B102 | Cut `README.md` to: what the app is, links, install, backup, development. Remove every hard-coded version number and "historical status" paragraph from the README; point to the banner in the app instead. Move the release notes in `preview-v101/README.md` to `CHANGELOG.md`. | No document other than `CHANGELOG.md` names a preview version. README is under 80 lines. | — | Open |
 | 1.2 | B096, B098, B099 | Extend `qa/seeded-browser/` to cover, with synthetic data in disposable browser contexts: save a set in Train and see the rest timer; plain JSON backup restored into a clean context with equal records; encrypted two-store backup restored into a clean context; wrong passphrase and corrupted file rejected; page reload while offline; a cache-name change keeps `localStorage`. Add a second CI job that runs it. | The job is green on the pull request and fails if any flow is broken on purpose (show one such failure in the PR description). | — | Open |
 | 1.3 | B124 | Bring in `qa/seeded-browser/mobile_ui.py` from draft pull request #91 (6 views × 3 widths, full-page screenshots plus an overflow and off-screen-control report). Add a comparison to the browser job: capture the pull-request build and `main` in the same run and report changed pixels per screen. Images are CI artifacts only; none are committed. | The job reports changed pixels and overflow per screen. Refactor PRs must report zero changed pixels. | 1.2 | Open |
-| 1.4 | B103 | Script the logging of 30 synthetic sets through the Train screen. Record taps, corrections and elapsed time in `docs/qa/logging-baseline.md`. | Baseline file exists with the commit it was measured on. | 1.2 | Open |
-| 1.5 | B125 | Rewrite `preview-v101/qa-checklist.js` so its checks are exactly steps O1–O11 below. Read the version from the banner instead of the hard-coded `V15.15.3`. | `qa.html` shows the eleven steps and exports the report. | — | Open |
+| 1.4 | B103 | Start from draft pull request #93 (operator-timed 30-set baseline): rebase it, keep its protocol, and add a scripted run that logs 30 synthetic sets through the Train screen. Record taps, corrections and elapsed time in `docs/qa/logging-baseline.md`. | Baseline file exists with the commit it was measured on. | 1.2 | Open |
+| 1.5 | B125 | Start from draft pull request #100 (QA checklist rebase). Rewrite `preview-v101/qa-checklist.js` so its checks are exactly steps O1–O11 below. Read the version from the banner instead of the hard-coded `V15.15.3`. | `qa.html` shows the eleven steps and exports the report. | — | Open |
 
 ### Stage 2 — make the code cheap to change
 
@@ -78,7 +78,7 @@ Starts after step 1.4 and after the owner's iPhone session (findings from it go 
 
 | Step | ID | Work | Done when | Needs | Status |
 |---|---|---|---|---|---|
-| 4.1 | B077, B094 | Check pull request #61 (food missing-versus-zero logic). If open: rebase onto `main`, run the checks, report conflicts. If already merged or closed: record that here. | Row shows the real state of #61. | — | Open |
+| 4.1 | B077, B094 | Pull request #61 (food missing-versus-zero logic) is open as a draft on 2026-11-11. Rebase it onto `main`, run the checks, and report conflicts for owner review. | #61 is rebased with checks reported, or closed by the owner. | — | Open |
 | 4.2 | B112 | The Dashboard overlap panel only knows V10.2. Load `templates/V10.3_Overlap_Coefficients.csv` data for V10.3 plans (direct 1, secondary 0.5). Custom exercises get no inherited coefficients. | Weekly dose for a V10.3 fixture matches a hand-worked table in the test. | 2.2 | Open |
 | 4.3 | B105 | Calendar export: event UIDs are derived from weekday and workout, not from the export time, so re-importing updates instead of duplicating. | Two exports a day apart give identical UIDs (test). | — | Open |
 | 4.4 | B068, B069 | Show the metric dictionary on the Dashboard: each number has a "how is this counted" disclosure with direct and indirect set maths, and missing inputs are shown as missing. | Uses `metric-selectors.js` (ties to 2.5). | 2.2 | Open |
@@ -153,6 +153,8 @@ Where every old number went.
 | Parked | B008, B009, B010, B017, B040, B044, B047, B049, B051, B052, B054, B060, B061, B062, B065, B070, B071, B074, B075, B083, B089, B090, B091, B107, B108 |
 | Closed by owner decision | B035, B055, B056, B057, B058, B059, B082 |
 | New in this revision | B117 docs reconcile, B118 shared escape helper, B119 split `app.js`, B120 merge stylesheets, B121 behaviour tests, B122 unused modules, B123 retire root app, B124 screenshot comparison, B125 device checklist page |
+
+Open pull requests on 2026-11-11 that are not queue steps: #95 (V10.4 exercise amendment, draft) and #103 (food barcode/OCR research notes). Both wait for the owner; an agent does not build on them.
 
 Shipped since the last revision without a backlog number: return-to-training stages and coverage-first mode (F-093), Food Diary CSV import, backup reminder with persistent-storage control (#89), seeded browser smoke (#59).
 
