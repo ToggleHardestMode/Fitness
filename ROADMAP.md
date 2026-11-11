@@ -80,7 +80,7 @@ Starts after step 1.4 and after the owner's iPhone session (findings from it go 
 |---|---|---|---|---|---|
 | 4.1 | B077, B094 | Pull request #61 (food missing-versus-zero logic) is open as a draft on 2026-11-11. Rebase it onto `main`, run the checks, and report conflicts for owner review. | #61 is rebased with checks reported, or closed by the owner. | — | Open |
 | 4.2 | B112 | The Dashboard overlap panel only knows V10.2. Load `templates/V10.3_Overlap_Coefficients.csv` data for V10.3 plans (direct 1, secondary 0.5). Custom exercises get no inherited coefficients. | Weekly dose for a V10.3 fixture matches a hand-worked table in the test. | 2.2 | Open |
-| 4.3 | B105 | Calendar export: event UIDs are derived from weekday and workout, not from the export time, so re-importing updates instead of duplicating. | Two exports a day apart give identical UIDs (test). | — | Open |
+| 4.3 | B105 | Calendar export: event UIDs are derived from weekday and workout, not from the export time, so re-importing updates instead of duplicating. | Two exports a day apart give identical UIDs (test). | — | PR #109 |
 | 4.4 | B068, B069 | Show the metric dictionary on the Dashboard: each number has a "how is this counted" disclosure with direct and indirect set maths, and missing inputs are shown as missing. | Uses `metric-selectors.js` (ties to 2.5). | 2.2 | Open |
 | 4.5 | B064 | A plain `export.html` page with no dependency on `app.js` that downloads the raw contents of both storage keys as one JSON file. | Works in the browser job with `app.js` deleted from the served folder. | 1.2 | Open |
 | 4.6 | B113 | Pulldown logging units. | — | Owner decision D2 | Blocked |
