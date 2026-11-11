@@ -271,7 +271,8 @@ def smoke(repo, chromium_binary=None, headed=False):
         thread.join(timeout=3)
 
     return {"result": "PASS", "browser": "isolated Playwright Chromium",
-            "checks": findings, "offline": "DEFERRED B098 by owner"}
+            "checks": findings,
+            "offline": "PASS in disposable Chromium: reload and cache-name upgrade; Safari not tested"}
 
 
 def main():
