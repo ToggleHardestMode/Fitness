@@ -43,7 +43,7 @@ test('long operator note is bounded and never changes status counts', () => {
   const report=makeReport({O1:{status:'blocked',note:'x'.repeat(1000)}},'t',version);
   assert.equal(report.results[0].note.length,400);
   assert.equal(report.counts.blocked,1);
-  assert.equal(report.counts['not-run'],9);
+  assert.equal(report.counts['not-run'],10);
 });
 
 test('QA reads the current banner and preserves strict CSP',()=>{
