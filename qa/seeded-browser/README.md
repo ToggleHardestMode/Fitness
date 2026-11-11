@@ -46,7 +46,13 @@ duplicate prevention, rest timer across pages, downloaded workout JSON and
 checked-file workflow, then encrypted both-store export, invalid passphrase
 and ciphertext rejection, and clean-profile recovery with record comparison.
 
-Both runners block service workers and bind ONLY to 127.0.0.1.
-Offline, service-worker upgrades, iPhone Safari, and sound audibility are
-NOT tested. Offline B098 is explicitly KIV and cannot be treated as passed.
-Do not clear any phone or browser website data. No repository files change.
+The integrated runner also restores the downloaded plain workout JSON into a
+separate empty browser context. Its dedicated offline scenario allows a real
+service worker in another disposable context, reloads the cached app with the
+network disabled, and serves a changed cache name **from memory** before
+verifying that neither local storage key changed. No source file is rewritten.
+
+The CI `browser` job runs this same local-only runner using managed Chromium.
+For a local repeat, use the existing `integrated.py --repo-root .` command.
+A browser CI pass does not prove Safari, sound audibility, or real device data
+recovery. Do not clear phone/browser website data. No repository files change.

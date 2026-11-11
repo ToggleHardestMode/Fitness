@@ -12,7 +12,8 @@ from pathlib import Path
 import threading
 
 from fixture import FOOD_KEY, WORKOUT_KEY, LAST_DAY, create_fixtures, validate_fixture
-from verify import QuietHandler, check_repo, get_store, set_seed
+from verify import check_repo, get_store, set_seed
+from offline import UpgradeHandler, check_offline_upgrade
 
 
 SYNTHETIC_CSV = (
@@ -47,7 +48,7 @@ def smoke(repo, chromium_binary=None, headed=False):
     validate_fixture(fixtures)
 
     server = ThreadingHTTPServer(
-        ("127.0.0.1", 0), partial(QuietHandler, directory=str(repo))
+        ("127.0.0.1", 0), partial(UpgradeHandler, directory=str(repo))
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -62,6 +63,7 @@ def smoke(repo, chromium_binary=None, headed=False):
                 kwargs["executable_path"] = str(chromium_binary)
             browser = playwright.chromium.launch(**kwargs)
             try:
+                UpgradeHandler.use_upgrade = False
                 with browser.new_context(
                     accept_downloads=True,
                     service_workers="block",
@@ -165,6 +167,34 @@ def smoke(repo, chromium_binary=None, headed=False):
                     assert get_store(page, WORKOUT_KEY) == before_export
                     page.locator("[data-action='restore-cancel']").click()
                     findings.append("Workout export matches saved data; checked-file preview never restores over records.")
+                    # Plain workout JSON must restore from the actual file into a distinct clean profile.
+                    with browser.new_context(
+                        accept_downloads=True, service_workers="block",
+                        viewport={"width": 390, "height": 844},
+                    ) as clean_workout:
+                        clean_page = clean_workout.new_page()
+                        clean_page.set_default_timeout(15000)
+                        clean_page.on("pageerror", lambda exc: errors.append(str(exc)))
+                        clean_page.goto(base + "/index.html", wait_until="domcontentloaded")
+                        clean_page.locator("nav.bottom-tabs button[data-page='tools']").wait_for()
+                        assert clean_page.evaluate(
+                            "(key) => localStorage.getItem(key)", WORKOUT_KEY
+                        ) is None
+                        go(clean_page, "tools")
+                        upload_bytes(clean_page, "#backup-file",
+                                     download.suggested_filename, backup_bytes)
+                        clean_page.locator("[data-action='restore-confirm']").wait_for()
+                        assert clean_page.evaluate(
+                            "(key) => localStorage.getItem(key)", WORKOUT_KEY
+                        ) is None
+                        clean_page.locator("#restore-word").fill("REPLACE")
+                        clean_page.on("dialog", lambda dialog: dialog.accept())
+                        clean_page.locator("[data-action='restore-confirm']").click()
+                        assert get_store(clean_page, WORKOUT_KEY) == before_export
+                        clean_page.reload(wait_until="domcontentloaded")
+                        assert get_store(clean_page, WORKOUT_KEY) == before_export
+                    findings.append("Downloaded plain workout JSON restores identical records in a clean context.")
+
 
                     # B110: one authenticated download containing both stores.
                     expected_workout = get_store(page, WORKOUT_KEY)
@@ -231,6 +261,7 @@ def smoke(repo, chromium_binary=None, headed=False):
                         assert get_store(fresh, FOOD_KEY) == expected_food
                         findings.append("Two-store encrypted restore in separate clean browser preserved exact records after reload.")
 
+                findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
                 assert not errors, "Browser JavaScript errors: " + " | ".join(errors[:5])
             finally:
                 browser.close()
