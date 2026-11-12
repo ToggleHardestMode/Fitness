@@ -40,10 +40,10 @@ git tag -a preview-ci-vX.Y.Z COMMIT_SHA -m "FitnessPilot preview X.Y.Z; exact-co
 git push origin refs/tags/preview-ci-vX.Y.Z
 ```
 
-Verify independently with `git ls-remote --tags origin "refs/tags/preview-ci-vX.Y.Z"` and confirm it resolves to the intended commit. If a push response is uncertain, check the remote ref before doing anything else; do not blindly retry. The local tag can be removed if never pushed, but published tags should be treated as immutable.
+Verify the remote ref independently with `git ls-remote --tags origin "refs/tags/preview-ci-vX.Y.Z"`. Because annotated tags are objects, compare the **peeled commit** with the intended SHA using `git rev-parse "refs/tags/preview-ci-vX.Y.Z^{commit}"` (or inspect the remote tag after fetching). If a push response is uncertain, check the remote ref before doing anything else; do not blindly retry. The local tag can be removed if never pushed, but published tags should be treated as immutable.
 
 For a genuinely owner-approved release, substitute `vX.Y.Z` in the final two commands and use a release message that records the exact approval/evidence. **No tag is created merely by adopting this policy.**
 
 ## Baseline at adoption
 
-On 2026-11-12, `main` pointed to `1e4b076e3510644ec61a9b7d5b7beac1f48ef332` with preview banner `V15.26.14`. GitHub Actions push run `43019579624` reported success. Real iPhone acceptance and the release gates were **not** established here. Accordingly, `v15.26.14` must **not** be called a device-approved release without additional evidence. The available GitHub connector cannot create tags; any source-checkpoint tag must be applied and verified manually.
+On 2026-11-12, `main` pointed to `1e4b076e3510644ec61a9b7d5b7beac1f48ef332` with preview banner `V15.26.14`. GitHub Actions push run `43019579624` reported success. Real iPhone acceptance and the release gates were **not** established here. Accordingly, `v15.26.14` must **not** be called a device-approved release without additional evidence. This documentation change does not itself create a tag; any source checkpoint requires a separate, explicit tag operation and verification.
