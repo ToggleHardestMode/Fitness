@@ -50,3 +50,37 @@ Both runners block service workers and bind ONLY to 127.0.0.1.
 Offline, service-worker upgrades, iPhone Safari, and sound audibility are
 NOT tested. Offline B098 is explicitly KIV and cannot be treated as passed.
 Do not clear any phone or browser website data. No repository files change.
+
+## B103 automated Train UI regression (synthetic, not a human benchmark)
+
+Use the [committed B103 synthetic 30-set reference](fixtures/b103_30_complete.json)
+without manually typing anything. The runner opens a disposable localhost server and
+two **fresh** Playwright Chromium contexts. For each of Standard and Focus Mode it
+seeds only the workout template with **zero** saved sets, enters 10 kg / 10 reps /
+RPE 7 through the real Train form, saves 30 sets (10 clicks to save 3 sets in
+Standard, 30 clicks to save one set in Focus), and checks incremental
+`localStorage` persistence, complete fixture identity/values, and survival
+across a full page reload.
+
+On a Windows checkout of **draft PR #93**, install Playwright/Chromium once,
+then run:
+
+```powershell
+py -m pip install playwright
+py -m playwright install chromium
+py .\qa\seeded-browser\train_ui_30.py --repo-root . --output .\B103-train-ui-evidence-new
+```
+
+Use a **new output folder** on every run. Optional `--mode standard` or
+`--mode focus` runs only one mode; default runs both. The command writes
+`report.json` with PASS/FAIL and individual results and exits nonzero on
+failure. It **does not** run against GitHub Pages, open your normal browser
+profile, change real localStorage or workout history, or turn on the offline
+B098 service worker. Do not restore this fixture into your personal phone.
+
+**Verification status when authored:** Python synthetic reference regression
+checks PASS, but full actual Chromium UI navigation was **not verified in the
+author's sandbox** because browser navigation returned
+`ERR_BLOCKED_BY_ADMINISTRATOR`. Run it on your Windows machine to establish
+real browser evidence. Automated clicks do **not** measure a human's time or
+tap count: the B103 human usability baseline is still a separate gate.
