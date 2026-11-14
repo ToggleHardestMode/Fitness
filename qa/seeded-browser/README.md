@@ -27,12 +27,12 @@ This does **not** yet test the full Dashboard, symptom UI, vitamin conversions, 
 - Playwright contexts are new, isolated and disposable. The server binds only to `127.0.0.1` on an assigned port, never to a shared production origin.
 - The fixture data is fictional and versioned; it does not read any user's browser storage or contain health information.
 - The test does not overwrite repository files, existing backups, source data or existing output reports.
-- The runner uses `service_workers='block'` to avoid caching real preview assets during the first local seeded browser checks. Offline/service-worker acceptance needs a separate test.
+- The food-only runner blocks service workers. The integrated runner allows them only in its disposable offline scenario; neither runner touches the owner's browser profile or live site cache.
 - A failing assertion aborts the test. There are no automatic retries after unexpected mutation or input mismatch.
 
 The Python Playwright package and managed Chromium must be installed locally. `npm test` remains the existing native FitnessPilot suite; the browser runner supplements it rather than replacing it.
 
-## B096 integrated preview smoke (online workflows only)
+## B096 integrated preview smoke (online and offline workflows)
 
 Run the same setup shown above, then use:
 
@@ -46,7 +46,13 @@ duplicate prevention, rest timer across pages, downloaded workout JSON and
 checked-file workflow, then encrypted both-store export, invalid passphrase
 and ciphertext rejection, and clean-profile recovery with record comparison.
 
-Both runners block service workers and bind ONLY to 127.0.0.1.
-Offline, service-worker upgrades, iPhone Safari, and sound audibility are
-NOT tested. Offline B098 is explicitly KIV and cannot be treated as passed.
-Do not clear any phone or browser website data. No repository files change.
+The integrated runner also restores the downloaded plain workout JSON into a
+separate empty browser context. Its dedicated offline scenario allows a real
+service worker in another disposable context, reloads the cached app with the
+network disabled, and serves a changed cache name **from memory** before
+verifying that neither local storage key changed. No source file is rewritten.
+
+The CI `browser` job runs this same local-only runner using managed Chromium.
+For a local repeat, use the existing `integrated.py --repo-root .` command.
+A browser CI pass does not prove Safari, sound audibility, or real device data
+recovery. Do not clear phone/browser website data. No repository files change.

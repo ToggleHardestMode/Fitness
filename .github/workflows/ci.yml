@@ -21,3 +21,18 @@ jobs:
         run: npm test
       - name: Preview asset and version check
         run: node scripts/verify-preview-assets.mjs
+
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Chromium for seeded browser checks
+        run: |
+          python -m pip install playwright==1.56.0
+          python -m playwright install chromium
+      - name: Run disposable FitnessPilot browser checks
+        run: python qa/seeded-browser/integrated.py --repo-root .
