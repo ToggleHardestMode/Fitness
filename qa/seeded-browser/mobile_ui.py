@@ -21,6 +21,13 @@ from verify import QuietHandler, check_repo, get_store, set_seed
 WIDTHS = (320, 390, 428)
 PAGES_ORIGIN = "https://togglehardestmode.github.io/Fitness/preview-v101"
 SCREENS = ("dashboard", "train", "plan", "tools", "food-diary", "backup-vault")
+CAPTURE_FLAGS = [
+    "--disable-gpu",
+    "--disable-skia-runtime-opts",
+    "--run-all-compositor-stages-before-draw",
+    "--disable-threaded-animation",
+    "--disable-threaded-scrolling",
+]
 
 
 def inspect_layout(page):
@@ -125,7 +132,10 @@ def capture(page, label, width, directory, controls):
     problems = []
     # Capture evidence before actionability checks scroll the page.
     screenshot = f"{width}-{label}.png"
-    page.evaluate("() => window.scrollTo(0, 0)")
+    page.evaluate("""async () => {
+        window.scrollTo(0, 0);
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }""")
     page.screenshot(path=str(directory / screenshot),
                     full_page=True, animations="disabled")
     for selector in controls:
@@ -222,7 +232,7 @@ def run(root, destination, target, headed=False, chromium_binary=None):
             origin = PAGES_ORIGIN
 
         with sync_playwright() as playwright:
-            options = {"headless": not headed, "args": ["--disable-gpu"]}
+            options = {"headless": not headed, "args": CAPTURE_FLAGS}
             if chromium_binary is not None:
                 options["executable_path"] = str(chromium_binary)
             browser = playwright.chromium.launch(**options)
