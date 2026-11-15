@@ -39,6 +39,67 @@ def assert_absent(page):
     assert page.evaluate("(key) => localStorage.getItem(key)", FOOD_KEY) is None
 
 
+def check_iphone_qa(context, base, version, workout, food, errors):
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, expect
+
+    page = context.new_page()
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    try:
+        page.goto(base + "/qa.html", wait_until="domcontentloaded")
+        expect(page.locator("#preview-version")).to_have_text(version + " · main app banner")
+        headings = page.locator("#checks h2").all_text_contents()
+        check_ids = [f"O{i}" for i in range(1, 12)]
+        assert [title.split(" · ", 1)[0] for title in headings] == check_ids
+        expect(page.locator("#counts")).to_have_text("0 Pass · 0 Fail · 0 Blocked · 11 Not run")
+
+        rows = page.locator("#checks article")
+        rows.nth(0).locator("select").select_option("pass")
+        rows.nth(0).locator("textarea").fill("Synthetic version check.")
+        rows.nth(1).locator("select").select_option("fail")
+        rows.nth(10).locator("select").select_option("blocked")
+        expect(page.locator("#counts")).to_have_text("1 Pass · 1 Fail · 1 Blocked · 8 Not run")
+
+        download = page.locator("#download-report")
+        for width in (320, 390, 428):
+            page.set_viewport_size({"width": width, "height": 844})
+            assert page.evaluate("document.documentElement.scrollWidth") <= width
+            download.click(trial=True)
+        with page.expect_download() as event:
+            download.click()
+        report_file = event.value
+        assert report_file.suggested_filename == f"fitnesspilot-{version.lower().replace('.', '')}-qa.json"
+        report = json.loads(Path(report_file.path()).read_bytes())
+        assert report["schema"] == "fitnesspilot-qa-v1"
+        assert report["previewVersion"] == version
+        assert [entry["id"] for entry in report["results"]] == check_ids
+        assert report["counts"] == {"pass": 1, "fail": 1, "blocked": 1, "not-run": 8}
+        assert [entry["status"] for entry in report["results"]] == [
+            "pass", "fail", *(["not-run"] * 8), "blocked"
+        ]
+        assert report["results"][0]["note"] == "Synthetic version check."
+        assert set(report) == {"schema", "previewVersion", "checkedAt", "results", "counts", "note"}
+        assert get_store(page, WORKOUT_KEY) == workout
+        assert get_store(page, FOOD_KEY) == food
+
+        page.route(base + "/index.html", lambda route: route.fulfill(
+            content_type="text/html", body="<!doctype html><title>Missing banner fixture</title>"
+        ))
+        page.reload(wait_until="load")
+        expect(page.locator("#preview-version")).to_contain_text("Version unavailable")
+        expect(page.locator("#counts")).to_have_text("0 Pass · 0 Fail · 0 Blocked · 11 Not run")
+        try:
+            with page.expect_download(timeout=1000):
+                download.click()
+        except PlaywrightTimeoutError:
+            expect(page.locator("#export-status")).to_contain_text("Export failed")
+        else:
+            raise AssertionError("QA report downloaded without a preview banner")
+        assert get_store(page, WORKOUT_KEY) == workout
+        assert get_store(page, FOOD_KEY) == food
+    finally:
+        page.close()
+
+
 def smoke(repo, chromium_binary=None, headed=False):
     from playwright.sync_api import sync_playwright
 
@@ -201,6 +262,11 @@ def smoke(repo, chromium_binary=None, headed=False):
                     # B110: one authenticated download containing both stores.
                     expected_workout = get_store(page, WORKOUT_KEY)
                     expected_food = get_store(page, FOOD_KEY)
+                    banner = page.locator(".preview-banner").inner_text().split()
+                    assert banner[0] == "FITNESSPILOT" and banner[2] == "PREVIEW"
+                    assert page.get_by_role("link", name="Open iPhone QA checklist").get_attribute("href") == "./qa.html"
+                    check_iphone_qa(context, base, banner[1], expected_workout, expected_food, errors)
+                    findings.append("iPhone QA renders O1–O11, downloads the banner version, and rejects export without it; both stores are unchanged.")
                     page.goto(base + "/encrypted-backup.html", wait_until="domcontentloaded")
                     page.locator("#export-pass").fill(PASSPHRASE)
                     page.locator("#export-confirm").fill(PASSPHRASE)
