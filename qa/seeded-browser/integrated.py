@@ -14,6 +14,7 @@ import threading
 from fixture import FOOD_KEY, WORKOUT_KEY, LAST_DAY, create_fixtures, validate_fixture
 from verify import check_repo, get_store, set_seed
 from offline import UpgradeHandler, check_offline_upgrade
+from train_ui_30 import reference_fixture, run_mode
 
 
 SYNTHETIC_CSV = (
@@ -46,6 +47,7 @@ def smoke(repo, chromium_binary=None, headed=False):
         raise ValueError("Expected B110 preview vault is missing.")
     fixtures = create_fixtures()
     validate_fixture(fixtures)
+    benchmark_fixture = reference_fixture(repo)
 
     server = ThreadingHTTPServer(
         ("127.0.0.1", 0), partial(UpgradeHandler, directory=str(repo))
@@ -263,6 +265,10 @@ def smoke(repo, chromium_binary=None, headed=False):
 
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
                 assert not errors, "Browser JavaScript errors: " + " | ".join(errors[:5])
+                train_baseline = [
+                    run_mode(browser, base.removesuffix('/preview-v101'), benchmark_fixture, mode)
+                    for mode in ('standard', 'focus')
+                ]
             finally:
                 browser.close()
     finally:
@@ -271,7 +277,7 @@ def smoke(repo, chromium_binary=None, headed=False):
         thread.join(timeout=3)
 
     return {"result": "PASS", "browser": "isolated Playwright Chromium",
-            "checks": findings,
+            "checks": findings, "automated_30_set_baseline": train_baseline,
             "offline": "PASS in disposable Chromium: reload and cache-name upgrade; Safari not tested"}
 
 

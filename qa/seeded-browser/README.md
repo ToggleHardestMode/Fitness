@@ -80,3 +80,9 @@ For a Stage 2 refactor, require zero changed pixels with `--require-unchanged`.
 The output directory must be new. To capture just one local build, omit
 `--baseline-root`. This is Chromium mobile emulation. Use the owner checklist
 in `ROADMAP.md` for physical iPhone acceptance.
+
+## B103 30-set logging benchmark
+
+The integrated browser job runs the 30-set synthetic fixture through the
+Train form in Standard and Focus. See [the baseline and operator protocol](../../docs/qa/logging-baseline.md)
+for measurements and the commands to repeat the run.
