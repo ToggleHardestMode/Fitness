@@ -56,3 +56,27 @@ The CI `browser` job runs this same local-only runner using managed Chromium.
 For a local repeat, use the existing `integrated.py --repo-root .` command.
 A browser CI pass does not prove Safari, sound audibility, or real device data
 recovery. Do not clear phone/browser website data. No repository files change.
+
+## Step 1.3 mobile screenshot comparison
+
+The browser CI job compares the pull-request build with its pinned `main`
+base on the same runner. It captures Dashboard, Train, Plan, Tools, Food
+Diary and Backup Vault at 320, 390 and 428 CSS px. Both captures use the
+same synthetic data, fixed date, locale and reduced-motion setting, with
+software rendering and compositor settings held constant for capture.
+
+Download the `fitnesspilot-mobile` artifact for the 36 full-page PNGs,
+the individual layout reports and `comparison.json`. Each comparison row
+lists changed pixels, horizontal overflow, clipped controls and control
+failures for both builds. Pixels outside the shared image area count as
+changed. Layout and navigation failures fail the job.
+
+To run locally, use the same Playwright setup above and pass a checkout
+of `main` as the baseline:
+
+    python qa/seeded-browser/mobile_ui.py --repo-root . --baseline-root ../fitness-main --output ../mobile-evidence
+
+For a Stage 2 refactor, require zero changed pixels with `--require-unchanged`.
+The output directory must be new. To capture just one local build, omit
+`--baseline-root`. This is Chromium mobile emulation. Use the owner checklist
+in `ROADMAP.md` for physical iPhone acceptance.
