@@ -9,6 +9,9 @@ from fixture import WORKOUT_KEY, FOOD_KEY
 from verify import QuietHandler, get_store, set_seed
 
 
+UPGRADE_SUFFIX = "-b098-upgrade"
+
+
 class UpgradeHandler(QuietHandler):
     """Serve a test-only new SW cache name from memory, without changing source."""
     use_upgrade = False
@@ -17,7 +20,7 @@ class UpgradeHandler(QuietHandler):
         if self.use_upgrade and self.path.split("?", 1)[0] == "/preview-v101/sw.js":
             source = (Path(self.directory) / "preview-v101/sw.js").read_text("utf-8")
             pattern = r"(?m)^(const CACHE = ')([^']+)(';)"
-            replacement = lambda m: m.group(1) + m.group(2) + "-b098-upgrade" + m.group(3)
+            replacement = lambda m: m.group(1) + m.group(2) + UPGRADE_SUFFIX + m.group(3)
             changed, count = re.subn(pattern, replacement, source, count=1)
             if count != 1:
                 raise RuntimeError("Cannot identify the current preview service-worker cache.")
@@ -66,23 +69,41 @@ def check_offline_upgrade(browser, base, fixtures, errors):
             findings.append("Real service worker reopens cached app while offline and preserves two stores.")
 
             # The test server changes only the served SW script's cache literal.
+            old_cache = original[0]
+            new_cache = old_cache + UPGRADE_SUFFIX
+            old_controller = page.evaluate_handle("() => navigator.serviceWorker.controller")
             UpgradeHandler.use_upgrade = True
             page.evaluate("""async () => {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (!registration) throw Error('No service-worker registration');
                 await registration.update();
             }""")
-            page.wait_for_function("""async () => (await caches.keys()).some(
-                name => name.endsWith('-b098-upgrade'))""")
-            cache_names = page.evaluate("async () => caches.keys()")
-            assert any(name.endswith("-b098-upgrade") for name in cache_names)
+            page.wait_for_function(
+                """async ({oldController, oldCache, newCache}) => {
+                    const controller = navigator.serviceWorker.controller;
+                    if (!controller || controller === oldController || controller.state !== 'activated') {
+                        return false;
+                    }
+                    const names = await caches.keys();
+                    return names.includes(newCache) && !names.includes(oldCache);
+                }""",
+                arg={"oldController": old_controller, "oldCache": old_cache, "newCache": new_cache},
+            )
             assert get_store(page, WORKOUT_KEY) == fixtures[WORKOUT_KEY]
             assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
-            page.reload(wait_until="domcontentloaded")
-            page.locator("nav.bottom-tabs button[data-page='train']").wait_for()
-            assert get_store(page, WORKOUT_KEY) == fixtures[WORKOUT_KEY]
-            assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
-            findings.append("In-memory service-worker cache-name change preserves localStorage and opens the app.")
+
+            context.set_offline(True)
+            try:
+                response = page.reload(wait_until="domcontentloaded")
+                assert response is not None and response.from_service_worker, (
+                    "Expected offline navigation to be served by the replacement service worker."
+                )
+                page.locator("nav.bottom-tabs button[data-page='train']").wait_for()
+                assert get_store(page, WORKOUT_KEY) == fixtures[WORKOUT_KEY]
+                assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+            finally:
+                context.set_offline(False)
+            findings.append("Replacement service worker reopens the app offline and preserves both stores.")
     finally:
         UpgradeHandler.use_upgrade = False
     return findings
