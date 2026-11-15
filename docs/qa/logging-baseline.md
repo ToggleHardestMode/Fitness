@@ -12,7 +12,18 @@ through the last persisted save. It counts trusted pointer presses and any
 changes to previously saved rows in that interval. Playwright fills inputs
 directly. Its pointer counts and elapsed times describe the scripted sequence.
 
-Measurements on the current checkout will be recorded here after CI.
+Measured on 15 November 2026 SGT in the [browser CI run](https://github.com/ToggleHardestMode/Fitness/actions/runs/43697259993)
+for [benchmark commit `e856823`](https://github.com/ToggleHardestMode/Fitness/commit/e8568239cdc3a2f5c7e029559b55f97bec9916de).
+The app under test was preview V15.26.14 from [main `0b2857d`](https://github.com/ToggleHardestMode/Fitness/commit/0b2857d15eba85f7cb07f4827ccd55ebc438d8ec).
+
+| Mode | Elapsed | Pointer presses | Save submissions | Corrected saved sets | Persisted after reload | Missing / extra / mismatched |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Standard | 24.906 s | 50 | 10 | 0 | 30/30 | 0 / 0 / 0 |
+| Focus | 39.523 s | 30 | 30 | 0 | 30/30 | 0 / 0 / 0 |
+
+A pointer press is a browser pointer-down event after setup. Playwright
+fills the numeric fields without pointer events. Corrections count changes
+made to already saved rows. CI times vary by runner and browser load.
 
 ### Repeat the automated run
 
