@@ -62,7 +62,8 @@ recovery. Do not clear phone/browser website data. No repository files change.
 The browser CI job compares the pull-request build with its pinned `main`
 base on the same runner. It captures Dashboard, Train, Plan, Tools, Food
 Diary and Backup Vault at 320, 390 and 428 CSS px. Both captures use the
-same synthetic data, fixed date, locale and reduced-motion setting.
+same synthetic data, fixed date, locale and reduced-motion setting, with
+GPU acceleration disabled for capture.
 
 Download the `fitnesspilot-mobile` artifact for the 36 full-page PNGs,
 the individual layout reports and `comparison.json`. Each comparison row

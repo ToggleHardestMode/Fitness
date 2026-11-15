@@ -222,7 +222,7 @@ def run(root, destination, target, headed=False, chromium_binary=None):
             origin = PAGES_ORIGIN
 
         with sync_playwright() as playwright:
-            options = {"headless": not headed}
+            options = {"headless": not headed, "args": ["--disable-gpu"]}
             if chromium_binary is not None:
                 options["executable_path"] = str(chromium_binary)
             browser = playwright.chromium.launch(**options)
