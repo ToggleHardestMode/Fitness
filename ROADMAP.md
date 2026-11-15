@@ -4,6 +4,8 @@ Reconciled 2026-11-11 against `main` at `d14ff2b` (preview V15.26.14, PR #102). 
 
 This file is the single place where task status lives. It replaces the 116-row backlog of 2026-11-03. Every old B-number is accounted for in the [ID ledger](#id-ledger); none were renumbered. New items start at B117.
 
+> **P0 future product priority (2026-11-11):** [B126 — Long-Term Weight Maintenance Mode](https://github.com/ToggleHardestMode/Fitness/issues/110) is an owner-requested, high-importance research-and-spec initiative for sustained weight-loss retention, early regain detection and sustainable recovery. **Planning only**; existing Stage 1 backup/browser reliability gates and the agent queue order still apply. B070 weight trend and B071 four-week deficit review remain parked, not silently approved or implemented.
+
 ## How to read this
 
 Work is split by who can do it.
@@ -46,6 +48,7 @@ Take the first Open row whose "Needs" column is satisfied. Check the code before
 | 1.3 | B124 | Bring in `qa/seeded-browser/mobile_ui.py` from draft pull request #91 (6 views × 3 widths, full-page screenshots plus an overflow and off-screen-control report). Add a comparison to the browser job: capture the pull-request build and `main` in the same run and report changed pixels per screen. Images are CI artifacts only; none are committed. | The job reports changed pixels and overflow per screen. Refactor PRs must report zero changed pixels. | 1.2 | Open |
 | 1.4 | B103 | Start from draft pull request #93 (operator-timed 30-set baseline): rebase it, keep its protocol, and add a scripted run that logs 30 synthetic sets through the Train screen. Record taps, corrections and elapsed time in `docs/qa/logging-baseline.md`. | Baseline file exists with the commit it was measured on. | 1.2 | Open |
 | 1.5 | B125 | Start from draft pull request #100 (QA checklist rebase). Rewrite `preview-v101/qa-checklist.js` so its checks are exactly steps O1–O11 below. Read the version from the banner instead of the hard-coded `V15.15.3`. | `qa.html` shows the eleven steps and exports the report. | — | Open |
+| 1.6 | B126 | **P0 future product: research/specification only** for opt-in long-term Weight Maintenance Mode. Record a source-audited evidence ledger, partial-loss-retention and regain-trend contracts, user-controlled tracking modes, privacy and safety rules, plus synthetic test cases. [Issue #110](https://github.com/ToggleHardestMode/Fitness/issues/110). Related B070/B071 stay parked. | Claim-level citations and cohort-overlap audit, owner-reviewable design and acceptance tests exist; no new app code, data schema or automatic diet advice. Separate approval is required before implementation. | — | Open |
 
 ### Stage 2 — make the code cheap to change
 
@@ -148,11 +151,11 @@ Where every old number went.
 |---|---|
 | In source; no further agent work | B003, B015, B031, B032, B033, B036, B037, B038, B039, B042, B045, B046, B050, B073, B078, B079, B080, B081, B093, B095, B109, B110, B111, B114, B115 |
 | Owner iPhone session (O1–O11) | B001, B002, B004, B005, B006, B027, B028, B029, B030, B066, B067, B076, B085, B086, B087, B088, B092, B097, B106 |
-| Agent queue | B011, B012, B013, B014, B016, B018, B019, B020, B021, B022, B023, B024, B025, B026, B034, B043, B064, B068, B069, B077, B094, B096, B098, B099, B101, B102, B103, B105, B112, B113, B116 |
+| Agent queue | B126, B011, B012, B013, B014, B016, B018, B019, B020, B021, B022, B023, B024, B025, B026, B034, B043, B064, B068, B069, B077, B094, B096, B098, B099, B101, B102, B103, B105, B112, B113, B116 |
 | Standing rule | B007, B041, B048, B053, B063, B072, B084, B100, B104 |
 | Parked | B008, B009, B010, B017, B040, B044, B047, B049, B051, B052, B054, B060, B061, B062, B065, B070, B071, B074, B075, B083, B089, B090, B091, B107, B108 |
 | Closed by owner decision | B035, B055, B056, B057, B058, B059, B082 |
-| New in this revision | B117 docs reconcile, B118 shared escape helper, B119 split `app.js`, B120 merge stylesheets, B121 behaviour tests, B122 unused modules, B123 retire root app, B124 screenshot comparison, B125 device checklist page |
+| New in this revision | B117 docs reconcile, B118 shared escape helper, B119 split `app.js`, B120 merge stylesheets, B121 behaviour tests, B122 unused modules, B123 retire root app, B124 screenshot comparison, B125 device checklist page, B126 maintenance-mode research/spec priority (issue #110) |
 
 Open pull requests on 2026-11-11 that are not queue steps: #95 (V10.4 exercise amendment, draft) and #103 (food barcode/OCR research notes). Both wait for the owner; an agent does not build on them.
 
