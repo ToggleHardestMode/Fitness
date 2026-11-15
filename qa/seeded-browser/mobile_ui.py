@@ -27,6 +27,8 @@ COMPARISON_VERSION = "V0.00.00"
 CAPTURE_FLAGS = [
     "--disable-gpu",
     "--disable-skia-runtime-opts",
+    "--disable-partial-raster",
+    "--num-raster-threads=1",
     "--run-all-compositor-stages-before-draw",
     "--disable-threaded-animation",
     "--disable-threaded-scrolling",
@@ -391,18 +393,25 @@ def compare(root, baseline, destination, headed, chromium, require_unchanged):
     check_repo(baseline)
     destination.mkdir()
     baseline_dir, current_dir = destination / "main", destination / "candidate"
+    repeat_dir = destination / "main-repeat"
     report = {"result": "FAIL", "baseline": str(baseline), "candidate": str(root), "screens": []}
     try:
         main_result = run(baseline, baseline_dir, "local", headed, chromium, compare_versions=True)
+        repeat_result = run(baseline, repeat_dir, "local", headed, chromium)
         current_result = run(root, current_dir, "local", headed, chromium, compare_versions=True)
         report["mainResult"] = main_result["result"]
         report["candidateResult"] = current_result["result"]
         report["mainError"] = main_result.get("error")
+        report["mainRepeatResult"] = repeat_result["result"]
+        report["mainRepeatError"] = repeat_result.get("error")
         report["candidateError"] = current_result.get("error")
-        if len(main_result["screens"]) != len(WIDTHS) * len(SCREENS) or (
-            len(current_result["screens"]) != len(WIDTHS) * len(SCREENS)
-        ):
-            raise ValueError("Incomplete capture; see main and candidate reports.")
+        if any(len(capture["screens"]) != len(WIDTHS) * len(SCREENS)
+               for capture in (main_result, repeat_result, current_result)):
+            raise ValueError("Incomplete capture; see the main, main-repeat and candidate reports.")
+        repeat_pixels = {
+            (row["screen"], row["width"]): row["changedPixels"]
+            for row in compare_screens(baseline_dir, repeat_dir, headed, chromium)
+        }
         layouts = {
             key: {(row["screen"], row["width"]): row for row in capture["screens"]}
             for key, capture in (("main", main_result), ("candidate", current_result))
@@ -416,6 +425,7 @@ def compare(root, baseline, destination, headed, chromium, require_unchanged):
         for screen in compare_screens(baseline_dir, current_dir, headed, chromium):
             key = (screen["screen"], screen["width"])
             screen["sameVersionChangedPixels"] = same_version.get(key, screen["changedPixels"])
+            screen["mainRepeatChangedPixels"] = repeat_pixels[key]
             for key, layout in layouts.items():
                 match = layout[screen["screen"], screen["width"]]
                 screen[key + "Overflow"] = match["computedLayout"]["overflowPixels"]
@@ -423,11 +433,18 @@ def compare(root, baseline, destination, headed, chromium, require_unchanged):
                 screen[key + "Problems"] = match["problems"]
             report["screens"].append(screen)
         unchanged = all(row["sameVersionChangedPixels"] == 0 for row in report["screens"])
-        if main_result["result"] == current_result["result"] == "PASS":
-            if unchanged or not require_unchanged:
-                report["result"] = "PASS"
-            else:
+        repeated = all(row["mainRepeatChangedPixels"] == 0 for row in report["screens"])
+        report["strictResult"] = "PASS" if (
+            main_result["result"] == repeat_result["result"] == current_result["result"] == "PASS"
+            and repeated and unchanged
+        ) else "FAIL"
+        if main_result["result"] == repeat_result["result"] == current_result["result"] == "PASS":
+            if require_unchanged and not repeated:
+                report["error"] = "Main did not match a second independent capture of itself."
+            elif require_unchanged and not unchanged:
                 report["error"] = "Expected zero changed pixels after normalizing the version label."
+            else:
+                report["result"] = "PASS"
     except (PlaywrightError, ValueError, OSError) as error:
         report["error"] = f"{type(error).__name__}: {error}"
     finally:
