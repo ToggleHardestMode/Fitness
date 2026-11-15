@@ -21,3 +21,40 @@ jobs:
         run: npm test
       - name: Preview asset and version check
         run: node scripts/verify-preview-assets.mjs
+
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Chromium for seeded browser checks
+        run: |
+          python -m pip install playwright==1.56.0
+          python -m playwright install chromium
+      - name: Run disposable FitnessPilot browser checks
+        run: python qa/seeded-browser/integrated.py --repo-root .
+      - name: Check out the PR base for mobile comparison
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: mobile-main
+          persist-credentials: false
+      - name: Compare mobile screenshots with main
+        if: github.event_name == 'pull_request'
+        env:
+          MOBILE_OUTPUT: ${{ runner.temp }}/fitnesspilot-mobile
+        run: |
+          echo "Candidate: $(git rev-parse HEAD)"
+          echo "Main: $(git -C mobile-main rev-parse HEAD)"
+          python qa/seeded-browser/mobile_ui.py --repo-root . --baseline-root mobile-main --output "$MOBILE_OUTPUT"
+      - name: Upload mobile screenshot evidence
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitnesspilot-mobile
+          path: ${{ runner.temp }}/fitnesspilot-mobile/
+          if-no-files-found: warn

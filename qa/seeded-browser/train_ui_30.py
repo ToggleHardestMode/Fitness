@@ -9,8 +9,9 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
 import threading
+from time import perf_counter
 
-from benchmark_sets import BENCHMARK_DAY, KEY, TEMPLATE, check_source, score_workout
+from benchmark_sets import BENCHMARK_DAY, INSTRUMENT, KEY, TEMPLATE, check_source, score_workout
 
 FIXTURE_PATH = Path('qa/seeded-browser/fixtures/b103_30_complete.json')
 EXPECTED_COUNT = 30
@@ -91,6 +92,8 @@ def run_mode(browser, origin, fixture, mode):
         if stored_state(page)['logs']:
             raise AssertionError('UI setup unexpectedly inserted saved sets.')
 
+        page.evaluate(INSTRUMENT)
+        started = perf_counter()
         saves = 0
         for exercise in range(10):
             if mode == 'standard':
@@ -123,6 +126,10 @@ def run_mode(browser, origin, fixture, mode):
                     wanted = exercise * 3 + set_index + 1
                     if len(stored_state(page)['logs']) != wanted:
                         raise AssertionError(f'Focus save {wanted} did not persist the expected set.')
+        elapsed = round(perf_counter() - started, 3)
+        stats = page.evaluate('() => window.__b103')
+        if stats['savedSubmissions'] != saves:
+            raise AssertionError('Recorded Train form submissions do not match the scripted saves.')
         before_reload = stored_state(page)
         scored = equivalent(before_reload, fixture)
         ids = {(row['exerciseIndex'], row['set']): row['id'] for row in before_reload['logs']}
@@ -140,6 +147,8 @@ def run_mode(browser, origin, fixture, mode):
             raise AssertionError('Browser JavaScript errors: ' + '; '.join(errors[:3]))
         equivalent(after_reload, fixture)
         return {'result': 'PASS', 'mode': mode, 'ui_save_actions': saves,
+                'elapsed_seconds': elapsed, 'pointer_presses': stats['pointerTaps'],
+                'corrected_saved_sets': stats['correctedSavedSets'],
                 'persisted_sets': scored['saved_sets'], 'reloaded_sets': len(after_reload['logs']),
                 'missing_sets': scored['missing_sets'], 'extra_sets': scored['extra_sets'],
                 'mismatched_sets': scored['mismatched_sets'], 'browser_errors': errors}
