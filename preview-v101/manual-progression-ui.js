@@ -1,7 +1,6 @@
+import { esc } from './html.js';
 import { manualProgression } from './manual-progression.js';
 
-const esc = value => String(value ?? '').replace(/[&<>"']/g, c =>
-  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 export function manualProgressionPanel(state, selection) {
   const result = manualProgression(state, selection);

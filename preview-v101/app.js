@@ -1,3 +1,4 @@
+import { esc } from './html.js';
 import { weeklyTrainingAnalysis, lifetimeTrainingSets, setMilestoneProgress } from './training-analytics.js';
 import { resetTrackingData } from './tracking-reset.js';
 import { METRIC_FIELDS, weeklyMetricSources } from './metric-breakdown.js';
@@ -37,7 +38,6 @@ import { workoutBackupStatus, markWorkoutBackupChecked, persistentStorageStatus,
 import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, dateFromKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
 
 const $ = selector => document.querySelector(selector);
-const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n).toLocaleString('en-SG', {maximumFractionDigits:1});
 const today = () => dateKey(new Date());
 const nice = date => new Date(`${date}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'short'});

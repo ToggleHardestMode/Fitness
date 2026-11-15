@@ -1,7 +1,6 @@
+import { esc } from './html.js';
 import {DAYS, DAY_NAMES} from './core.js';
 import {generateOneSetCoverage} from './return-coverage.js';
-
-const esc = value => String(value ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // All options are explicit; an unscheduled lower-body source can still be selected for review.
 export function returnStagePanel(state, pending = null) {

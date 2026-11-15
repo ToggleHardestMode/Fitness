@@ -1,7 +1,6 @@
+import { esc } from './html.js';
 import { currentClearance, requiresPtReview, CLEARED_BY_MAX, CLEARANCE_NOTE_MAX } from './exercise-clearance.js';
 
-const esc = value => String(value ?? '').replace(/[&<>"']/g, c =>
-  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // Markup only. Recording and revoking happen in app.js after an explicit confirmation dialog.
 export function clearancePanel(state, {templateId, exerciseIndex, date, today}) {
