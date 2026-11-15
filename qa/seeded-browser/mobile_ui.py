@@ -20,10 +20,15 @@ from verify import QuietHandler, check_repo, get_store, set_seed
 
 WIDTHS = (320, 390, 428)
 PAGES_ORIGIN = "https://togglehardestmode.github.io/Fitness/preview-v101"
-SCREENS = ("dashboard", "train", "plan", "tools", "food-diary", "backup-vault")
+APP_SCREENS = ("dashboard", "train", "plan", "tools")
+SCREENS = (*APP_SCREENS, "food-diary", "backup-vault")
+VERSION_PATTERN = r"FITNESSPILOT (V\d+\.\d+\.\d+) PREVIEW"
+COMPARISON_VERSION = "V0.00.00"
 CAPTURE_FLAGS = [
     "--disable-gpu",
     "--disable-skia-runtime-opts",
+    "--disable-partial-raster",
+    "--num-raster-threads=1",
     "--run-all-compositor-stages-before-draw",
     "--disable-threaded-animation",
     "--disable-threaded-scrolling",
@@ -128,7 +133,7 @@ def inspect_layout(page):
     }""")
 
 
-def capture(page, label, width, directory, controls):
+def capture(page, label, width, directory, controls, version=None):
     problems = []
     # Capture evidence before actionability checks scroll the page.
     screenshot = f"{width}-{label}.png"
@@ -138,6 +143,21 @@ def capture(page, label, width, directory, controls):
     }""")
     page.screenshot(path=str(directory / screenshot),
                     full_page=True, animations="disabled")
+    if version is not None:
+        banner = page.locator(".preview-banner")
+        original = banner.text_content()
+        prefix = f"FITNESSPILOT {version} PREVIEW"
+        assert original is not None and original.count(prefix) == 1
+        assert banner.evaluate("(el) => el.childNodes.length === 1 && el.firstChild.nodeType === Node.TEXT_NODE"), (
+            "Cannot normalize the preview version without changing banner markup."
+        )
+        comparison = original.replace(prefix, f"FITNESSPILOT {COMPARISON_VERSION} PREVIEW")
+        banner.evaluate("(el, text) => { el.firstChild.nodeValue = text; }", comparison)
+        try:
+            page.screenshot(path=str(directory / "same-version" / screenshot),
+                            full_page=True, animations="disabled")
+        finally:
+            banner.evaluate("(el, text) => { el.firstChild.nodeValue = text; }", original)
     for selector in controls:
         locator = page.locator(selector).first
         try:
@@ -202,11 +222,11 @@ def load(page, url, selector):
     page.evaluate("() => document.fonts.ready.then(() => true)")
 
 
-def run(root, destination, target, headed=False, chromium_binary=None):
+def run(root, destination, target, headed=False, chromium_binary=None, compare_versions=False):
     check_repo(root)
     validate_fixture(create_fixtures())
     banner = (root / "preview-v101/index.html").read_text("utf-8")
-    version = re.search(r"FITNESSPILOT (V\d+\.\d+\.\d+) PREVIEW", banner)
+    version = re.search(VERSION_PATTERN, banner)
     if not version:
         raise ValueError("Expected preview version banner was not found.")
     if destination.exists():
@@ -215,6 +235,8 @@ def run(root, destination, target, headed=False, chromium_binary=None):
         raise ValueError("Output parent directory is missing: " + str(destination.parent))
 
     destination.mkdir()
+    if compare_versions:
+        (destination / "same-version").mkdir()
     report = {"result": "FAIL", "target": target, "version": version.group(1),
               "widths": list(WIDTHS), "screens": [],
               "browserErrors": [], "offline": "DEFERRED B098 (service workers blocked)",
@@ -275,7 +297,8 @@ def run(root, destination, target, headed=False, chromium_binary=None):
                                 )
                                 page.locator("#sets-form").wait_for()
                             screen = capture(
-                                page, section, width, destination, important
+                                page, section, width, destination, important,
+                                version.group(1) if compare_versions else None,
                             )
                             screen["problems"].extend(navigation_problems)
                             report["screens"].append(screen)
@@ -283,6 +306,7 @@ def run(root, destination, target, headed=False, chromium_binary=None):
                         load(page, origin + "/food-diary.html", "#fd-form")
                         page.locator("#fd-date").fill(LAST_DAY)
                         page.locator("#fd-date").dispatch_event("change")
+                        page.locator("#fd-date").blur()
                         assert page.locator("#fd-count").inner_text() == "3 food/drink entries"
                         report["screens"].append(capture(
                             page, "food-diary", width, destination,
@@ -316,7 +340,7 @@ def run(root, destination, target, headed=False, chromium_binary=None):
     return report
 
 
-def compare_screens(baseline_dir, current_dir, headed=False, chromium_binary=None):
+def compare_screens(baseline_dir, current_dir, headed=False, chromium_binary=None, screens=SCREENS):
     """Count unequal RGBA pixels, including pixels outside either image's bounds."""
     options = {"headless": not headed}
     if chromium_binary is not None:
@@ -325,7 +349,7 @@ def compare_screens(baseline_dir, current_dir, headed=False, chromium_binary=Non
     with sync_playwright() as playwright, playwright.chromium.launch(**options) as browser:
         page = browser.new_page()
         for width in WIDTHS:
-            for screen in SCREENS:
+            for screen in screens:
                 name = f"{width}-{screen}.png"
                 paths = (baseline_dir / name, current_dir / name)
                 if not all(path.is_file() for path in paths):
@@ -369,35 +393,58 @@ def compare(root, baseline, destination, headed, chromium, require_unchanged):
     check_repo(baseline)
     destination.mkdir()
     baseline_dir, current_dir = destination / "main", destination / "candidate"
+    repeat_dir = destination / "main-repeat"
     report = {"result": "FAIL", "baseline": str(baseline), "candidate": str(root), "screens": []}
     try:
-        main_result = run(baseline, baseline_dir, "local", headed, chromium)
-        current_result = run(root, current_dir, "local", headed, chromium)
+        main_result = run(baseline, baseline_dir, "local", headed, chromium, compare_versions=True)
+        repeat_result = run(baseline, repeat_dir, "local", headed, chromium)
+        current_result = run(root, current_dir, "local", headed, chromium, compare_versions=True)
         report["mainResult"] = main_result["result"]
         report["candidateResult"] = current_result["result"]
         report["mainError"] = main_result.get("error")
+        report["mainRepeatResult"] = repeat_result["result"]
+        report["mainRepeatError"] = repeat_result.get("error")
         report["candidateError"] = current_result.get("error")
-        if len(main_result["screens"]) != len(WIDTHS) * len(SCREENS) or (
-            len(current_result["screens"]) != len(WIDTHS) * len(SCREENS)
-        ):
-            raise ValueError("Incomplete capture; see main and candidate reports.")
+        if any(len(capture["screens"]) != len(WIDTHS) * len(SCREENS)
+               for capture in (main_result, repeat_result, current_result)):
+            raise ValueError("Incomplete capture; see the main, main-repeat and candidate reports.")
+        repeat_pixels = {
+            (row["screen"], row["width"]): row["changedPixels"]
+            for row in compare_screens(baseline_dir, repeat_dir, headed, chromium)
+        }
         layouts = {
             key: {(row["screen"], row["width"]): row for row in capture["screens"]}
             for key, capture in (("main", main_result), ("candidate", current_result))
         }
+        same_version = {
+            (row["screen"], row["width"]): row["changedPixels"]
+            for row in compare_screens(baseline_dir / "same-version", current_dir / "same-version",
+                                       headed, chromium, screens=APP_SCREENS)
+        }
+        report["comparisonVersion"] = COMPARISON_VERSION
         for screen in compare_screens(baseline_dir, current_dir, headed, chromium):
+            key = (screen["screen"], screen["width"])
+            screen["sameVersionChangedPixels"] = same_version.get(key, screen["changedPixels"])
+            screen["mainRepeatChangedPixels"] = repeat_pixels[key]
             for key, layout in layouts.items():
                 match = layout[screen["screen"], screen["width"]]
                 screen[key + "Overflow"] = match["computedLayout"]["overflowPixels"]
                 screen[key + "ClippedControls"] = match["computedLayout"]["clippedControls"]
                 screen[key + "Problems"] = match["problems"]
             report["screens"].append(screen)
-        unchanged = all(row["changedPixels"] == 0 for row in report["screens"])
-        if main_result["result"] == current_result["result"] == "PASS":
-            if unchanged or not require_unchanged:
-                report["result"] = "PASS"
+        unchanged = all(row["sameVersionChangedPixels"] == 0 for row in report["screens"])
+        repeated = all(row["mainRepeatChangedPixels"] == 0 for row in report["screens"])
+        report["strictResult"] = "PASS" if (
+            main_result["result"] == repeat_result["result"] == current_result["result"] == "PASS"
+            and repeated and unchanged
+        ) else "FAIL"
+        if main_result["result"] == repeat_result["result"] == current_result["result"] == "PASS":
+            if require_unchanged and not repeated:
+                report["error"] = "Main did not match a second independent capture of itself."
+            elif require_unchanged and not unchanged:
+                report["error"] = "Expected zero changed pixels after normalizing the version label."
             else:
-                report["error"] = "Expected zero changed pixels."
+                report["result"] = "PASS"
     except (PlaywrightError, ValueError, OSError) as error:
         report["error"] = f"{type(error).__name__}: {error}"
     finally:
@@ -417,7 +464,7 @@ def main():
                         help="Disposable localhost server or official served Pages preview")
     parser.add_argument("--baseline-root", type=Path, help="Main source checkout for pixel comparison")
     parser.add_argument("--require-unchanged", action="store_true",
-                        help="Fail the comparison when any screenshot pixels changed")
+                        help="Fail if pixels differ after comparing with the same preview version label")
     parser.add_argument("--chromium", type=Path, help="Optional Chromium executable")
     parser.add_argument("--headed", action="store_true",
                         help="Show the disposable test browser")
