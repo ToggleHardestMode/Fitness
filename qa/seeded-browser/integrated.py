@@ -1,7 +1,7 @@
 """B096 local-only Chromium smoke across real FitnessPilot preview screens.
 
 Runs exclusively in disposable Playwright contexts on a localhost static checkout.
-Offline/service-worker upgrade testing is deliberately deferred (owner KIV B098).
+Offline reload and service-worker cache-name upgrades run in a separate disposable context.
 No personal browser profile, public Pages URL, server upload, or real records.
 """
 import argparse
@@ -12,7 +12,9 @@ from pathlib import Path
 import threading
 
 from fixture import FOOD_KEY, WORKOUT_KEY, LAST_DAY, create_fixtures, validate_fixture
-from verify import QuietHandler, check_repo, get_store, set_seed
+from verify import check_repo, get_store, set_seed
+from offline import UpgradeHandler, check_offline_upgrade
+from train_ui_30 import reference_fixture, run_mode
 
 
 SYNTHETIC_CSV = (
@@ -37,6 +39,67 @@ def assert_absent(page):
     assert page.evaluate("(key) => localStorage.getItem(key)", FOOD_KEY) is None
 
 
+def check_iphone_qa(context, base, version, workout, food, errors):
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, expect
+
+    page = context.new_page()
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    try:
+        page.goto(base + "/qa.html", wait_until="domcontentloaded")
+        expect(page.locator("#preview-version")).to_have_text(version + " · main app banner")
+        headings = page.locator("#checks h2").all_text_contents()
+        check_ids = [f"O{i}" for i in range(1, 12)]
+        assert [title.split(" · ", 1)[0] for title in headings] == check_ids
+        expect(page.locator("#counts")).to_have_text("0 Pass · 0 Fail · 0 Blocked · 11 Not run")
+
+        rows = page.locator("#checks article")
+        rows.nth(0).locator("select").select_option("pass")
+        rows.nth(0).locator("textarea").fill("Synthetic version check.")
+        rows.nth(1).locator("select").select_option("fail")
+        rows.nth(10).locator("select").select_option("blocked")
+        expect(page.locator("#counts")).to_have_text("1 Pass · 1 Fail · 1 Blocked · 8 Not run")
+
+        download = page.locator("#download-report")
+        for width in (320, 390, 428):
+            page.set_viewport_size({"width": width, "height": 844})
+            assert page.evaluate("document.documentElement.scrollWidth") <= width
+            download.click(trial=True)
+        with page.expect_download() as event:
+            download.click()
+        report_file = event.value
+        assert report_file.suggested_filename == f"fitnesspilot-{version.lower().replace('.', '')}-qa.json"
+        report = json.loads(Path(report_file.path()).read_bytes())
+        assert report["schema"] == "fitnesspilot-qa-v1"
+        assert report["previewVersion"] == version
+        assert [entry["id"] for entry in report["results"]] == check_ids
+        assert report["counts"] == {"pass": 1, "fail": 1, "blocked": 1, "not-run": 8}
+        assert [entry["status"] for entry in report["results"]] == [
+            "pass", "fail", *(["not-run"] * 8), "blocked"
+        ]
+        assert report["results"][0]["note"] == "Synthetic version check."
+        assert set(report) == {"schema", "previewVersion", "checkedAt", "results", "counts", "note"}
+        assert get_store(page, WORKOUT_KEY) == workout
+        assert get_store(page, FOOD_KEY) == food
+
+        page.route(base + "/index.html", lambda route: route.fulfill(
+            content_type="text/html", body="<!doctype html><title>Missing banner fixture</title>"
+        ))
+        page.reload(wait_until="load")
+        expect(page.locator("#preview-version")).to_contain_text("Version unavailable")
+        expect(page.locator("#counts")).to_have_text("0 Pass · 0 Fail · 0 Blocked · 11 Not run")
+        try:
+            with page.expect_download(timeout=1000):
+                download.click()
+        except PlaywrightTimeoutError:
+            expect(page.locator("#export-status")).to_contain_text("Export failed")
+        else:
+            raise AssertionError("QA report downloaded without a preview banner")
+        assert get_store(page, WORKOUT_KEY) == workout
+        assert get_store(page, FOOD_KEY) == food
+    finally:
+        page.close()
+
+
 def smoke(repo, chromium_binary=None, headed=False):
     from playwright.sync_api import sync_playwright
 
@@ -45,9 +108,10 @@ def smoke(repo, chromium_binary=None, headed=False):
         raise ValueError("Expected B110 preview vault is missing.")
     fixtures = create_fixtures()
     validate_fixture(fixtures)
+    benchmark_fixture = reference_fixture(repo)
 
     server = ThreadingHTTPServer(
-        ("127.0.0.1", 0), partial(QuietHandler, directory=str(repo))
+        ("127.0.0.1", 0), partial(UpgradeHandler, directory=str(repo))
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -62,6 +126,7 @@ def smoke(repo, chromium_binary=None, headed=False):
                 kwargs["executable_path"] = str(chromium_binary)
             browser = playwright.chromium.launch(**kwargs)
             try:
+                UpgradeHandler.use_upgrade = False
                 with browser.new_context(
                     accept_downloads=True,
                     service_workers="block",
@@ -165,10 +230,43 @@ def smoke(repo, chromium_binary=None, headed=False):
                     assert get_store(page, WORKOUT_KEY) == before_export
                     page.locator("[data-action='restore-cancel']").click()
                     findings.append("Workout export matches saved data; checked-file preview never restores over records.")
+                    # Plain workout JSON must restore from the actual file into a distinct clean profile.
+                    with browser.new_context(
+                        accept_downloads=True, service_workers="block",
+                        viewport={"width": 390, "height": 844},
+                    ) as clean_workout:
+                        clean_page = clean_workout.new_page()
+                        clean_page.set_default_timeout(15000)
+                        clean_page.on("pageerror", lambda exc: errors.append(str(exc)))
+                        clean_page.goto(base + "/index.html", wait_until="domcontentloaded")
+                        clean_page.locator("nav.bottom-tabs button[data-page='tools']").wait_for()
+                        assert clean_page.evaluate(
+                            "(key) => localStorage.getItem(key)", WORKOUT_KEY
+                        ) is None
+                        go(clean_page, "tools")
+                        upload_bytes(clean_page, "#backup-file",
+                                     download.suggested_filename, backup_bytes)
+                        clean_page.locator("[data-action='restore-confirm']").wait_for()
+                        assert clean_page.evaluate(
+                            "(key) => localStorage.getItem(key)", WORKOUT_KEY
+                        ) is None
+                        clean_page.locator("#restore-word").fill("REPLACE")
+                        clean_page.on("dialog", lambda dialog: dialog.accept())
+                        clean_page.locator("[data-action='restore-confirm']").click()
+                        assert get_store(clean_page, WORKOUT_KEY) == before_export
+                        clean_page.reload(wait_until="domcontentloaded")
+                        assert get_store(clean_page, WORKOUT_KEY) == before_export
+                    findings.append("Downloaded plain workout JSON restores identical records in a clean context.")
+
 
                     # B110: one authenticated download containing both stores.
                     expected_workout = get_store(page, WORKOUT_KEY)
                     expected_food = get_store(page, FOOD_KEY)
+                    banner = page.locator(".preview-banner").inner_text().split()
+                    assert banner[0] == "FITNESSPILOT" and banner[2] == "PREVIEW"
+                    assert page.get_by_role("link", name="Open iPhone QA checklist").get_attribute("href") == "./qa.html"
+                    check_iphone_qa(context, base, banner[1], expected_workout, expected_food, errors)
+                    findings.append("iPhone QA renders O1–O11, downloads the banner version, and rejects export without it; both stores are unchanged.")
                     page.goto(base + "/encrypted-backup.html", wait_until="domcontentloaded")
                     page.locator("#export-pass").fill(PASSPHRASE)
                     page.locator("#export-confirm").fill(PASSPHRASE)
@@ -231,7 +329,12 @@ def smoke(repo, chromium_binary=None, headed=False):
                         assert get_store(fresh, FOOD_KEY) == expected_food
                         findings.append("Two-store encrypted restore in separate clean browser preserved exact records after reload.")
 
+                findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
                 assert not errors, "Browser JavaScript errors: " + " | ".join(errors[:5])
+                train_baseline = [
+                    run_mode(browser, base.removesuffix('/preview-v101'), benchmark_fixture, mode)
+                    for mode in ('standard', 'focus')
+                ]
             finally:
                 browser.close()
     finally:
@@ -240,7 +343,8 @@ def smoke(repo, chromium_binary=None, headed=False):
         thread.join(timeout=3)
 
     return {"result": "PASS", "browser": "isolated Playwright Chromium",
-            "checks": findings, "offline": "DEFERRED B098 by owner"}
+            "checks": findings, "automated_30_set_baseline": train_baseline,
+            "offline": "PASS in disposable Chromium: reload and cache-name upgrade; Safari not tested"}
 
 
 def main():

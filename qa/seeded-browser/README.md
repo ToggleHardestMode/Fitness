@@ -27,12 +27,12 @@ This does **not** yet test the full Dashboard, symptom UI, vitamin conversions, 
 - Playwright contexts are new, isolated and disposable. The server binds only to `127.0.0.1` on an assigned port, never to a shared production origin.
 - The fixture data is fictional and versioned; it does not read any user's browser storage or contain health information.
 - The test does not overwrite repository files, existing backups, source data or existing output reports.
-- The runner uses `service_workers='block'` to avoid caching real preview assets during the first local seeded browser checks. Offline/service-worker acceptance needs a separate test.
+- The food-only runner blocks service workers. The integrated runner allows them only in its disposable offline scenario; neither runner touches the owner's browser profile or live site cache.
 - A failing assertion aborts the test. There are no automatic retries after unexpected mutation or input mismatch.
 
 The Python Playwright package and managed Chromium must be installed locally. `npm test` remains the existing native FitnessPilot suite; the browser runner supplements it rather than replacing it.
 
-## B096 integrated preview smoke (online workflows only)
+## B096 integrated preview smoke (online and offline workflows)
 
 Run the same setup shown above, then use:
 
@@ -46,7 +46,43 @@ duplicate prevention, rest timer across pages, downloaded workout JSON and
 checked-file workflow, then encrypted both-store export, invalid passphrase
 and ciphertext rejection, and clean-profile recovery with record comparison.
 
-Both runners block service workers and bind ONLY to 127.0.0.1.
-Offline, service-worker upgrades, iPhone Safari, and sound audibility are
-NOT tested. Offline B098 is explicitly KIV and cannot be treated as passed.
-Do not clear any phone or browser website data. No repository files change.
+The integrated runner also restores the downloaded plain workout JSON into a
+separate empty browser context. Its dedicated offline scenario allows a real
+service worker in another disposable context, reloads the cached app with the
+network disabled, and serves a changed cache name **from memory** before
+verifying that neither local storage key changed. No source file is rewritten.
+
+The CI `browser` job runs this same local-only runner using managed Chromium.
+For a local repeat, use the existing `integrated.py --repo-root .` command.
+A browser CI pass does not prove Safari, sound audibility, or real device data
+recovery. Do not clear phone/browser website data. No repository files change.
+
+## Step 1.3 mobile screenshot comparison
+
+The browser CI job compares the pull-request build with its pinned `main`
+base on the same runner. It captures Dashboard, Train, Plan, Tools, Food
+Diary and Backup Vault at 320, 390 and 428 CSS px. Both captures use the
+same synthetic data, fixed date, locale and reduced-motion setting, with
+software rendering and compositor settings held constant for capture.
+
+Download the `fitnesspilot-mobile` artifact for the 36 full-page PNGs,
+the individual layout reports and `comparison.json`. Each comparison row
+lists changed pixels, horizontal overflow, clipped controls and control
+failures for both builds. Pixels outside the shared image area count as
+changed. Layout and navigation failures fail the job.
+
+To run locally, use the same Playwright setup above and pass a checkout
+of `main` as the baseline:
+
+    python qa/seeded-browser/mobile_ui.py --repo-root . --baseline-root ../fitness-main --output ../mobile-evidence
+
+For a Stage 2 refactor, require zero changed pixels with `--require-unchanged`.
+The output directory must be new. To capture just one local build, omit
+`--baseline-root`. This is Chromium mobile emulation. Use the owner checklist
+in `ROADMAP.md` for physical iPhone acceptance.
+
+## B103 30-set logging benchmark
+
+The integrated browser job runs the 30-set synthetic fixture through the
+Train form in Standard and Focus. See [the baseline and operator protocol](../../docs/qa/logging-baseline.md)
+for measurements and the commands to repeat the run.
