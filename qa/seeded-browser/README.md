@@ -27,12 +27,12 @@ This does **not** yet test the full Dashboard, symptom UI, vitamin conversions, 
 - Playwright contexts are new, isolated and disposable. The server binds only to `127.0.0.1` on an assigned port, never to a shared production origin.
 - The fixture data is fictional and versioned; it does not read any user's browser storage or contain health information.
 - The test does not overwrite repository files, existing backups, source data or existing output reports.
-- The runner uses `service_workers='block'` to avoid caching real preview assets during the first local seeded browser checks. Offline/service-worker acceptance needs a separate test.
+- The food-only runner blocks service workers. The integrated runner allows them only in its disposable offline scenario; neither runner touches the owner's browser profile or live site cache.
 - A failing assertion aborts the test. There are no automatic retries after unexpected mutation or input mismatch.
 
 The Python Playwright package and managed Chromium must be installed locally. `npm test` remains the existing native FitnessPilot suite; the browser runner supplements it rather than replacing it.
 
-## B096 integrated preview smoke (online workflows only)
+## B096 integrated preview smoke (online and offline workflows)
 
 Run the same setup shown above, then use:
 
@@ -46,84 +46,36 @@ duplicate prevention, rest timer across pages, downloaded workout JSON and
 checked-file workflow, then encrypted both-store export, invalid passphrase
 and ciphertext rejection, and clean-profile recovery with record comparison.
 
-Both runners block service workers and bind ONLY to 127.0.0.1.
-Offline, service-worker upgrades, iPhone Safari, and sound audibility are
-NOT tested. Offline B098 is explicitly KIV and cannot be treated as passed.
-Do not clear any phone or browser website data. No repository files change.
+The integrated runner also restores the downloaded plain workout JSON into a
+separate empty browser context. Its dedicated offline scenario allows a real
+service worker in another disposable context, reloads the cached app with the
+network disabled, and serves a changed cache name **from memory** before
+verifying that neither local storage key changed. No source file is rewritten.
 
-## B097: Mobile viewport and complete CSS smoke
+The CI `browser` job runs this same local-only runner using managed Chromium.
+For a local repeat, use the existing `integrated.py --repo-root .` command.
+A browser CI pass does not prove Safari, sound audibility, or real device data
+recovery. Do not clear phone/browser website data. No repository files change.
 
-Use the same Python Playwright/Chromium installation as B096. From a disposable
-checkout of the B097 PR branch, capture Dashboard, Train, Plan, Tools, Food Diary
-and the Encrypted Backup Vault at **320, 390 and 428 CSS pixels** (18 images).
+## Step 1.3 mobile screenshot comparison
 
-    py .\qa\seeded-browser\mobile_ui.py --repo-root . --target local --output ..\B097-local-evidence
-    py .\qa\seeded-browser\mobile_ui.py --repo-root . --target pages --output ..\B097-pages-evidence
+The browser CI job compares the pull-request build with its pinned `main`
+base on the same runner. It captures Dashboard, Train, Plan, Tools, Food
+Diary and Backup Vault at 320, 390 and 428 CSS px. Both captures use the
+same synthetic data, fixed date, locale and reduced-motion setting.
 
-Use **new, different output paths** for repeat runs. The runner refuses to
-overwrite an existing evidence directory. Each output folder contains 18
-full-page screenshots and a report.json summarizing computed full-CSS
-document overflow, clipped controls, small touch targets, mobile navigation
-overlap, accessible critical controls and JavaScript errors. A nonzero exit
-signals a failure; inspect the PNGs before interpreting a PASS as visual
-acceptance. Small touch-target measurements are warnings, not automatic failures.
+Download the `fitnesspilot-mobile` artifact for the 36 full-page PNGs,
+the individual layout reports and `comparison.json`. Each comparison row
+lists changed pixels, horizontal overflow, clipped controls and control
+failures for both builds. Pixels outside the shared image area count as
+changed. Layout and navigation failures fail the job.
 
-The Pages mode uses only
-https://togglehardestmode.github.io/Fitness/preview-v101/
-and loads *synthetic* workout and Food Diary fixtures in **new, disposable
-Chromium contexts**. It never opens your regular browser profile, reads
-your real localStorage or overwrites saved records. The localhost mode
-serves source via 127.0.0.1 on an ephemeral port. Both modes **block
-service workers**; B098 offline/upgrade testing remains KIV, not passed.
-No app files, storage keys, GitHub source or external server data are
-changed by running this inspector. Captured images use fictional data.
+To run locally, use the same Playwright setup above and pass a checkout
+of `main` as the baseline:
 
-### B097: Intercepted mobile navigation diagnosis (2026-11-09)
+    python qa/seeded-browser/mobile_ui.py --repo-root . --baseline-root ../fitness-main --output ../mobile-evidence
 
-The first owner-run local and served-Pages attempts both returned `FAIL`
-before screenshots, because Playwright clicked the **already-active Dashboard
-tab** and an SVG training chart intercepted that touch click. This was both
-an unnecessary test action and possible evidence of a real stacked-element
-mobile issue. The revised runner **captures Dashboard first**, tests the
-active tab's click actionability without actually activating it, and reports
-any intercepted touch target as a `problems` entry. If another tab's touch
-click is blocked, it uses keyboard Enter **only for diagnostic navigation**
-and keeps the blocking touch failure in the final JSON and exit code.
-It never uses `force=True` or suppresses a UI failure to claim PASS.
-
-For the earlier `--single-branch` clone, `git switch --track` may fail
-even after the explicit fetch. To inspect the new PR head without altering
-tracking configuration, run `git fetch origin qa/b097-mobile-viewport-20261109`
-then `git switch --detach FETCH_HEAD`. Inspect `git status --short` before
-switching and preserve modified tracked files; untracked `__pycache__` is
-generated by Python. Use **new** evidence directories for every rerun.
-
-### B097 v4: identify root overflow instead of hiding it
-
-Owner's **valid v3** local and Pages runs on exact PR #91 head
-`539b8eeceed090ad919ff5d228f4b0e787d75e82` each captured 18 screens,
-and both **FAILED** identically: 320px Dashboard +87px scroll width and
-blocked Dashboard/Train touch navigation; 390px Dashboard +16px scroll
-width; no JS page errors. Inspecting the uploaded v3 report and three
-screenshots confirms a **407px** full-page capture at a 320px viewport,
-a **406px** capture at 390px, and bottom navigation positioned partly
-beyond the 320px right edge. The actual overflowing element is NOT yet
-known. Strength Journey's SVG is a suspect, but its 410-unit viewBox
-alone does not establish causation and its chart panel already clips overflow.
-
-The v4 QA runner preserves all failure assertions and adds DOM geometry:
-`layoutRoots`, `overflowCandidates`, viewport metrics and each bottom
-tab's real center hit target. It prints limited 320/390 Dashboard geometry
-to the terminal, and stores full detail in `report.json`. This is
-diagnostic instrumentation only, not a CSS fix or a test waiver. Do
-**not** use `force=True`, add global `overflow-x:hidden`, or claim PASS
-from screenshots existing. Offline B098 remains KIV.
-
-Use a clean disposable B097 checkout and **new** output folders:
-
-    py .\qa\seeded-browser\mobile_ui.py --repo-root . --target local --output ..\B097-local-evidence-v4
-    py .\qa\seeded-browser\mobile_ui.py --repo-root . --target pages --output ..\B097-pages-evidence-v4
-
-If either output path already exists, choose another unique name. Do not
-delete the v3 evidence. Return the console diagnostic or report.json;
-the next patch must target the element actually responsible for overflow.
+For a Stage 2 refactor, require zero changed pixels with `--require-unchanged`.
+The output directory must be new. To capture just one local build, omit
+`--baseline-root`. This is Chromium mobile emulation. Use the owner checklist
+in `ROADMAP.md` for physical iPhone acceptance.

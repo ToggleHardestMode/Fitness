@@ -8,7 +8,7 @@ FitnessPilot is a local-first, no-account workout and food tracker served from G
 | --- | --- | --- |
 | Preview app | `preview-v101/` | Where feature work goes. The folder name is historical; it is **not** the app version. |
 | Production app | repo root: `index.html`, `app.js`, `core.js`, `sw.js`, `manifest.webmanifest`, `styles.css`, `ro-*` | **Do not change** unless the owner explicitly approves a production change in the request. |
-| Records | `docs/decisions/`, `docs/plans/`, `ROADMAP.md` | Read before changing behaviour. Edit only when the request asks you to. |
+| Records | `docs/decisions/`, `docs/plans/`, `ROADMAP.md` | Read before changing behaviour. Edit only when the request asks you to; for roadmap status cells see section 9. |
 | Tests and CI | `tests/`, `scripts/`, `.github/workflows/` | Add or update tests with the change. Do not weaken an existing test to make it pass. |
 | Content | `templates/`, `examples/`, `archive/` | Leave alone unless the request names them. |
 
@@ -75,3 +75,40 @@ Never commit personal workout or food logs, health observations, real backups or
 - The change sits only in the paths the request allows (normally `preview-v101/` plus tests).
 - `npm test` and `node scripts/verify-preview-assets.mjs` pass, or you have said exactly which did not run and why.
 - The pull request states what changed, which records you checked, the test result for the final commit, and what still needs testing on a device.
+
+## 9. Working the roadmap
+
+`ROADMAP.md` has an **Agent queue**. When the request is "next roadmap step", or names a step, work this way. `docs/decisions/2026-11-11-roadmap-restructure-permissions.md` is the authority for the permissions used below; if it is not on `main`, stop and tell the owner.
+
+**One step, one pull request.**
+
+1. Take the first row with status Open whose "Needs" column is satisfied, unless the owner names a step. Do not skip ahead.
+2. Read the code first. If the step is already done, change only that row and cite the file and test that prove it.
+3. Make the smallest change that meets the row's "Done when" cell. Report other problems you notice; do not fix them in the same pull request.
+4. Set the row's status to `PR #n` in the same pull request. Use only the roadmap's four status words: Open, PR #n, In source, On device.
+5. Stop once the pull request is open. Do not start the next step.
+
+Keep a pull request near 400 changed lines, not counting code that only moved.
+
+**Checks to report**, in addition to section 3:
+
+| Check | Source | Required from |
+| --- | --- | --- |
+| Browser flows | CI browser job on the final commit | after step 1.2 merges |
+| Changed pixels and overflow at 320, 390, 428 px | same CI job | after step 1.3 merges |
+
+Anything that needs the phone is reported as not checked, naming the owner checklist step (O1–O11) that covers it.
+
+**Always needs the owner's answer first**, whatever the step says:
+
+- storage keys, the shape of saved records, backup backward-compatibility;
+- `[PT Review]` handling, exercise clearance, symptom gating, recovery scores, and the guards in `recommendNextExercise` and `manualProgression` — when a refactor moves this code, its tests pass unmodified;
+- roadmap decisions D1–D4, anything under "Parked", a new dependency or build step, or a looser Content-Security-Policy.
+
+**Replacing a source-text test.** Some tests read a source file and match text in it. The permissions record allows replacing such an assertion with a behaviour test that fails when the same rule is broken. List each one in the pull request: test name, the rule (unchanged), old assertion, new test. If no behaviour test can protect the rule, keep the assertion and update only its path.
+
+**Stage 1.** Extend the existing runner in `qa/seeded-browser/`; do not add a second tool. Show the browser job can fail: break one flow on a scratch commit, quote the red result in the pull request, then drop that commit.
+
+**Stage 2 (restructuring).** The user must see no difference. Move code without improving it on the way. Zero changed pixels is the acceptance test; if pixels change, find the cause. Keep stylesheet rules in the same relative order when merging, because later files currently win. Run these steps one at a time, never alongside another branch that edits `preview-v101/`. Moved code keeps lines to 140 characters or fewer.
+
+**Stage 3 (daily logging).** Each change is optional or obvious, and a save never happens as a side effect.

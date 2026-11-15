@@ -276,3 +276,14 @@ a,.eyebrow,.hero-kicker,.exercise-choice b,.side-tag {color:var(--lime);}
 .v151-milestone-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#b99150,#ffe4a6)}
 .v151-milestone>small{font-size:11px;line-height:1.4;color:#dbc9b2}
 @media(max-width:390px){.v151-milestone{padding:10px}.v151-milestone-top{font-size:11px}}
+
+/* B097: allow long dashboard set-status values to wrap on narrow phones.
+   A nowrap flex item otherwise expands the mobile layout viewport and fixed tabs. */
+@media (max-width:420px) {
+  #main .data-row > .score {
+    min-width:0;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    text-align:right;
+  }
+}

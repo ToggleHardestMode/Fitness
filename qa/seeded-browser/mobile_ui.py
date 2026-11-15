@@ -4,6 +4,7 @@ New disposable Chromium contexts and synthetic stores only. Online layout testin
 service-worker/offline scenarios (B098) remain deliberately untested.
 """
 import argparse
+from base64 import b64encode
 from functools import partial
 from http.server import ThreadingHTTPServer
 import json
@@ -11,12 +12,15 @@ from pathlib import Path
 import re
 import threading
 
+from playwright.sync_api import Error as PlaywrightError, sync_playwright
+
 from fixture import FOOD_KEY, WORKOUT_KEY, LAST_DAY, create_fixtures, validate_fixture
 from verify import QuietHandler, check_repo, get_store, set_seed
 
 
 WIDTHS = (320, 390, 428)
 PAGES_ORIGIN = "https://togglehardestmode.github.io/Fitness/preview-v101"
+SCREENS = ("dashboard", "train", "plan", "tools", "food-diary", "backup-vault")
 
 
 def inspect_layout(page):
@@ -121,6 +125,7 @@ def capture(page, label, width, directory, controls):
     problems = []
     # Capture evidence before actionability checks scroll the page.
     screenshot = f"{width}-{label}.png"
+    page.evaluate("() => window.scrollTo(0, 0)")
     page.screenshot(path=str(directory / screenshot),
                     full_page=True, animations="disabled")
     for selector in controls:
@@ -131,7 +136,7 @@ def capture(page, label, width, directory, controls):
             box = locator.bounding_box()
             if box and (box["x"] < -2 or box["x"] + box["width"] > width + 2):
                 problems.append("Critical control clipped: " + selector)
-        except Exception as error:
+        except PlaywrightError as error:
             problems.append("Critical control inaccessible: " + selector +
                             " (" + type(error).__name__ + ")")
 
@@ -162,7 +167,7 @@ def navigate_section(page, name):
     problems = []
     try:
         tab.click(timeout=4000)
-    except Exception as error:
+    except PlaywrightError as error:
         blocker = tab.evaluate("""el => {
           const r = el.getBoundingClientRect();
           const hit = document.elementFromPoint(r.left + r.width/2,
@@ -188,8 +193,6 @@ def load(page, url, selector):
 
 
 def run(root, destination, target, headed=False, chromium_binary=None):
-    from playwright.sync_api import sync_playwright
-
     check_repo(root)
     validate_fixture(create_fixtures())
     banner = (root / "preview-v101/index.html").read_text("utf-8")
@@ -227,11 +230,13 @@ def run(root, destination, target, headed=False, chromium_binary=None):
                 for width in WIDTHS:
                     with browser.new_context(
                         viewport={"width": width, "height": 844},
+                        timezone_id="Asia/Singapore", locale="en-SG", reduced_motion="reduce",
                         device_scale_factor=1,
                         is_mobile=True, has_touch=True,
                         service_workers="block",
                     ) as context:
                         page = context.new_page()
+                        page.clock.set_fixed_time(LAST_DAY + "T12:00:00+08:00")
                         page.set_default_timeout(15000)
                         page.on("pageerror", lambda exc: report["browserErrors"].append(str(exc)))
                         load(page, origin + "/index.html",
@@ -285,7 +290,8 @@ def run(root, destination, target, headed=False, chromium_binary=None):
                 browser.close()
 
         failed = [s for s in report["screens"] if s["problems"]]
-        report["result"] = "FAIL" if failed or report["browserErrors"] else "PASS"
+        complete = len(report["screens"]) == len(WIDTHS) * len(SCREENS)
+        report["result"] = "PASS" if complete and not failed and not report["browserErrors"] else "FAIL"
     except Exception as error:
         report["error"] = type(error).__name__ + ": " + str(error)
     finally:
@@ -300,6 +306,97 @@ def run(root, destination, target, headed=False, chromium_binary=None):
     return report
 
 
+def compare_screens(baseline_dir, current_dir, headed=False, chromium_binary=None):
+    """Count unequal RGBA pixels, including pixels outside either image's bounds."""
+    options = {"headless": not headed}
+    if chromium_binary is not None:
+        options["executable_path"] = str(chromium_binary)
+    results = []
+    with sync_playwright() as playwright, playwright.chromium.launch(**options) as browser:
+        page = browser.new_page()
+        for width in WIDTHS:
+            for screen in SCREENS:
+                name = f"{width}-{screen}.png"
+                paths = (baseline_dir / name, current_dir / name)
+                if not all(path.is_file() for path in paths):
+                    raise ValueError("Missing screenshot pair: " + name)
+                encoded = [b64encode(path.read_bytes()).decode("ascii") for path in paths]
+                comparison = page.evaluate("""async images => {
+                    async function pixels(png) {
+                        const bytes = Uint8Array.from(atob(png), c => c.charCodeAt(0));
+                        const image = await createImageBitmap(new Blob([bytes], {type: 'image/png'}));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = image.width;
+                        canvas.height = image.height;
+                        const context = canvas.getContext('2d');
+                        context.drawImage(image, 0, 0);
+                        return context.getImageData(0, 0, canvas.width, canvas.height);
+                    }
+                    const [base, current] = await Promise.all(images.map(pixels));
+                    const width = Math.min(base.width, current.width);
+                    const height = Math.min(base.height, current.height);
+                    let changedPixels = base.width * base.height + current.width * current.height -
+                                        2 * width * height;
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const a = (y * base.width + x) * 4;
+                            const b = (y * current.width + x) * 4;
+                            if (base.data[a] !== current.data[b] ||
+                                base.data[a + 1] !== current.data[b + 1] ||
+                                base.data[a + 2] !== current.data[b + 2] ||
+                                base.data[a + 3] !== current.data[b + 3]) changedPixels++;
+                        }
+                    }
+                    return {changedPixels, baselineSize: [base.width, base.height],
+                            currentSize: [current.width, current.height]};
+                }""", encoded)
+                results.append({"screen": screen, "width": width, **comparison})
+    return results
+
+
+def compare(root, baseline, destination, headed, chromium, require_unchanged):
+    check_repo(root)
+    check_repo(baseline)
+    destination.mkdir()
+    baseline_dir, current_dir = destination / "main", destination / "candidate"
+    report = {"result": "FAIL", "baseline": str(baseline), "candidate": str(root), "screens": []}
+    try:
+        main_result = run(baseline, baseline_dir, "local", headed, chromium)
+        current_result = run(root, current_dir, "local", headed, chromium)
+        report["mainResult"] = main_result["result"]
+        report["candidateResult"] = current_result["result"]
+        report["mainError"] = main_result.get("error")
+        report["candidateError"] = current_result.get("error")
+        if len(main_result["screens"]) != len(WIDTHS) * len(SCREENS) or (
+            len(current_result["screens"]) != len(WIDTHS) * len(SCREENS)
+        ):
+            raise ValueError("Incomplete capture; see main and candidate reports.")
+        layouts = {
+            key: {(row["screen"], row["width"]): row for row in capture["screens"]}
+            for key, capture in (("main", main_result), ("candidate", current_result))
+        }
+        for screen in compare_screens(baseline_dir, current_dir, headed, chromium):
+            for key, layout in layouts.items():
+                match = layout[screen["screen"], screen["width"]]
+                screen[key + "Overflow"] = match["computedLayout"]["overflowPixels"]
+                screen[key + "ClippedControls"] = match["computedLayout"]["clippedControls"]
+                screen[key + "Problems"] = match["problems"]
+            report["screens"].append(screen)
+        unchanged = all(row["changedPixels"] == 0 for row in report["screens"])
+        if main_result["result"] == current_result["result"] == "PASS":
+            if unchanged or not require_unchanged:
+                report["result"] = "PASS"
+            else:
+                report["error"] = "Expected zero changed pixels."
+    except (PlaywrightError, ValueError, OSError) as error:
+        report["error"] = f"{type(error).__name__}: {error}"
+    finally:
+        (destination / "comparison.json").write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, required=True,
@@ -308,6 +405,9 @@ def main():
                         help="New, non-existing output folder for 18 screenshots and report")
     parser.add_argument("--target", choices=("local", "pages"), default="local",
                         help="Disposable localhost server or official served Pages preview")
+    parser.add_argument("--baseline-root", type=Path, help="Main source checkout for pixel comparison")
+    parser.add_argument("--require-unchanged", action="store_true",
+                        help="Fail the comparison when any screenshot pixels changed")
     parser.add_argument("--chromium", type=Path, help="Optional Chromium executable")
     parser.add_argument("--headed", action="store_true",
                         help="Show the disposable test browser")
@@ -315,6 +415,21 @@ def main():
     root = args.repo_root.expanduser().resolve()
     if not root.is_dir():
         parser.error("--repo-root is not an existing directory: " + str(root))
+    if args.baseline_root and args.target != "local":
+        parser.error("--baseline-root compares two localhost checkouts")
+    if args.require_unchanged and args.baseline_root is None:
+        parser.error("--require-unchanged needs --baseline-root")
+    if args.baseline_root:
+        try:
+            report = compare(root, args.baseline_root.expanduser().resolve(),
+                             args.output.expanduser().resolve(), args.headed, args.chromium,
+                             args.require_unchanged)
+        except (ValueError, OSError) as error:
+            parser.exit(1, "B124 CONFIG ERROR: " + str(error) + "\n")
+        print(json.dumps(report, indent=2))
+        if report["result"] != "PASS":
+            parser.exit(1, "B124 comparison failed; inspect the screenshot artifact.\n")
+        return
     try:
         report = run(root, args.output.expanduser().resolve(),
                      args.target, args.headed, args.chromium)

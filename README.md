@@ -1,109 +1,40 @@
-# FitnessPilot — local-first workout tracker
+# FitnessPilot
 
-FitnessPilot is a browser-based, no-account workout tracker hosted on GitHub Pages. The public repository contains **application source and example routines only**, not your private workout history.
-
-## Development roadmap
-
-The canonical [FitnessPilot master backlog](ROADMAP.md) tracks 116 numbered fixes, progression tasks, feature proposals, verification gates and deferred ideas. The roadmap is planning only; workout data stays local and is not stored in this public repository.
+FitnessPilot is a local-first workout planner, training log and food diary that runs in your browser. No account or automatic device sync is required. Your records stay in the browser until you explicitly export or restore them.
 
 ## Open the app
 
-| Edition | Link | What it is |
-| --- | --- | --- |
-| **Production (older app)** | [Open FitnessPilot](https://togglehardestmode.github.io/Fitness/) | Existing root application, kept separate from experimental features |
-| **V15.22.2 test preview** | [Open the V15.22.2 preview](https://togglehardestmode.github.io/Fitness/preview-v101/?v=59) | Most recent GitHub **source** version; preview-only workout features, not a production upgrade |
+- [Current preview](https://togglehardestmode.github.io/Fitness/preview-v101/) — see the banner for its actual version.
+- [Production (older, separate app)](https://togglehardestmode.github.io/Fitness/).
+- [Roadmap](ROADMAP.md) · [Release history](CHANGELOG.md) · [Preview notes](preview-v101/README.md).
 
-**Current source (5 November 2026):** V15.22.2 preview (PR #67). Device acceptance is still outstanding — see [ROADMAP.md](ROADMAP.md).
+The two editions keep separate workout stores. A Safari tab and an installed home-screen app may also keep different local data.
 
-*Historical release status (23 October 2026):* V15.11.1 preview keeps the lifetime milestones and logbook, fixes a Days with logs counter mismatch and adds synthetic backup-integrity regressions. GitHub source publication does **not** prove Pages delivery or device acceptance. At that time the preview showed the **V15.11.1** banner; production root remained an older separate app.
+## Install and log
 
-Both editions are served from the same web origin but use different browser-storage keys:
+1. Open your chosen edition in Safari and confirm the banner. Use **Share → Add to Home Screen** to install it.
+2. In **Plan**, choose or import a workout template and assign training days if needed. Importing never logs sets or automatically grants `[PT Review]` clearance.
+3. In **Train**, select the workout and date; enter and save only sets you actually completed.
+4. Use **Food Diary** for meals and nutrition entries. Missing entries do not mean zero intake.
+5. In **Tools**, export backups regularly and store the files somewhere you control.
 
-- Production: `fitnesspilot.web.v1`
-- Preview: `fitnesspilot.preview.v101.v1`
+## Back up and restore
 
-The preview folder's historic name `preview-v101` is intentional; it does **not** mean the preview is still at app version V10.1. Do not clear Safari website data to force an update, because doing so can remove saved records.
+- Use **Tools → Download full backup (.json)** for workout records. Export Food Diary data separately when needed; a combined encrypted backup is also available where shown in the preview.
+- Review a restore before confirming it: restoring can replace existing records. Use a disposable browser profile to rehearse recovery.
+- Data does not follow you between devices automatically. Do not clear Safari website data as an update or troubleshooting step: that can remove your working copy.
 
-## Install and start on iPhone
+## Development
 
-1. Open the edition you want in **Safari** and confirm its version, especially for the preview.
-2. Use Safari's **Share → Add to Home Screen** (labels depend on iOS). A separate installed web-app storage context can behave differently; do not assume workout history is automatically shared with a Safari tab.
-3. In **Plan**, add a template (the current preview recommends **V10.2 Home**), then separately choose weekdays if you want a schedule.
-4. In **Train**, choose the workout and date, enter your actual weight, repetitions and effort, and **Save** the completed sets.
-5. In **Tools**, export a full JSON backup regularly and save it somewhere you control.
+The preview app lives in `preview-v101/` (a historical folder name, **not** its current version). The root app is separate and remains in production. Serve the repository over HTTP, not by opening HTML files directly.
 
-Workout templates are **not** automatically assigned, completed or medically cleared when imported. Exercise history and weekly assignments are distinct.
+Requires Node.js 22 for the checks. The app itself is static HTML, CSS and JavaScript.
 
-## V15.11.1 preview feature guide (historical — later features are listed in ROADMAP.md)
-
-These features are implemented in `preview-v101/`. Their presence in GitHub is verified; individual device behavior still requires testing.
-
-| Area | Available in the V15.11.1 preview |
-| --- | --- |
-| **Plan** | Optional **V10.2 Home** 4-day workout import, earlier **V10.1 Home** templates, CSV template import, seven-day scheduling |
-| **Workout editor** | **Customize** an exercise and **Save as new workout version**; original template IDs and saved historical sets are preserved; new version is not scheduled automatically |
-| **Train** | Standard logging, Focus Mode, saved-set references, explicit **Copy saved set** for eligible upper-body sets, RPE entry, rest timer |
-| **Dashboard** | **Consistent saved-working-set day counts**, lifetime completed working sets and a read-only next milestone (25, 50, 100, 250, 500, 1,000, then each 500), daily saved set chart, logged/planned weekly totals, secondary expandable kg × reps calculation, and **13-region V10.2** direct/estimated indirect overlap |
-| **Recovery** | Before/after/next-day symptom journal and **[PT Review]** warning for lower-body sessions; no automatic clinical clearance or loading progression |
-| **Progression review** | Read-only comparison with prior sets; any suggested target is optional and is **never** auto-filled or saved |
-| **Tools** | Full JSON export/guarded restore, local-data integrity check, calendar reminder export, **Workout Logbook**, full-history CSV export, sound preference |
-
-The logbook displays the **latest 15 historical sessions** in the preview and lets you **Download full history (.csv)** with all valid historical saved sets. It refers to the workout template version used when the set was logged; it does not rewrite history to match the current schedule. The CSV contains workout details and notes, so keep it private.
-
-The Ragnarok-inspired soft UI, gold styling and click-feedback sound remain part of the preview. Browser audio and service-worker offline behavior are device-dependent and must be checked in Safari.
-
-### V10.2 exercise plan and overlap numbers
-
-The canonical [V10.2 workout CSV](templates/V10.2_Home_FitnessPilot_Import.csv) contains **4 workouts, 24 exercise entries and 62 planned physical weekly sets**:
-
-| Day | Workout | Prescribed sets |
-| --- | --- | ---: |
-| Monday | Upper A | 17 |
-| Tuesday | Lower A **[PT Review]** | 13 |
-| Thursday | Upper B | 21 |
-| Friday | Lower B **[PT Review]** | 11 |
-
-[Muscle-overlap coefficients](templates/V10.2_Overlap_Coefficients.csv) and the [optimization guide](templates/V10.2_Overlap_Optimization_Guide.md) are training-planning sources. Estimated indirect muscle-set equivalents are **not additional physically completed sets** or scientific measurements of muscle growth. They cannot establish medical clearance; the lower-body routines must remain clinician-dependent.
-
-Older versioned sources are retained under [archive/workouts](archive/workouts/README.md). Template editing creates a separate custom version; custom exercises must not inherit unverified canonical V10.2 coefficient assumptions.
-
-### What does “kg × reps” mean?
-
-The displayed external-load volume is **the sum of entered weight × repetitions for saved working sets**, not a count of repetitions or a measure of muscle growth. A set of 11 kg × 12 reps contributes 132 kg × reps. Dumbbell weights are **not** automatically doubled for two hands. Time-based holds count as working sets but do not contribute to kg × reps. Open **Show calculation** on the Dashboard to audit set contributions.
-
-## Back up and restore safely
-
-- **Tools → Download full backup (.json)** saves the app's templates, workouts and related stored data for the selected browser edition.
-- **Tools → Check saved data integrity** checks the current browser snapshot read-only; it does **not** prove that an exported file can be recovered on another device.
-- **Tools → Restore backup** previews the JSON and requires an explicit **REPLACE** confirmation. **Restoring replaces current preview records**. Back up first and test restore only with disposable data.
-- Root production and preview have separate storage keys; transferring or switching devices requires deliberate export/import. There is **no automatic cross-device synchronization**.
-- The web app uses a service worker for offline caching, but real iPhone offline navigation, background audio, exported-file recovery and Pages-served content are **not yet confirmed**. Do not use “clear website data” as a troubleshooting shortcut.
-
-## Development and testing
-
-The code is plain HTML/CSS/JavaScript ES modules; no npm packages are required to use the site. To run a local HTTP server from a repository checkout:
-
-```powershell
-py -m http.server 8000
-```
-
-Open `http://localhost:8000/` for production or `http://localhost:8000/preview-v101/` for the preview. Do not double-click the HTML file because module loading and service-worker behavior require a local server or HTTPS.
-
-For automated checks, install Node.js and run from the repo root:
-
-```powershell
+```sh
+python -m http.server 8000
+# Open http://localhost:8000/preview-v101/
 npm test
+node scripts/verify-preview-assets.mjs
 ```
 
-The test command is `node --test tests/*.test.mjs` ([package.json](package.json)). The repository contains source-based regression checks for historical templates, volume calculations, workout editing, recovery, Focus Mode and logbook export.
-
-**Verification boundary:** Earlier changes were checked using synthetic V8 fixtures and GitHub source read-backs; a complete native test run on the current full GitHub checkout, live GitHub Pages HTTP check, and physical iPhone acceptance have **not** been established by those checks. Do not treat a green documentation check as proof of device behavior.
-
-## Project status and deferred ideas
-
-- **Current preview source:** V15.22.2; production remains a separate older application. Native full-suite, iPhone and real downloaded-file recovery acceptance are outstanding.
-- **Pending release QA:** Native full test suite on a complete checkout, real Safari/iPhone walkthrough, offline test and export/restore using disposable data.
-- **KIV (not built):** Illustrated **Weight Trend Journey** chart with daily weigh-ins, a prominent 7-day trend, goal trajectory and milestone annotations; separate SATNA experiment.
-- **Future work:** Measured 30-set logging speed/error benchmark and optional UX improvements based on real device use.
-
-Public repo documentation is intentionally limited to product and technical behavior. Private development notes, personal training records and health observations belong **outside** this repository.
+See [AGENTS.md](AGENTS.md) before changing the app. Preview source, published Pages content and real iPhone behaviour require separate verification; a passing source check is not device acceptance.

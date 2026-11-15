@@ -9,6 +9,7 @@ import { symptomPanel } from './symptom-ui.js';
 import { addSymptomEntry } from './symptom-journal.js';
 import { V101_CSV, V101_VERSION, V101_EQUIPMENT } from './v101-data.js';
 import { V102_CSV, V102_VERSION, V102_EQUIPMENT } from './v102-data.js';
+import {V103_CSV, v103Templates} from './v103-data.js';
 import { v102OverlapPanel } from './v102-overlap-ui.js';
 import { focusEntries, nextPendingSet, nextPendingExercise } from './focus-mode.js';
 import { newlyRecordedSets } from './slime-hit.js';
@@ -19,6 +20,8 @@ import { QUICK_RPE, stepReps, chooseRpe } from './focus-quick-entry.js';
 import { createFloatingRestTimer, restClock, effortHint, effortQuickLabel } from './floating-rest.js';
 import { repeatLastSessionSet } from './quick-repeat.js';
 import { createExerciseVersion } from './template-version.js';
+import {generateOneSetCoverage} from './return-coverage.js';
+import { returnStagePanel } from './return-training-ui.js';
 import { workoutLogbookHtml, workoutLogbookCsv } from './workout-logbook.js';
 import { strengthDashboard, strengthNextSession, strengthWorkoutDay } from './strength-journey-ui.js';
 import { mondayOf, shiftWeek, latestLoggedWeek } from './week-window.js';
@@ -63,7 +66,7 @@ try {
   state = emptyState(); storageError = `Existing saved data could not be read: ${error.message}. This app will not overwrite it. Keep this browser's website data intact while you investigate the problem.`;
 }
 let page='dashboard', activeDate=today(), chosenTemplate=null, chosenExercise=0, pendingWorkouts=null, pendingBackup=null;
-let focusMode=false, focusSet=0, customizing=null;
+let focusMode=false, focusSet=0, customizing=null, pendingReturnStage=null, pendingV103=null;
 let strengthJourneyIndex=0;
 let selectedWeekStart=null; // UI-only; null always follows the current week.
 let strengthViewMetric='load', strengthHistoryFilter='all';
@@ -92,7 +95,7 @@ function commit(next,message) {
   const clean=validateBackup(next);
   try {localStorage.setItem(STORAGE_KEY,JSON.stringify(clean));}
   catch(error) {throw Error(`Could not save locally (${error.name}). Check available device storage; the old records were left untouched.`);}
-  state=clean; resetBackupReady=false; render(); if(message)toast(message);
+  state=clean; resetBackupReady=false; pendingReturnStage=null; pendingV103=null; render(); if(message)toast(message);
 }
 function tryAction(fn) {try {fn();}catch(error){toast(error.message||'Operation failed.',true);}}
 function goto(next) {page=next;render();$('#main').focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}
@@ -336,7 +339,17 @@ function plan() {
   return `${shellHeading()}${heading('PLAN','Plan your training','Choose workouts, assign training days, and browse your saved templates. Saved sets remain unchanged.')}
   <div class="codex-waypoints" aria-label="Planning steps"><div><b>01</b><span>Add a workout to the library</span></div><div><b>02</b><span>Assign it to training days</span></div><div><b>03</b><span>Log real sets in Train</span></div></div>
   <section class="card codex-board"><div class="card-head"><div><div class="eyebrow">WEEKLY SCHEDULE</div><h2>Choose your training days</h2><p>${Object.keys(state.assignments).filter(k=>state.assignments[k]).length} days assigned · All changes take effect only when you save</p></div></div><form id="schedule-form">${rows}<div class="form-actions"><button class="btn" type="submit">Save weekly schedule</button></div></form></section>
-  <div class="section-label"><h2>Current recommended workout · V10.2</h2><span>Optional import</span></div>
+  ${returnStagePanel(state,pendingReturnStage)}
+  <div class="section-label"><h2>Current target workout · V10.3</h2><span>Opt-in import</span></div>
+  <section class="card stack codex-program" id="v103-import">
+    <div class="eyebrow">V10.3 · CANONICAL FOUR-DAY PROGRAM</div><h2>V10.3 Home Upper / Lower</h2>
+    <p class="subtle small">4 workouts · 27 exercises · 56 prescribed working sets: Mon Upper A 17, Tue Lower A 10, Thu Upper B 20, Fri Lower B 9. The 37 upper sets are the eventual target, not your automatic return-to-training dose.</p>
+    <div class="notice warn"><strong>[PT Review] Tuesday and Friday.</strong> Lower-body workouts are future targets, not clinical clearance. No days are automatically assigned. Use Coverage-First afterwards for one set per eligible upper-body exercise.</div>
+    <p class="hint">Includes exact reps, rest periods, original exercise instructions and equipment units: kg per dumbbell, or kg shown on the cable station for pulldowns. No existing templates, schedule or logged sets are replaced.</p>
+    <div class="quick-actions"><button class="btn" type="button" data-action="v103-preview">Preview V10.3 import</button><button class="btn secondary" type="button" data-action="v103-csv">Download canonical V10.3 CSV</button></div>
+    ${pendingV103 ? `<div class="notice" role="status"><strong>V10.3 import ready to confirm:</strong> ${pendingV103.workouts.length} templates. Only new, non-identical templates will be appended; existing assignments and logs are unchanged. <div class="preview-list">${pendingV103.workouts.map(w => `<p><strong>${DAY_NAMES[w.day]} · ${esc(w.name)}</strong> — ${w.exercises.length} exercises, ${w.exercises.reduce((n,e)=>n+e.sets,0)} sets${isPTReview(w)?' · [PT Review]':''}</p>`).join('')}</div><div class="quick-actions"><button class="btn" type="button" data-action="v103-apply">Confirm and add V10.3 templates</button><button class="btn secondary" type="button" data-action="v103-cancel">Cancel import</button></div></div>` : ''}
+  </section>
+  <div class="section-label"><h2>Previous workout version · V10.2</h2><span>Still available</span></div>
   <section class="card stack codex-program"><div class="eyebrow">V10.2 · OVERLAP-AWARE</div><h2>Adaptive Recovery UL — V10.2</h2>
   <p class="subtle small">4 workouts · 24 exercises · 62 planned physical working sets (Mon 17 / Tue 13 / Thu 21 / Fri 11). Lat and upper-back emphasis with optional direct + estimated indirect muscle-set reporting. Importing does not change logs or assignments.</p>
   <div class="notice warn"><strong>PT Review applies to Tuesday and Friday.</strong> Lower-body workouts are not cleared or assigned automatically. Missing journal entries never imply clearance.</div>
@@ -517,6 +530,22 @@ document.addEventListener('click', event=>{
       } else selectedWeekStart=shiftWeek(selectedWeekStart||mondayOf(today()),act==='week-prev'?-1:1);
       render();return;
     }
+    if(act==='return-stage-cancel'){pendingReturnStage=null;render();return;}
+    if(act==='return-stage-save'){
+      if(storageError)throw Error('Saved data is locked; return-to-training templates cannot be added.');
+      const pending=pendingReturnStage;
+      if(!pending)throw Error('Preview a Coverage-First plan first.');
+      if(localStorage.getItem(STORAGE_KEY)!==pending.snapshot){pendingReturnStage=null;render();throw Error('Saved data changed since your preview. Review the stage again.');}
+      const sources=pending.ids.filter(Boolean).map(id=>state.templates.find(t=>t.id===id));
+      const selected=generateOneSetCoverage(sources);
+      const out=addWorkouts(state,selected.workouts,false);
+      if(!out.added){toast('These return-to-training templates are already in your library. Nothing changed.');return;}
+      const stageName=`Coverage-First, one set per upper exercise (${selected.percentage}% of eligible upper-body sets)`;
+      if(!confirm(`Add ${out.added} NEW ${stageName} workout templates? The original workouts, schedule and completed sets remain unchanged. No stage or load advances automatically.`))return;
+      pendingReturnStage=null;
+      commit(out.state,`Added ${out.added} return-to-training templates: ${stageName}. Assign days manually in Plan.`);
+      return;
+    }
     if(act==='cancel-customize'){customizing=null;render();return;}
     if(act==='equivalence-link'){
       const choice=$('#equivalence-candidate')?.value||'';
@@ -598,6 +627,29 @@ document.addEventListener('click', event=>{
       render();
       return;
     }
+    if(act==='v103-preview'){
+      if(storageError)throw Error('Saved data is locked. V10.3 import preview cannot continue.');
+      pendingV103={workouts:v103Templates(),snapshot:localStorage.getItem(STORAGE_KEY)};
+      render();
+      document.getElementById('v103-import')?.scrollIntoView({block:'start'});
+      return;
+    }
+    if(act==='v103-apply'){
+      if(storageError)throw Error('Saved data is locked. Cannot import V10.3.');
+      const pending=pendingV103;
+      if(!pending)throw Error('Preview the V10.3 import before confirming.');
+      if(localStorage.getItem(STORAGE_KEY)!==pending.snapshot){
+        pendingV103=null;render();
+        throw Error('Saved workout data changed after your V10.3 preview. Preview it again.');
+      }
+      const out=addWorkouts(state,pending.workouts,false);
+      if(!out.added){pendingV103=null;render();toast('V10.3 templates are already in your library. Nothing changed.');return;}
+      if(!confirm(`Add ${out.added} V10.3 workout templates and skip ${out.skipped} existing? This will NOT assign days, clear PT review or modify completed workouts.`))return;
+      commit(out.state,`Added ${out.added} V10.3 templates; skipped ${out.skipped} already present. Assign eligible days manually in Plan.`);
+      return;
+    }
+    if(act==='v103-cancel'){pendingV103=null;render();return;}
+    if(act==='v103-csv'){download('V10.3_Home_FitnessPilot_Import.csv',V103_CSV,'text/csv;charset=utf-8');return;}
     if(act==='v102-add') {
       const result=addWorkouts(state,v102Templates(),false);
       if(result.added)commit(result.state,`Added ${result.added} V10.2 templates. Existing saved sets and schedule are unchanged.`);
@@ -829,6 +881,18 @@ document.addEventListener('submit',event=>{
       if(value===null)delete next.progressionStepKg;
       else next.progressionStepKg=value;
       commit(next,value===null?'Dumbbell increment cleared.':'Available dumbbell increment saved. Actual workout sets remain unchanged.');
+      return;
+    }
+    if(form.id==='return-stage-form'){
+      if(storageError)throw Error('Saved data is locked. Return-to-training preview cannot use unreadable records.');
+      const ids=DAYS.map((_,i)=>form.elements[`returnDay${i}`].value);
+      const sources=ids.filter(Boolean).map((id)=>state.templates.find(t=>t.id===id));
+      if(!sources.length)throw Error('Choose at least one source workout from your library.');
+      if(sources.some(t=>!t || t.returnStagePercent))throw Error('Choose existing source workouts, not a generated return stage.');
+      generateOneSetCoverage(sources); // Read-only validation before recording a preview.
+      pendingReturnStage={ids,snapshot:localStorage.getItem(STORAGE_KEY)};
+      render();
+      document.getElementById('return-stage-panel')?.scrollIntoView({block:'start'});
       return;
     }
     if(form.id==='template-version-form'){
