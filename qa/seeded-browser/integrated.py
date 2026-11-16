@@ -12,7 +12,7 @@ from pathlib import Path
 import threading
 
 from fixture import FOOD_KEY, WORKOUT_KEY, LAST_DAY, create_fixtures, validate_fixture
-from verify import check_repo, get_store, set_seed
+from verify import check_repo, get_store, select_day, set_seed
 from offline import UpgradeHandler, check_offline_upgrade
 from train_ui_30 import reference_fixture, run_mode
 
@@ -37,6 +37,48 @@ def upload_bytes(page, selector, filename, payload, mime="application/json"):
 def assert_absent(page):
     assert page.evaluate("(key) => localStorage.getItem(key)", WORKOUT_KEY) is None
     assert page.evaluate("(key) => localStorage.getItem(key)", FOOD_KEY) is None
+
+
+def check_food_csv(context, base, errors):
+    from playwright.sync_api import expect
+
+    page = context.new_page()
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    page.goto(base + "/food-diary.html", wait_until="domcontentloaded")
+    select_day(page, "2030-01-03")
+    csv = (
+        "date,name,occasion,servings,kcal,protein,carbs,fat\n"
+        "2030-01-02,Synthetic lunch,meal,1,300,20,40,6\n"
+        "2030-01-01,Synthetic lunch,meal,1,220,18,30,3\n"
+    )
+    upload_bytes(page, "#fd-csv-file", "food.csv", csv.encode(), "text/csv")
+    preview = page.locator("#fd-csv-preview")
+    expect(preview).to_contain_text("2 dates (2030-01-01 to 2030-01-02)")
+    assert_absent(page)
+    select_day(page, "2030-01-02")
+    preview.get_by_role("button", name="Import 2 food entries").click()
+    expect(page.locator("#fd-total-kcal")).to_have_text("300 kcal")
+    select_day(page, "2030-01-01")
+    expect(page.locator("#fd-total-kcal")).to_have_text("220 kcal")
+    saved = get_store(page, FOOD_KEY)
+
+    upload_bytes(page, "#fd-csv-file", "food.csv", csv.encode(), "text/csv")
+    expect(preview).to_contain_text("All rows already match saved entries.")
+    assert get_store(page, FOOD_KEY) == saved
+
+    correction = csv.replace(",220,", ",250,")
+    upload_bytes(page, "#fd-csv-file", "corrected.csv", correction.encode(), "text/csv")
+    expect(preview).to_contain_text("2030-01-01 · Correct: Synthetic lunch")
+    expect(preview).to_contain_text("220 → 250")
+    apply = preview.get_by_role("button", name="Add 0 · Correct 1")
+    page.once("dialog", lambda dialog: dialog.dismiss())
+    apply.click()
+    assert get_store(page, FOOD_KEY) == saved
+    page.once("dialog", lambda dialog: dialog.accept())
+    apply.click()
+    expect(page.locator("#fd-total-kcal")).to_have_text("250 kcal")
+    assert get_store(page, FOOD_KEY)["entries"][0] == saved["entries"][0]
+    assert page.evaluate("(key) => localStorage.getItem(key)", WORKOUT_KEY) is None
 
 
 def check_iphone_qa(context, base, version, workout, food, errors):
@@ -329,6 +371,9 @@ def smoke(repo, chromium_binary=None, headed=False):
                         assert get_store(fresh, FOOD_KEY) == expected_food
                         findings.append("Two-store encrypted restore in separate clean browser preserved exact records after reload.")
 
+                with browser.new_context(service_workers="block", viewport={"width": 390, "height": 844}) as food_csv:
+                    check_food_csv(food_csv, base, errors)
+                    findings.append("Food CSV imported by row date without a backup; reimport and correction checks passed.")
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
                 assert not errors, "Browser JavaScript errors: " + " | ".join(errors[:5])
                 train_baseline = [

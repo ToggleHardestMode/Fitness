@@ -1,4 +1,4 @@
-// One-day CSV import: review additions and corrections to previously CSV-imported foods.
+// CSV import uses each row's date and reviews additions and corrections.
 // Manual food entries and the empty-only JSON restore remain protected.
 import {validateDiary,validateEntry,NUTRIENTS} from './food-diary-core.js';
 
@@ -7,11 +7,11 @@ const MAX_BYTES = 100_000,MAX_ROWS=100;
 const canonical = entry => JSON.stringify([entry.date,entry.name.toLocaleLowerCase('en'),
   entry.occasion,entry.servings,...NUTRIENTS.map(k=>entry[k])]);
 
-function validDate(value){
+function validDate(value,message='Choose a valid daily import date.'){
   if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value)||
      !Number.isFinite(Date.parse(value+'T12:00:00Z'))||
      new Date(value+'T12:00:00Z').toISOString().slice(0,10)!==value)
-    throw Error('Choose a valid daily import date.');
+    throw Error(message);
   return value;
 }
 function fields(text){
@@ -38,7 +38,7 @@ function fields(text){
   if(quoted)throw Error('Daily food CSV has an unfinished quote.');
   if(cell!==''||row.length){row.push(cell);if(row.some(c=>c.trim()))rows.push(row);}
   if(rows.length<2)throw Error('CSV needs a header and at least one food row.');
-  if(rows.length>MAX_ROWS+1)throw Error('Import at most 100 food entries for one day.');
+  if(rows.length>MAX_ROWS+1)throw Error('Import at most 100 food entries per CSV.');
   const header=rows.shift().map(x=>x.trim().toLowerCase());
   if(new Set(header).size!==header.length||header.length!==FOOD_CSV_COLUMNS.length||
      FOOD_CSV_COLUMNS.some(x=>!header.includes(x)))
@@ -77,12 +77,13 @@ const isCsvOwned = entry => entry.id.startsWith('foodcsv-');
 
 // Preview is entirely read-only. Only uniquely matched, CSV-owned food rows
 // can be corrected; the original ID survives so history stays stable.
-export function previewDailyFoodCsv(current,csv,selectedDate){
-  const diary=validateDiary(current),date=validDate(selectedDate);
-  const rows=fields(csv),occurrences=new Map(),groups=new Map();
+export function previewDailyFoodCsv(current,csv){
+  const diary=validateDiary(current);
+  const rows=fields(csv),occurrences=new Map(),groups=new Map(),dates=new Set();
   for(const [index,row] of rows.entries()){
     const line=index+2;
-    if(row.date!==date)throw Error('CSV row '+line+': date must match selected day '+date+'. Import one day at a time.');
+    const date=validDate(row.date,'CSV row '+line+': enter a valid date in YYYY-MM-DD format.');
+    dates.add(date);
     const item={date,name:row.name,occasion:row.occasion,servings:positive(row.servings,'Row '+line+' servings'),
       ...Object.fromEntries(NUTRIENTS.map(k=>[k,perServing(row[k],'Row '+line+' '+k)]))};
     const key=canonical(item),nth=(occurrences.get(key)||0)+1;
@@ -95,7 +96,8 @@ export function previewDailyFoodCsv(current,csv,selectedDate){
   for(const group of groups.values()){
     const original=diary.entries.filter(e=>sameName(e,group[0]));
     if(original.some(e=>!isCsvOwned(e)))
-      throw Error('Food '+group[0].name+' already exists on this day as a manual entry. Review it before importing.');
+      throw Error('Food '+group[0].name+' already exists on this day ('+group[0].date+
+        ') as a manual entry. Review it before importing.');
     const used=new Set(),unmatched=[];
     for(const entry of group){
       // Match exact content first, including entries whose IDs were retained
@@ -113,7 +115,8 @@ export function previewDailyFoodCsv(current,csv,selectedDate){
       const before=remaining[0],after=validateEntry({...unmatched[0],id:before.id});
       updates.push({before,after});
     }else if(unmatched.length) {
-      throw Error('Food '+group[0].name+' has ambiguous repeated entries. Review or edit them individually; nothing imported.');
+      throw Error('Food '+group[0].name+' has ambiguous repeated entries on '+group[0].date+
+        '. Review or edit them individually; nothing imported.');
     }
     // Existing rows absent from this CSV remain untouched.
   }
@@ -124,14 +127,15 @@ export function previewDailyFoodCsv(current,csv,selectedDate){
     occupied.add(item.id);
   }
   if(diary.entries.length+add.length>3000)throw Error('Food Diary would exceed 3,000 entries.');
-  return {date,add,skipped,updates,total:rows.length};
+  return {dates:[...dates].sort(),add,skipped,updates,total:rows.length};
 }
 
 export function applyDailyFoodCsv(current,preview,{apply=false,confirmed=false}={}){
   const diary=validateDiary(current);
-  if(!preview||!validDate(preview.date)||!Array.isArray(preview.add)||
+  if(!preview||!Array.isArray(preview.dates)||!preview.dates.length||!Array.isArray(preview.add)||
      !Array.isArray(preview.skipped)||!Array.isArray(preview.updates))
     throw Error('Preview a valid daily CSV before importing.');
+  const dates=new Set(preview.dates.map(date=>validDate(date)));
   const changed=preview.updates.length;
   const result={applied:false,added:preview.add.length,skipped:preview.skipped.length,
     ...(changed?{updated:changed}:{})};
@@ -142,14 +146,14 @@ export function applyDailyFoodCsv(current,preview,{apply=false,confirmed=false}=
   const stale=()=>{throw Error('Food Diary changed since preview; review the CSV again. Nothing imported.');};
   for(const item of preview.skipped){
     const expected=validateEntry(item),saved=byId.get(expected.id);
-    if(!saved||JSON.stringify(saved)!==JSON.stringify(expected)||handled.has(expected.id))stale();
+    if(!dates.has(expected.date)||!saved||JSON.stringify(saved)!==JSON.stringify(expected)||handled.has(expected.id))stale();
     handled.add(expected.id);
   }
   for(const item of preview.updates){
     if(!item||!item.before||!item.after)stale();
     const before=validateEntry(item.before),after=validateEntry(item.after);
     const original=byId.get(before.id);
-    if(!isCsvOwned(before)||after.id!==before.id||!sameName(before,after)||
+    if(!dates.has(before.date)||!isCsvOwned(before)||after.id!==before.id||!sameName(before,after)||
        canonical(before)===canonical(after)||!original||
        JSON.stringify(original)!==JSON.stringify(before)||handled.has(before.id)||
        diary.entries.some(e=>sameName(e,before)&&!isCsvOwned(e)))stale();
@@ -157,7 +161,7 @@ export function applyDailyFoodCsv(current,preview,{apply=false,confirmed=false}=
   }
   for(const row of preview.add){
     const entry=validateEntry(row);
-    if(entry.date!==preview.date||byId.has(entry.id)||handled.has(entry.id)||
+    if(!dates.has(entry.date)||byId.has(entry.id)||handled.has(entry.id)||
        diary.entries.some(e=>sameName(e,entry)&&!isCsvOwned(e)))stale();
     handled.add(entry.id);added.push(entry);
   }
