@@ -35,6 +35,7 @@ import { addExerciseEquivalence, removeExerciseEquivalence, linkCandidates } fro
 import {previewCompletedCsv, applyCompletedCsv, blankCompletedCsv} from './completed-workout-csv.js';
 import { verifyLocalSnapshot, inspectBackupFileText } from './recovery-check.js';
 import { workoutBackupStatus, markWorkoutBackupChecked, persistentStorageStatus, requestPersistentStorage } from './backup-reminder.js';
+import { loadWorkoutState, saveWorkoutState } from './state.js';
 import { DAYS, DAY_NAMES, STORAGE_KEY, emptyState, STARTER_CSV, parseWorkouts, addWorkouts, recordSets, saveMetrics, weeklyStats, bestSets, dateKey, dateFromKey, addDays, weekdayOf, calendarICS, validateBackup, intRange, RECOVERY_UL_CSV, UNIFIED_UL_CSV } from './core.js';
 
 const $ = selector => document.querySelector(selector);
@@ -50,7 +51,6 @@ const icons = {
 const svg = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name]}</svg>`;
 const navItems = [['dashboard','Dashboard'],['train','Train'],['plan','Plan'],['tools','Tools']];
 
-let state, storageError = null;
 let resetBackupReady = false;
 let storagePersistenceStatusLabel='Checking browser storage…', storagePersistenceRequestPending=false;
 let walkerDataUrl=null, pendingWalkerFile=null;
@@ -59,12 +59,7 @@ try{
   if(savedWalker)walkerDataUrl=validateWalkerDataUrl(savedWalker);
 }catch{/* Cosmetic avatar falls back; workout records stay untouched. */}
 
-try {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  state = saved ? validateBackup(JSON.parse(saved)) : emptyState();
-} catch(error) {
-  state = emptyState(); storageError = `Existing saved data could not be read: ${error.message}. This app will not overwrite it. Keep this browser's website data intact while you investigate the problem.`;
-}
+let { state, storageError } = loadWorkoutState();
 let page='dashboard', activeDate=today(), chosenTemplate=null, chosenExercise=0, pendingWorkouts=null, pendingBackup=null;
 let focusMode=false, focusSet=0, customizing=null, pendingReturnStage=null, pendingV103=null;
 let strengthJourneyIndex=0;
@@ -91,11 +86,8 @@ function toast(msg,error=false) {
   clearTimeout(toastHandle);toastHandle=setTimeout(()=>el.classList.remove('on'),3600);
 }
 function commit(next,message) {
-  if(storageError) throw Error('Saved data is locked because it could not be read. Do not overwrite your existing record.');
-  const clean=validateBackup(next);
-  try {localStorage.setItem(STORAGE_KEY,JSON.stringify(clean));}
-  catch(error) {throw Error(`Could not save locally (${error.name}). Check available device storage; the old records were left untouched.`);}
-  state=clean; resetBackupReady=false; pendingReturnStage=null; pendingV103=null; render(); if(message)toast(message);
+  state = saveWorkoutState(next, storageError);
+  resetBackupReady=false; pendingReturnStage=null; pendingV103=null; render(); if(message)toast(message);
 }
 function tryAction(fn) {try {fn();}catch(error){toast(error.message||'Operation failed.',true);}}
 function goto(next) {page=next;render();$('#main').focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}
