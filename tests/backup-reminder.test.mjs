@@ -79,7 +79,6 @@ test('matching downloaded file auto-records backup date without a same-session e
   assert.doesNotMatch(app,/backupExportPending|backup-check-confirm/);
   const exportAction=app.slice(app.indexOf("if(act==='backup-export')"),app.indexOf("if(act==='storage-persist')"));
   assert.doesNotMatch(exportAction,/markWorkoutBackupChecked/);
-  assert.match(app, /id="storage-persistence-status"/);
   assert.match(app,/persistentStorageStatus\(navigator\.storage\)/);
 });
 

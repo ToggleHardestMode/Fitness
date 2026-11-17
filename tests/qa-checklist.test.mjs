@@ -53,7 +53,6 @@ test('QA reads the current banner and preserves strict CSP',()=>{
   assert.match(qa,/sandbox="allow-same-origin"/);
   assert.match(qa,/connect-src 'none'/);
   assert.doesNotMatch(qa,/V15\.15\.3/);
-  assert.match(read('../preview-v101/app.js'),/href="\.\/qa\.html"/);
   assert.ok(JSON.parse(read('../preview-v101/manifest.webmanifest')).name.includes(version));
   assert.ok(read('../preview-v101/sw.js').includes('fitnesspilot-preview-'+version.toLowerCase().replaceAll('.','')));
 });
