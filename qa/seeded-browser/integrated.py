@@ -346,6 +346,28 @@ def smoke(repo, chromium_binary=None, headed=False):
                     # Tools export must be exactly the currently saved workout JSON.
                     go(page, "tools")
                     before_export = get_store(page, WORKOUT_KEY)
+                    vault_status = page.locator("#storage-persistence-status[role='status']")
+                    vault_status.filter(has_text="Persistent storage").wait_for()
+                    with page.expect_popup() as qa_popup:
+                        page.get_by_role("link", name="Open iPhone QA checklist").click()
+                    qa_tab = qa_popup.value
+                    qa_tab.wait_for_load_state("domcontentloaded")
+                    assert qa_tab.url == base + "/qa.html"
+                    qa_tab.locator("#checks article").first.wait_for()
+                    qa_tab.close()
+                    page.locator("[data-action='tracking-reset-apply']").click()
+                    page.get_by_text("First download and check a matching current backup in Tools.", exact=True).wait_for()
+                    with page.expect_download() as logbook:
+                        page.get_by_role("button", name="Download full history (.csv)").click()
+                    assert logbook.value.suggested_filename.startswith("FitnessPilot-workout-history-")
+                    assert "Synthetic seated press" in Path(logbook.value.path()).read_text(encoding="utf-8")
+                    with page.expect_download() as calendar:
+                        page.get_by_role("button", name="Export Calendar reminders (.ics)").click()
+                    assert calendar.value.suggested_filename.endswith(".ics")
+                    assert "BEGIN:VEVENT" in Path(calendar.value.path()).read_text(encoding="utf-8")
+                    assert get_store(page, WORKOUT_KEY) == before_export
+                    assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+                    findings.append("Tools QA link, persistence status, reset guard and read-only exports passed.")
                     with page.expect_download() as event:
                         page.locator("[data-action='backup-export']").click()
                     download = event.value
