@@ -232,6 +232,46 @@ def smoke(repo, chromium_binary=None, headed=False):
                                for t in imported["templates"])
                     findings.append("CSV import stayed read-only until confirmation; only one synthetic template added.")
 
+                    # Open the editor from the moved library, then cancel without writing either store.
+                    library = page.locator(".codex-library-entry").filter(has_text="Synthetic upper-body workout")
+                    library.locator("summary").click()
+                    library.get_by_role("button", name="Customize").click()
+                    editor = page.locator("#template-version-form")
+                    assert editor.locator("input[name=name]").input_value() == "Synthetic seated press"
+                    editor.get_by_role("button", name="Cancel", exact=True).click()
+                    assert not editor.is_visible()
+                    assert get_store(page, WORKOUT_KEY) == imported
+
+                    # Exercise both paths through the Plan's V10.3 import preview and its CSV button.
+                    program = page.locator("#v103-import")
+                    preview_program = program.get_by_role("button", name="Preview V10.3 import")
+                    with page.expect_download() as canonical:
+                        program.get_by_role("button", name="Download canonical V10.3 CSV").click()
+                    assert canonical.value.suggested_filename == "V10.3_Home_FitnessPilot_Import.csv"
+                    assert Path(canonical.value.path()).read_text(encoding="utf-8").startswith("day,workout,exercise,")
+                    preview_program.click()
+                    pending = program.get_by_role("status")
+                    assert pending.get_by_text("[PT Review]", exact=False).count() == 2
+                    assert "4 templates" in pending.inner_text()
+                    assert get_store(page, WORKOUT_KEY) == imported
+                    pending.get_by_role("button", name="Cancel import").click()
+                    assert not pending.is_visible()
+                    assert get_store(page, WORKOUT_KEY) == imported
+                    preview_program.click()
+                    confirm = pending.get_by_role("button", name="Confirm and add V10.3 templates")
+                    page.once("dialog", lambda dialog: dialog.dismiss())
+                    confirm.click()
+                    assert pending.is_visible()
+                    assert get_store(page, WORKOUT_KEY) == imported
+                    page.once("dialog", lambda dialog: dialog.accept())
+                    confirm.click()
+                    after_program = get_store(page, WORKOUT_KEY)
+                    assert len(after_program["templates"]) == len(imported["templates"]) + 4
+                    assert after_program["assignments"] == imported["assignments"]
+                    assert after_program["logs"] == imported["logs"]
+                    assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+                    findings.append("Plan editor cancel and V10.3 download, preview, cancel and explicit import passed.")
+
                     # Save one actual synthetic working set, then update it without duplicating.
                     go(page, "train")
                     page.locator("#active-date").fill("2026-10-29")
