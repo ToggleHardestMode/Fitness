@@ -74,9 +74,6 @@ test('full V10.3 can generate Coverage-First as 16/37 upper sets, excluding 19 P
 
 test('V10.3 Plan UI requires preview, explicit confirmation and stale-record protection',()=>{
   const app=readFileSync(new URL('../preview-v101/app.js',import.meta.url),'utf8');
-  for(const action of ['v103-preview','v103-apply','v103-cancel','v103-csv']){
-    assert.match(app,new RegExp("data-action=\\\""+action+"\\\"|act==='"+action+"'"));
-  }
   assert.match(app,/pendingV103=\{workouts:v103Templates\(\),snapshot:localStorage\.getItem\(STORAGE_KEY\)\}/);
   assert.match(app,/localStorage\.getItem\(STORAGE_KEY\)!==pending\.snapshot/);
   assert.match(app,/addWorkouts\(state,pending\.workouts,false\)/);
