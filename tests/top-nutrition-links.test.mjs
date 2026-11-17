@@ -31,5 +31,7 @@ test('existing nutrition destinations remain real and cached with a synchronized
  const version=previewVersion();
  assert.equal(JSON.parse(src('manifest.webmanifest')).name,`FitnessPilot ${version} Preview`);
  assert.ok(cacheName().includes(cacheVersionToken(version)));
- assert.match(dashboardHtml(), /href="\.\/food-diary\.html">Open Food Diary →<\/a>/);
+ const nutrition = dashboardHtml().match(/<section\b[^>]*><div class="card-head"><div><h2>Nutrition & Weight Journey<\/h2>.*?<\/section>/s);
+ assert.ok(nutrition, 'has the nutrition summary card');
+ assert.match(nutrition[0], /href="\.\/food-diary\.html">Open Food Diary →<\/a>/);
 });

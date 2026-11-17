@@ -10,10 +10,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'preview-v10
 const read = filename => readFileSync(resolve(root, filename), 'utf8');
 
 test('adventurer appears before progress only on Dashboard', () => {
-  const html = dashboardHtml();
+  const html = dashboardHtml({}, { selection: { walkerDataUrl: "data:image/webp;base64,UklGRsynthetic" } });
   const walker = html.indexOf('class="fp-walker-banner"');
   const progress = html.indexOf('class="v151-gold-summary"');
   assert.ok(walker >= 0 && progress > walker);
+  assert.match(html, /Checking character display…/);
   assert.equal((html.match(/class="fp-walker-banner"/g) ?? []).length, 1);
 });
 
