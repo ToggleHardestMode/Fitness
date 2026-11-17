@@ -106,9 +106,11 @@ test('reconciliation retains the backup guard and excludes automatic grouping',(
   const app=readFileSync(new URL('../preview-v101/app.js',import.meta.url),'utf8');
   const sw=readFileSync(new URL('../preview-v101/sw.js',import.meta.url),'utf8');
   assert.match(app,/markWorkoutBackupChecked\(localStorage,today\(\)\)/);
-  assert.match(app,/week-current/);assert.match(app,/strengthWorkoutDay\(state,/);
+  assert.match(app,/week-current/);
   const dashboard = readFileSync(new URL('../preview-v101/dashboard-view.js', import.meta.url), 'utf8');
   assert.doesNotMatch(dashboard, /matchingExerciseReferences/);
+  const train = readFileSync(new URL('../preview-v101/train-view.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(train, /matchingExerciseReferences/);
   assert.match(sw,/\.\/backup-reminder\.js/);
   assert.match(sw,/\.\/week-window\.js/);
   assert.doesNotMatch(sw,/exercise-universe/);

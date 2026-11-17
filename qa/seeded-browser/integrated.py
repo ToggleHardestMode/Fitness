@@ -238,6 +238,38 @@ def smoke(repo, chromium_binary=None, headed=False):
                     page.locator("#active-date").dispatch_event("change")
                     page.locator("#active-workout").select_option("fixture-upper-001")
                     form = page.locator("#sets-form")
+
+                    # Train still wires the workout guide and protects unsaved Focus edits.
+                    before_focus = get_store(page, WORKOUT_KEY)
+                    guide = page.locator('details[aria-label="Full workout next-session guide"]')
+                    guide.locator("summary").first.click()
+                    assert guide.get_by_role("rowheader", name="Synthetic seated press").is_visible()
+                    assert "Nothing here is automatically saved" in guide.inner_text()
+                    assert get_store(page, WORKOUT_KEY) == before_focus
+                    toggle = page.locator("[data-action='focus-toggle']")
+                    toggle.click()
+                    assert toggle.get_attribute("aria-pressed") == "true"
+                    kg = form.locator("input[name=kg0]")
+                    default_kg = kg.input_value()
+                    kg.fill("19")
+                    with page.expect_event("dialog", predicate=lambda dialog: "Discard your unsaved set changes?" in dialog.message) as dismissed:
+                        page.once("dialog", lambda dialog: dialog.dismiss())
+                        go(page, "plan")
+                    assert dismissed.value.type == "confirm"
+                    assert kg.input_value() == "19"
+                    with page.expect_event("dialog", predicate=lambda dialog: "Discard your unsaved set changes?" in dialog.message) as accepted:
+                        page.once("dialog", lambda dialog: dialog.accept())
+                        go(page, "plan")
+                    assert accepted.value.type == "confirm"
+                    assert page.locator("#schedule-form").is_visible()
+                    go(page, "train")
+                    assert kg.input_value() == default_kg
+                    assert get_store(page, WORKOUT_KEY) == before_focus
+                    assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+                    toggle.click()
+                    assert toggle.get_attribute("aria-pressed") == "false"
+                    findings.append("Train guide is read-only, and canceling or accepting Focus discard preserves both stores.")
+
                     form.locator("input[name=kg0]").fill("14")
                     form.locator("input[name=reps0]").fill("10")
                     form.locator("input[name=rpe0]").fill("7")
