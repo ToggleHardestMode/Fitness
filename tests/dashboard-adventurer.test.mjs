@@ -3,25 +3,24 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
+import { dashboardHtml } from './dashboard-fixture.mjs';
 import { previewVersion, cacheVersionToken, cacheName, loadedAssets } from './preview-version.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'preview-v101');
 const read = filename => readFileSync(resolve(root, filename), 'utf8');
 
 test('adventurer appears before progress only on Dashboard', () => {
-  const app = read('app.js');
-  const start = app.indexOf('function dashboardAdventurer()');
-  const dashboard = app.indexOf('function dashboard()');
-  assert.ok(start >= 0 && dashboard > start);
-  assert.match(app, /\$\{dashboardAdventurer\(\)\}\$\{gildedSummary/);
-  assert.equal((app.match(/\$\{dashboardAdventurer\(\)\}/g) ?? []).length, 1);
-  assert.match(app.slice(start, dashboard), /dashboardWalkerBanner\(walkerDataUrl\)/);
+  const html = dashboardHtml({}, { selection: { walkerDataUrl: "data:image/webp;base64,UklGRsynthetic" } });
+  const walker = html.indexOf('class="fp-walker-banner"');
+  const progress = html.indexOf('class="v151-gold-summary"');
+  assert.ok(walker >= 0 && progress > walker);
+  assert.match(html, /Checking character display…/);
+  assert.equal((html.match(/class="fp-walker-banner"/g) ?? []).length, 1);
 });
 
 test('graphic is accessible, internal, and cannot capture touch controls', () => {
   const art = read('adventurer-idle.svg');
   const css = read('dashboard-walker.css');
-  const app = read('app.js');
   assert.match(art, /<svg[^>]+viewBox=/);
   assert.match(art, /moustached fantasy adventurer/);
   assert.doesNotMatch(art, /<script|(?:href|src)=["']https?:\/\//i);

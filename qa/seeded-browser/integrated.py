@@ -187,6 +187,24 @@ def smoke(repo, chromium_binary=None, headed=False):
                     assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
                     findings.append("Main app loaded two separate fictional stores without changing either.")
 
+                    # Dashboard controls rerender the selected week without changing either store.
+                    walker = page.locator("#main .fp-walker-banner")
+                    assert walker.count() == 1
+                    week_heading = page.locator(".section-label").filter(has_text="Selected training week")
+                    current_week = week_heading.inner_text()
+                    page.locator("[data-action='week-prev']").click()
+                    assert week_heading.inner_text() != current_week
+                    page.locator("[data-action='week-current']").click()
+                    assert week_heading.inner_text() == current_week
+                    assert get_store(page, WORKOUT_KEY) == fixtures[WORKOUT_KEY]
+                    assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+                    for section in ("train", "plan", "tools"):
+                        go(page, section)
+                        assert walker.count() == 0
+                    go(page, "dashboard")
+                    assert walker.count() == 1
+                    findings.append("Dashboard week controls preserve both stores and the avatar stays on Dashboard.")
+
                     # Plan must be an explicit save, never a silent assignment rewrite.
                     go(page, "plan")
                     page.locator("#schedule-form").wait_for()
