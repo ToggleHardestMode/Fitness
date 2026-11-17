@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { dashboardHtml } from './dashboard-fixture.mjs';
 import { lifetimeTrainingSets, weeklyTrainingAnalysis } from '../preview-v101/training-analytics.js';
 
 const week = '2026-10-19';
 const templates = [
-  {id:'upper',exercises:[{name:'Press',muscle:'Chest',sets:2}]},
-  {id:'holds',exercises:[{name:'Plank',muscle:'Core',sets:1,repUnit:'seconds_per_side'}]}
+  {id:'upper',name:'Upper',exercises:[{name:'Press',muscle:'Chest',sets:2}]},
+  {id:'holds',name:'Holds',exercises:[{name:'Plank',muscle:'Core',sets:1,repUnit:'seconds_per_side'}]}
 ];
 const set = (date, templateId, exerciseIndex, number, extras={}) =>
   ({date,templateId,exerciseIndex,set:number,kg:0,reps:10,...extras});
@@ -56,8 +56,13 @@ test('planned workouts with no saved working sets show zero logged days', () => 
 });
 
 test('dashboard week card shares the strict counted-day source with gold summary', () => {
-  const app=readFileSync(new URL('../preview-v101/app.js',import.meta.url),'utf8');
-  assert.match(app,/function inWeekCards\(s, analysis\)/);
-  assert.match(app,/kpi-value">\$\{analysis\.days\.filter\(day=>day\.completed>0\)\.length\}/);
-  assert.doesNotMatch(app,/kpi-value">\$\{s\.sessions\}/);
+  const data = makeState([
+    set(week, 'upper', 0, 1),
+    set(week, 'upper', 0, 2),
+    set('2026-10-20', 'upper', 0, 2, { isWarmup: true }),
+    set('2026-10-21', 'holds', 0, 1),
+  ]);
+  const html = dashboardHtml(data);
+  assert.match(html, /<span>Days with logs<\/span><strong>2<\/strong>/);
+  assert.match(html, /<div class="kpi-label">Days with logs<\/div><div class="kpi-value">2<\/div>/);
 });

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import { dashboardHtml } from './dashboard-fixture.mjs';
+import { WORKOUT_BACKUP_DATE_KEY } from '../preview-v101/backup-reminder.js';
 import {mondayOf,shiftWeek,latestLoggedWeek} from '../preview-v101/week-window.js';
 import {getExerciseJourney,recommendNextExercise} from '../preview-v101/strength-journey.js';
 import {addExerciseEquivalence} from '../preview-v101/exercise-equivalence.js';
@@ -104,10 +106,19 @@ test('reconciliation retains the backup guard and excludes automatic grouping',(
   const app=readFileSync(new URL('../preview-v101/app.js',import.meta.url),'utf8');
   const sw=readFileSync(new URL('../preview-v101/sw.js',import.meta.url),'utf8');
   assert.match(app,/markWorkoutBackupChecked\(localStorage,today\(\)\)/);
-  assert.match(app,/backupReminderCard\(\)/);
   assert.match(app,/week-current/);assert.match(app,/strengthWorkoutDay\(state,/);
+  const dashboard = readFileSync(new URL('../preview-v101/dashboard-view.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(dashboard, /matchingExerciseReferences/);
   assert.match(sw,/\.\/backup-reminder\.js/);
   assert.match(sw,/\.\/week-window\.js/);
   assert.doesNotMatch(sw,/exercise-universe/);
   assert.doesNotMatch(app,/matchingExerciseReferences/);
+});
+
+test('Dashboard shows the checked backup date and current-week control', () => {
+  const html = dashboardHtml({}, { storage: { [WORKOUT_BACKUP_DATE_KEY]: '2026-10-12' } });
+  assert.match(html, /aria-label="Workout backup status"/);
+  assert.match(html, /Last checked workout backup: 7 days ago/);
+  assert.match(html, /A checked workout backup is due/);
+  assert.match(html, /data-action="week-current">Current week<\/button>/);
 });

@@ -2,21 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {previewVersion,cacheVersionToken,cacheName} from './preview-version.mjs';
+import { dashboardHtml } from './dashboard-fixture.mjs';
 const src = name => readFileSync(new URL('../preview-v101/'+name, import.meta.url),'utf8');
 
 test('dashboard places top Nutrition and Cheatsheet links directly below heading',()=>{
-  const app=src('app.js');
-  const dashboard=app.match(/function dashboard\(\) \{[\s\S]*?(?=\nfunction rangeSummary\()/);
-  assert.ok(dashboard,'dashboard source exists');
-  const code=dashboard[0];
-  const marker='\x24{shellHeading()}<nav class="fp-top-nutrition"';
-  assert.ok(code.includes(marker),'links appear immediately after heading');
-  const nav=code.match(/<nav class="fp-top-nutrition"[^>]*>([\s\S]*?)<\/nav>/);
-  assert.ok(nav,'has semantic navigation');
-  assert.match(nav[0],/aria-label="Nutrition quick links"/);
-  assert.match(nav[1],/<a class="btn fp-top-nutrition-link" href="\.\/nutrition\.html">Nutrition<\/a>/);
-  assert.match(nav[1],/<a class="btn secondary fp-top-nutrition-link" href="\.\/nutrition-cheatsheet\.html">Cheatsheet<\/a>/);
-  assert.ok(code.indexOf('fp-top-nutrition')<code.indexOf('dashboardAdventurer()'),'buttons are above dashboard art');
+  const html = dashboardHtml();
+  assert.match(html, /^<div class="header-row">FitnessPilot<\/div><nav class="fp-top-nutrition"/);
+  const nav = html.match(/<nav class="fp-top-nutrition"[^>]*>([\s\S]*?)<\/nav>/);
+  assert.ok(nav, 'has semantic navigation');
+  assert.match(nav[0], /aria-label="Nutrition quick links"/);
+  assert.match(nav[1], /<a class="btn fp-top-nutrition-link" href="\.\/nutrition\.html">Nutrition<\/a>/);
+  assert.match(nav[1], /<a class="btn secondary fp-top-nutrition-link" href="\.\/nutrition-cheatsheet\.html">Cheatsheet<\/a>/);
+  assert.ok(html.indexOf('fp-top-nutrition') < html.indexOf('fp-walker-banner'), 'buttons are above dashboard art');
 });
 test('responsive style provides two touch-friendly shortcuts',()=>{
  const css=src('fp39-dark-fantasy.css');
@@ -26,7 +23,7 @@ test('responsive style provides two touch-friendly shortcuts',()=>{
  assert.match(css,/@media\(min-width:700px\)/);
 });
 test('existing nutrition destinations remain real and cached with a synchronized preview version',()=>{
- const sw=src('sw.js'),app=src('app.js');
+ const sw=src('sw.js');
  for(const page of ['nutrition.html','nutrition-cheatsheet.html']){
    assert.match(sw,new RegExp("'\\.\\/"+page.replace('.','\\.')+"'"));
    assert.match(src(page),/FITNESSPILOT V\d+\.\d+\.\d+ PREVIEW/);
@@ -34,5 +31,5 @@ test('existing nutrition destinations remain real and cached with a synchronized
  const version=previewVersion();
  assert.equal(JSON.parse(src('manifest.webmanifest')).name,`FitnessPilot ${version} Preview`);
  assert.ok(cacheName().includes(cacheVersionToken(version)));
- assert.match(app,/Open Food Diary/);
+ assert.match(dashboardHtml(), /href="\.\/food-diary\.html">Open Food Diary →<\/a>/);
 });
