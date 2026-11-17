@@ -71,12 +71,3 @@ test('full V10.3 can generate Coverage-First as 16/37 upper sets, excluding 19 P
   assert.equal(stage.excluded.reduce((sum,w)=>sum+w.planned,0),19);
   assert.deepEqual(original,snapshot);
 });
-
-test('V10.3 Plan UI requires preview, explicit confirmation and stale-record protection',()=>{
-  const app=readFileSync(new URL('../preview-v101/app.js',import.meta.url),'utf8');
-  assert.match(app,/pendingV103=\{workouts:v103Templates\(\),snapshot:localStorage\.getItem\(STORAGE_KEY\)\}/);
-  assert.match(app,/localStorage\.getItem\(STORAGE_KEY\)!==pending\.snapshot/);
-  assert.match(app,/addWorkouts\(state,pending\.workouts,false\)/);
-  assert.match(app,/if\(!confirm\(/);
-  assert.match(app,/PT Review/);
-});

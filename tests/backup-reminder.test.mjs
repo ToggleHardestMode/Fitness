@@ -71,13 +71,14 @@ test('persistence unsupported, failing status checks, and failed requests are ex
 // Behaviour change (D-058 amended 2026-11-08): matching file itself records date.
 // This wiring assertion guards the failure mode where iOS reloads after a download.
 test('matching downloaded file auto-records backup date without a same-session export flag', () => {
-  const app=readFileSync(new URL('../preview-v101/app.js', import.meta.url),'utf8');
-  const changeHandler=app.slice(app.indexOf("if(target.id==='backup-check-file')"),app.indexOf("document.addEventListener('submit'"));
-  assert.match(changeHandler,/resetBackupReady=!storageError && checked===current && localStorage\.getItem\(STORAGE_KEY\)===current/);
-  assert.match(changeHandler,/if\(resetBackupReady\)\s*\{\s*try\s*\{\s*markWorkoutBackupChecked\(localStorage,today\(\)\)/);
-  assert.match(changeHandler,/if\(file.size>8_000_000 \|\| !\/\\.json\$\/i\.test\(file.name\)\)/);
+  const app=readFileSync(new URL('../preview-v101/actions.js', import.meta.url),'utf8');
+  const changeHandler=app.slice(app.indexOf("if (target.id === 'backup-check-file')"),app.indexOf("function handleSubmit("));
+  assert.match(changeHandler,/resetBackupReady\s*=\s*!storageError\s*&&\s*checked\s*===\s*current\s*&&\s*localStorage\.getItem\(STORAGE_KEY\)\s*===\s*current/);
+  assert.match(changeHandler,/if\s*\(resetBackupReady\)\s*\{\s*try\s*\{\s*markWorkoutBackupChecked\(localStorage,\s*today\(\)\)/);
+  assert.match(changeHandler,/if\s*\(file\.size\s*>\s*8_000_000\s*\|\|\s*!\/\\.json\$\/i\.test\(file\.name\)\)/);
   assert.doesNotMatch(app,/backupExportPending|backup-check-confirm/);
-  const exportAction=app.slice(app.indexOf("if(act==='backup-export')"),app.indexOf("if(act==='storage-persist')"));
+  const exportAction=app.slice(app.indexOf("if (act === 'backup-export')"),app.indexOf("if (act === 'storage-persist')"));
+  assert.ok(exportAction.length > 0);
   assert.doesNotMatch(exportAction,/markWorkoutBackupChecked/);
   assert.match(app,/persistentStorageStatus\(navigator\.storage\)/);
 });
