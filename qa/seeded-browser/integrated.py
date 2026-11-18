@@ -259,6 +259,15 @@ def smoke(repo, chromium_binary=None, headed=False):
                     assert get_store(page, WORKOUT_KEY) == imported
                     preview_program.click()
                     confirm = pending.get_by_role("button", name="Confirm and add V10.3 templates")
+                    raw = page.evaluate("(key) => localStorage.getItem(key)", WORKOUT_KEY)
+                    changed = raw + " "
+                    page.evaluate("([key, value]) => localStorage.setItem(key, value)", [WORKOUT_KEY, changed])
+                    confirm.click()
+                    page.get_by_text("Saved workout data changed after your V10.3 preview. Preview it again.", exact=True).wait_for()
+                    assert not pending.is_visible()
+                    assert page.evaluate("(key) => localStorage.getItem(key)", WORKOUT_KEY) == changed
+                    page.evaluate("([key, value]) => localStorage.setItem(key, value)", [WORKOUT_KEY, raw])
+                    preview_program.click()
                     page.once("dialog", lambda dialog: dialog.dismiss())
                     confirm.click()
                     assert pending.is_visible()
@@ -270,7 +279,7 @@ def smoke(repo, chromium_binary=None, headed=False):
                     assert after_program["assignments"] == imported["assignments"]
                     assert after_program["logs"] == imported["logs"]
                     assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
-                    findings.append("Plan editor cancel and V10.3 download, preview, cancel and explicit import passed.")
+                    findings.append("Plan editor cancel and V10.3 download, preview, stale rejection, cancel and explicit import passed.")
 
                     # Save one actual synthetic working set, then update it without duplicating.
                     go(page, "train")
@@ -378,6 +387,13 @@ def smoke(repo, chromium_binary=None, headed=False):
                                  download.suggested_filename, backup_bytes)
                     page.get_by_text("Last checked workout backup: today.", exact=False).wait_for()
                     assert get_store(page, WORKOUT_KEY) == before_export
+                    page.locator("#tracking-reset-ack").check()
+                    page.locator("#tracking-reset-word").fill("RESET LOGS")
+                    with page.expect_event("dialog", predicate=lambda dialog: "Permanently remove" in dialog.message):
+                        page.once("dialog", lambda dialog: dialog.dismiss())
+                        page.locator("[data-action='tracking-reset-apply']").click()
+                    assert get_store(page, WORKOUT_KEY) == before_export
+                    assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
                     upload_bytes(page, "#backup-file",
                                  download.suggested_filename, backup_bytes)
                     page.locator("[data-action='restore-cancel']").wait_for()

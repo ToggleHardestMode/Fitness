@@ -20,13 +20,13 @@ test('inspector never changes the input object',()=>{
   assert.equal(JSON.stringify(data),before);
 });
 test('file check handler never invokes restore or commit',()=>{
-  const source=readFileSync(new URL('../preview-v101/app.js',import.meta.url),'utf8');
-  const start=source.indexOf("if(target.id==='backup-check-file')");
-  const end=source.indexOf("\n});",start);
+  const source=readFileSync(new URL('../preview-v101/actions.js',import.meta.url),'utf8');
+  const start=source.indexOf("if (target.id === 'backup-check-file')");
+  const end=source.indexOf("function handleSubmit(",start);
   assert.ok(start>0&&end>start);
   const block=source.slice(start,end);
   assert.match(block,/inspectBackupFileText\(raw\)/);
-  assert.match(block,/const raw=await file\.text\(\)/);
+  assert.match(block,/const raw\s*=\s*await file\.text\(\)/);
   // Reading localStorage to compare against the saved copy is allowed; any write, restore or state assignment is not.
   assert.doesNotMatch(block,/\bcommit\(|\brestore\w*\(|localStorage\.(?:setItem|removeItem|clear)|\bstate\s*=[^=]|pendingBackup\s*=/);
 });
