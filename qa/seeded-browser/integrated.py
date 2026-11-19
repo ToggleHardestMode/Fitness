@@ -54,10 +54,16 @@ def check_dashboard_layout(page):
 
     shortcuts = page.get_by_role("navigation", name="Nutrition quick links")
     expect(shortcuts).to_have_css("display", "grid")
-    assert len(shortcuts.evaluate("e => getComputedStyle(e).gridTemplateColumns.split(' ')")) == 2
+    widths = []
     for name in ("Nutrition", "Cheatsheet"):
         link = shortcuts.get_by_role("link", name=name, exact=True)
-        assert link.bounding_box()["height"] >= 48, name
+        expect(link).to_be_visible()
+        box = link.bounding_box()
+        assert box["height"] >= 48, name
+        widths.append(box["width"])
+    assert abs(widths[0] - widths[1]) < 1, widths
+    page.set_viewport_size({"width": 699, "height": 844})
+    expect(shortcuts).to_have_css("display", "grid")
     page.set_viewport_size({"width": 700, "height": 844})
     expect(shortcuts).to_have_css("display", "flex")
     page.set_viewport_size({"width": 390, "height": 844})
@@ -70,14 +76,18 @@ def check_avatar(context, base, errors):
     page.on("pageerror", lambda exc: errors.append(str(exc)))
     try:
         page.goto(base + "/index.html", wait_until="domcontentloaded")
+        banner = page.locator(".fp-walker-banner")
         stage = page.locator(".fp-walker-stage")
-        avatar = page.locator(".fp-walker-banner img")
+        avatar = banner.locator("img")
         platform = stage.locator(".fp-walker-platform")
         status = page.locator("#walker-render-status")
         expect(stage).to_have_css("pointer-events", "none")
+        expect(banner).to_have_css("padding-right", "118px")
         expect(stage).to_have_css("width", "112px")
+        expect(avatar).to_be_visible()
         expect(avatar).to_have_css("width", "98px")
         page.set_viewport_size({"width": 391, "height": 844})
+        expect(banner).to_have_css("padding-right", "150px")
         expect(stage).to_have_css("width", "132px")
         expect(avatar).to_have_css("width", "106px")
 
