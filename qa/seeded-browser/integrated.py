@@ -22,6 +22,8 @@ SYNTHETIC_CSV = (
     "Wed,Synthetic Browser Imported,Synthetic Cable Row,Back,1,8,12,90\n"
 )
 PASSPHRASE = "Synthetic browser-only recovery passphrase 2026!"
+WALKER_KEY = "fitnesspilot.preview.v101.ui.walker.v1"
+SYNTHETIC_WALKER = "data:image/webp;base64,UklGRhwAAABXRUJQVlA4TBAAAAAvA8AAAAcQBSxg/wMR0f8A"
 
 
 def go(page, section):
@@ -37,6 +39,111 @@ def upload_bytes(page, selector, filename, payload, mime="application/json"):
 def assert_absent(page):
     assert page.evaluate("(key) => localStorage.getItem(key)", WORKOUT_KEY) is None
     assert page.evaluate("(key) => localStorage.getItem(key)", FOOD_KEY) is None
+
+
+def check_dashboard_layout(page):
+    from playwright.sync_api import expect
+
+    chart = page.get_by_role("img", name="Completed sets by day", exact=False)
+    page.get_by_role("button", name="Latest logged week").click()
+    visible_bars = chart.locator(".bar")
+    expect(visible_bars).to_have_count(1)
+    expect(visible_bars).to_be_visible()
+    expect(visible_bars).to_have_css("display", "block")
+    page.get_by_role("button", name="Current week").click()
+
+    shortcuts = page.get_by_role("navigation", name="Nutrition quick links")
+    expect(shortcuts).to_have_css("display", "grid")
+    widths = []
+    for name in ("Nutrition", "Cheatsheet"):
+        link = shortcuts.get_by_role("link", name=name, exact=True)
+        expect(link).to_be_visible()
+        box = link.bounding_box()
+        assert box["height"] >= 48, name
+        widths.append(box["width"])
+    assert abs(widths[0] - widths[1]) < 1, widths
+    page.set_viewport_size({"width": 699, "height": 844})
+    expect(shortcuts).to_have_css("display", "grid")
+    page.set_viewport_size({"width": 700, "height": 844})
+    expect(shortcuts).to_have_css("display", "flex")
+    page.set_viewport_size({"width": 390, "height": 844})
+
+
+def check_avatar(context, base, errors):
+    from playwright.sync_api import expect
+
+    page = context.new_page()
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    try:
+        page.goto(base + "/index.html", wait_until="domcontentloaded")
+        banner = page.locator(".fp-walker-banner")
+        stage = page.locator(".fp-walker-stage")
+        avatar = banner.locator("img")
+        platform = stage.locator(".fp-walker-platform")
+        status = page.locator("#walker-render-status")
+        expect(stage).to_have_css("pointer-events", "none")
+        expect(banner).to_have_css("padding-right", "118px")
+        expect(stage).to_have_css("width", "112px")
+        expect(avatar).to_be_visible()
+        expect(avatar).to_have_css("width", "98px")
+        page.set_viewport_size({"width": 391, "height": 844})
+        expect(banner).to_have_css("padding-right", "150px")
+        expect(stage).to_have_css("width", "132px")
+        expect(avatar).to_have_css("width", "106px")
+
+        def check_image(data_url, reduced_motion, text, source=None):
+            page.emulate_media(reduced_motion=reduced_motion)
+            page.evaluate("([key, value]) => localStorage.setItem(key, value)", [WALKER_KEY, data_url])
+            page.reload(wait_until="domcontentloaded")
+            expect(status).to_contain_text(text)
+            expect(avatar).to_have_count(1)
+            expect(avatar).to_be_visible()
+            page.wait_for_function("() => document.querySelector('.fp-walker-banner img')?.naturalWidth > 0")
+            assert avatar.get_attribute("alt") == ""
+            if source is not None:
+                assert avatar.get_attribute("src") == source
+            else:
+                assert avatar.get_attribute("src").startswith("data:image/png;base64,")
+
+        check_image(SYNTHETIC_WALKER, "no-preference", "Personal walker loaded", SYNTHETIC_WALKER)
+        expect(platform).to_have_css("backdrop-filter", "blur(8px)")
+        check_image(SYNTHETIC_WALKER, "reduce", "Your character (still frame)")
+        expect(platform).to_have_css("backdrop-filter", "none")
+        check_image("data:image/webp;base64,UklGRbad", "no-preference",
+                    "Personal image could not be displayed", "./adventurer-idle.svg")
+    finally:
+        page.evaluate("key => localStorage.removeItem(key)", WALKER_KEY)
+        page.close()
+
+
+def check_nutrition_navigation(context, base, errors):
+    from playwright.sync_api import expect
+
+    page = context.new_page()
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    try:
+        page.goto(base + "/index.html", wait_until="domcontentloaded")
+        shortcuts = page.get_by_role("navigation", name="Nutrition quick links")
+        shortcuts.get_by_role("link", name="Nutrition", exact=True).click()
+        page.wait_for_url(base + "/nutrition.html")
+        expect(page.locator(".preview-banner")).to_contain_text("PREVIEW")
+        page.go_back(wait_until="domcontentloaded")
+        shortcuts.get_by_role("link", name="Cheatsheet", exact=True).click()
+        page.wait_for_url(base + "/nutrition-cheatsheet.html")
+        expect(page.locator(".preview-banner")).to_contain_text("PREVIEW")
+        table = page.locator("#vitamin-table-body")
+        vitamin_d = table.get_by_role("row").filter(has_text="Vitamin D")
+        expect(vitamin_d).to_contain_text("2.5 µg (100 IU)")
+        page.locator("#vitamin-standard").select_option("international")
+        expect(vitamin_d).to_contain_text("15 µg (600 IU)")
+        form = page.locator("#vitamin-convert-form")
+        form.locator("#vitamin-method").select_option("d-iu-to-mcg")
+        form.locator("#vitamin-input").fill("600")
+        form.get_by_role("button", name="Convert", exact=True).click()
+        expect(page.locator("#vitamin-result")).to_have_text("Result: 15 µg vitamin D")
+        expect(page.get_by_text("Display is educational, not dosing instructions.", exact=False)).to_be_visible()
+    finally:
+        page.close()
 
 
 def check_food_csv(context, base, errors):
@@ -204,6 +311,13 @@ def smoke(repo, chromium_binary=None, headed=False):
                     go(page, "dashboard")
                     assert walker.count() == 1
                     findings.append("Dashboard week controls preserve both stores and the avatar stays on Dashboard.")
+
+                    check_dashboard_layout(page)
+                    check_nutrition_navigation(context, base, errors)
+                    check_avatar(context, base, errors)
+                    assert get_store(page, WORKOUT_KEY) == fixtures[WORKOUT_KEY]
+                    assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+                    findings.append("Dashboard bars, responsive Nutrition links, converter and avatar display/fallback passed.")
 
                     # Plan must be an explicit save, never a silent assignment rewrite.
                     go(page, "plan")

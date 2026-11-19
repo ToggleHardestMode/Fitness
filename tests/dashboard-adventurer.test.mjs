@@ -18,23 +18,15 @@ test('adventurer appears before progress only on Dashboard', () => {
   assert.equal((html.match(/class="fp-walker-banner"/g) ?? []).length, 1);
 });
 
-test('graphic is accessible, internal, and cannot capture touch controls', () => {
+test('default avatar asset has accessible metadata and no script or external links', () => {
   const art = read('adventurer-idle.svg');
-  const css = read('pages.css');
   assert.match(art, /<svg[^>]+viewBox=/);
   assert.match(art, /moustached fantasy adventurer/);
   assert.doesNotMatch(art, /<script|(?:href|src)=["']https?:\/\//i);
-  assert.match(css, /\.fp-walker-stage\s*\{[^}]*pointer-events\s*:\s*none\s*;/);
-  assert.match(read('dashboard-walker.js'), /fp-walker-stage/);
 });
 
-test('small iPhone and reduced-motion users retain a stable banner', () => {
-  const css = read('pages.css');
-  const art = read('adventurer-idle.svg');
-  assert.match(css, /@media\s*\(max-width\s*:\s*390px\)\s*\{\s*:where\(\[data-workout-preview\]\)\s+\.fp-walker-banner\s*\{/);
-  assert.match(css, /@media\s*\(prefers-reduced-motion\s*:\s*reduce\)\s*\{\s*:where\(\[data-workout-preview\]\)\s+\.fp-walker-platform\s*\{/);
-  assert.doesNotMatch(css, /\.fp-walker-sprite\s*\{[^}]*display\s*:\s*none\b/);
-  assert.match(art, /prefers-reduced-motion:reduce/);
+test('default SVG includes a reduced-motion rule', () => {
+  assert.match(read('adventurer-idle.svg'), /prefers-reduced-motion:reduce/);
 });
 
 test('versioned preview caches all new assets',() => {

@@ -15,13 +15,6 @@ test('dashboard places top Nutrition and Cheatsheet links directly below heading
   assert.match(nav[1], /<a class="btn secondary fp-top-nutrition-link" href="\.\/nutrition-cheatsheet\.html">Cheatsheet<\/a>/);
   assert.ok(html.indexOf('fp-top-nutrition') < html.indexOf('fp-walker-banner'), 'buttons are above dashboard art');
 });
-test('responsive style provides two touch-friendly shortcuts',()=>{
- const css=src('pages.css');
- assert.match(css,/\.fp-top-nutrition\s*\{\s*display:\s*grid/);
- assert.match(css,/grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\)/);
- assert.match(css,/\.fp-top-nutrition \.fp-top-nutrition-link\s*\{[^}]*min-height:\s*48px/);
- assert.match(css,/@media\(min-width:700px\)\s*\{\s*\.fp-top-nutrition/);
-});
 test('existing nutrition destinations remain real and cached with a synchronized preview version',()=>{
  const sw=src('sw.js');
  for(const page of ['nutrition.html','nutrition-cheatsheet.html']){

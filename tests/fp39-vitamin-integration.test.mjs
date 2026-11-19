@@ -33,15 +33,6 @@ test('preview keeps the Fantasy Codex cascade and workout-only styles scoped',()
  assert.match(pages.slice(timer),/^:where\(\[data-workout-preview\]\) \.fp-floating-rest\s*\{/m);
  assert.doesNotMatch(pages+read('theme.css'),/@import|url\(https?:/i);
 });
-test('vitamin UI has separate reference-standard picker and source-aware converter',()=>{
- const page=read('nutrition-cheatsheet.html');
- for(const id of ['vitamin-standard','vitamin-table-body','vitamin-convert-form','vitamin-method','vitamin-input','vitamin-result'])
-  assert.match(page,new RegExp('id="'+id+'"'));
- assert.match(page,/vitamin-reference-ui\.js/);
- assert.match(page,/not dosing instructions/);
- const ui=read('vitamin-reference-ui.js');
- assert.match(ui,/from '\.\/vitamin-units\.js'/);
-});
 test('isolated cache contains new style and vitamin modules with synchronized preview version',()=>{
  const sw=read('sw.js');
  assert.ok(cacheName().includes(cacheVersionToken(previewVersion())),'cache name carries the banner version');

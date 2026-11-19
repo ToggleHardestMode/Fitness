@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { dashboardHtml } from './dashboard-fixture.mjs';
 import { weeklyTrainingAnalysis } from '../preview-v101/training-analytics.js';
 import { volumeBarsMarkup } from '../preview-v101/volume-bars.js';
@@ -65,9 +64,7 @@ test('zero volume baseline is separate from positive visible columns', () => {
   assert.match(html,/height:111px/);
 });
 
-test('preview CSS renders visible bars and retains auditable secondary load-volume details', () => {
-  const css=readFileSync(new URL('../preview-v101/theme.css',import.meta.url),'utf8');
-  assert.match(css,/\.day-slot\s+\.bar\s*\{\s*display:\s*block\s*;/);
+test('dashboard retains auditable secondary load-volume details', () => {
   const html = dashboardHtml(state());
   const details = html.match(/<summary>Show calculation · weight × reps \(secondary\)<\/summary>(.*?)<\/details>/s)?.[1];
   assert.ok(details, 'volume breakdown is available');
