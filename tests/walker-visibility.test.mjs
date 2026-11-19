@@ -24,5 +24,5 @@ test('Reduce Motion uses the same image with a private still PNG',()=>{
   assert.match(app,/createWalkerStill\(selected\)\s*\.then\(\(png\)\s*=>/);
   assert.match(app,/useAvatar\(png,/);
   assert.doesNotMatch(css,/fp-walker-still/);
-  assert.match(css,/@media\s*\(prefers-reduced-motion\s*:\s*reduce\)\s*\{\s*\.fp-walker-platform\s*\{/);
+  assert.match(css,/@media\s*\(prefers-reduced-motion\s*:\s*reduce\)\s*\{\s*:where\(\[data-workout-preview\]\)\s+\.fp-walker-platform\s*\{/);
 });

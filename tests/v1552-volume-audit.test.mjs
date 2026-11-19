@@ -66,7 +66,7 @@ test('zero volume baseline is separate from positive visible columns', () => {
 });
 
 test('preview CSS renders visible bars and retains auditable secondary load-volume details', () => {
-  const css=readFileSync(new URL('../preview-v101/codex.css',import.meta.url),'utf8');
+  const css=readFileSync(new URL('../preview-v101/theme.css',import.meta.url),'utf8');
   assert.match(css,/\.day-slot\s+\.bar\s*\{\s*display:\s*block\s*;/);
   const html = dashboardHtml(state());
   const details = html.match(/<summary>Show calculation · weight × reps \(secondary\)<\/summary>(.*?)<\/details>/s)?.[1];
