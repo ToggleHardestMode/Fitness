@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {validateBackup, addWorkouts} from '../preview-v101/core.js';
 import {recommendNextExercise} from '../preview-v101/strength-journey.js';
-import {manualProgression} from '../preview-v101/manual-progression.js';
+import {manualProgression} from './support/manual-progression.js';
 import {recordExerciseClearance, revokeExerciseClearance, activeClearance,
   validateExerciseClearances} from '../preview-v101/exercise-clearance.js';
 import {clearancePanel} from '../preview-v101/exercise-clearance-ui.js';

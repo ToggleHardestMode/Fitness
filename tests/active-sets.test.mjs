@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {validateBackup} from '../preview-v101/core.js';
 import {recommendNextExercise} from '../preview-v101/strength-journey.js';
-import {manualProgression} from '../preview-v101/manual-progression.js';
+import {manualProgression} from './support/manual-progression.js';
 import {expectedSetCount, setActiveSets, validateActiveSets} from '../preview-v101/active-sets.js';
 import {activeSetsPanel, activeSetsLabel} from '../preview-v101/active-sets-ui.js';
 import {resetTrackingData} from '../preview-v101/tracking-reset.js';
