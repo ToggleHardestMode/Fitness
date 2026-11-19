@@ -31,8 +31,8 @@ test('graphic is accessible, internal, and cannot capture touch controls', () =>
 test('small iPhone and reduced-motion users retain a stable banner', () => {
   const css = read('pages.css');
   const art = read('adventurer-idle.svg');
-  assert.match(css, /@media\s*\(max-width\s*:\s*390px\)\s*\{\s*\.fp-walker-banner\s*\{/);
-  assert.match(css, /@media\s*\(prefers-reduced-motion\s*:\s*reduce\)\s*\{\s*\.fp-walker-platform\s*\{/);
+  assert.match(css, /@media\s*\(max-width\s*:\s*390px\)\s*\{\s*:where\(\[data-workout-preview\]\)\s+\.fp-walker-banner\s*\{/);
+  assert.match(css, /@media\s*\(prefers-reduced-motion\s*:\s*reduce\)\s*\{\s*:where\(\[data-workout-preview\]\)\s+\.fp-walker-platform\s*\{/);
   assert.doesNotMatch(css, /\.fp-walker-sprite\s*\{[^}]*display\s*:\s*none\b/);
   assert.match(art, /prefers-reduced-motion:reduce/);
 });
