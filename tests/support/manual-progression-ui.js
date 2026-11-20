@@ -1,4 +1,4 @@
-import { esc } from './html.js';
+import { esc } from '../../preview-v101/html.js';
 import { manualProgression } from './manual-progression.js';
 
 

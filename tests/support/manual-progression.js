@@ -1,5 +1,5 @@
-import { linkedSources } from './exercise-equivalence.js';
-import { activeClearance } from './exercise-clearance.js';
+import { linkedSources } from '../../preview-v101/exercise-equivalence.js';
+import { activeClearance } from '../../preview-v101/exercise-clearance.js';
 
 // Read-only candidate planning. Not a strength prescription or medical clearance.
 const isPT = template => Boolean(template?.requiresClinicalReview || template?.name?.includes('[PT Review]'));
