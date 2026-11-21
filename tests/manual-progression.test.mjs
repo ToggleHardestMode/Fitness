@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {manualProgression} from '../preview-v101/manual-progression.js';
-import {manualProgressionPanel} from '../preview-v101/manual-progression-ui.js';
+import {manualProgression} from './support/manual-progression.js';
+import {manualProgressionPanel} from './support/manual-progression-ui.js';
 
 const day='2026-10-22',prev='2026-10-19';
 const fixture=()=>{

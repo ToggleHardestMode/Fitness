@@ -11,7 +11,7 @@ const button=(label,handler)=>{const e=document.createElement('button');e.type='
 
 export function initFoodDiary(storage=localStorage){
   const status=$('fd-status'),form=$('fd-form'),date=$('fd-date');
-  let diary,undo=null,pendingCsv=null;
+  let diary,undo=null,pendingCsv=null,csvRead=0;
   try{const saved=storage.getItem(FOOD_KEY);diary=saved?validateDiary(JSON.parse(saved)):EMPTY_DIARY();}
   catch(error){
     status.textContent='Saved Food Diary could not be read: '+error.message+'. Nothing was overwritten. Keep website data intact.';
@@ -26,29 +26,33 @@ export function initFoodDiary(storage=localStorage){
     link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();
     setTimeout(()=>URL.revokeObjectURL(url),3000);
   }
-  function exportFoodBackup(filename='fitnesspilot-food-diary-v1.json'){
-    saveDownload(filename,JSON.stringify(validateDiary(diary),null,2)+'\n','application/json');
+  function exportFoodBackup(){
+    saveDownload('fitnesspilot-food-diary-v1.json',JSON.stringify(validateDiary(diary),null,2)+'\n','application/json');
   }
   function renderCsvPreview(){
     const host=$('fd-csv-preview');host.replaceChildren();host.hidden=!pendingCsv;
     if(!pendingCsv)return;
-    const {preview}=pendingCsv;
+    const {preview,snapshot}=pendingCsv;
+    const firstDate=preview.dates[0];
+    const lastDate=preview.dates.at(-1);
+    const dateSummary=preview.dates.length===1 ? firstDate :
+      preview.dates.length+' dates ('+firstDate+' to '+lastDate+')';
     const count=document.createElement('p');
-    count.textContent='Daily CSV preview for '+preview.date+': '+preview.add.length+
+    count.textContent='CSV preview for '+dateSummary+': '+preview.add.length+
       ' new, '+preview.updates.length+' corrected, '+preview.skipped.length+
       ' unchanged. Nothing has been saved yet.';
     host.append(count);
     const list=document.createElement('ul');list.className='fd-csv-preview-list';
     for(const entry of [...preview.add,...preview.skipped]){
       const li=document.createElement('li');
-      li.textContent=entry.name+' · '+entry.occasion+' · '+entry.servings+' serving(s) · '+
+      li.textContent=entry.date+' · '+entry.name+' · '+entry.occasion+' · '+entry.servings+' serving(s) · '+
         (entry.kcal===null?'unknown calories':number(entry.kcal*entry.servings)+' kcal')+
         (preview.skipped.includes(entry)?' (already imported)':'');
       list.append(li);
     }
     for(const {before,after} of preview.updates){
       const li=document.createElement('li');li.className='fd-csv-change';
-      const title=document.createElement('strong');title.textContent='Correct: '+after.name;
+      const title=document.createElement('strong');title.textContent=after.date+' · Correct: '+after.name;
       li.append(title);
       for(const key of ['servings',...NUTRIENTS]){
         if(before[key]===after[key])continue;
@@ -61,37 +65,22 @@ export function initFoodDiary(storage=localStorage){
     }
     host.append(list);
     if(preview.add.length+preview.updates.length){
-      const backup=button('Download pre-import Food Diary backup',()=>{
+      const label=preview.updates.length ? 'Add '+preview.add.length+' · Correct '+preview.updates.length :
+        'Import '+preview.add.length+' food entries';
+      const apply=button(label,()=>{
         try{
-          exportFoodBackup('fitnesspilot-food-diary-before-csv-'+preview.date+'.json');
-          pendingCsv.backupDownloaded=true;renderCsvPreview();
-          inform('Pre-import backup prepared. Save it to Files, then check the acknowledgement.');
-        }catch(error){inform(error.message,true);}
-      });
-      host.append(backup);
-      const label=document.createElement('label');label.className='fd-csv-confirm';
-      const acknowledge=document.createElement('input');acknowledge.type='checkbox';
-      acknowledge.disabled=!pendingCsv.backupDownloaded;
-      label.append(acknowledge,span('I saved the Food Diary JSON backup before importing.'));
-      host.append(label);
-      const apply=button('Add '+preview.add.length+' · Correct '+preview.updates.length,()=>{
-        try{
-          if(!pendingCsv?.backupDownloaded||!acknowledge.checked)
-            throw Error('Download and acknowledge a Food Diary JSON backup before importing.');
-          if(date.value!==preview.date)throw Error('Selected day changed; preview the CSV again.');
-          if(!confirm('Add '+preview.add.length+' new and correct '+preview.updates.length+
-              ' previously CSV-imported food(s) on '+preview.date+
-              '? Manually entered foods, missing CSV rows and other dates remain unchanged.'))return;
+          if(preview.updates.length&&!confirm('Add '+preview.add.length+' new and correct '+preview.updates.length+
+              ' previously CSV-imported food(s) for '+dateSummary+'?'))return;
           // Recheck AFTER the modal: another tab may have changed localStorage.
-          if(storage.getItem(FOOD_KEY)!==pendingCsv.snapshot){
+          if(storage.getItem(FOOD_KEY)!==snapshot){
             pendingCsv=null;renderCsvPreview();
             throw Error('Food Diary changed since CSV preview. Choose the file again; nothing imported.');
           }
-          const out=applyDailyFoodCsv(diary,preview,{apply:true,confirmed:true});
+          const current=snapshot===null?EMPTY_DIARY():JSON.parse(snapshot);
+          const out=applyDailyFoodCsv(current,preview,{apply:true,confirmed:true});
           persist(out.diary);undo=null;reset();render();
           inform('Added '+out.added+', corrected '+(out.updated||0)+
-                 ', skipped '+out.skipped+' on '+preview.date+
-                 '. Manual foods and other dates were preserved.');
+                 ', skipped '+out.skipped+' · '+dateSummary+'.');
         }catch(error){inform(error.message,true);}
       });
       apply.className='btn';host.append(apply);
@@ -100,7 +89,7 @@ export function initFoodDiary(storage=localStorage){
       p.textContent='All rows already match saved entries. Nothing to change.';
       host.append(p);
     }
-    host.append(button('Cancel CSV preview',()=>{pendingCsv=null;renderCsvPreview();inform('Daily CSV import canceled. No data changed.');}));
+    host.append(button('Cancel CSV preview',()=>{pendingCsv=null;renderCsvPreview();inform('CSV import canceled.');}));
   }
 
   function persist(next){
@@ -173,7 +162,7 @@ export function initFoodDiary(storage=localStorage){
     $('fd-undo').hidden=!undo;
   }
   date.addEventListener('change',()=>{
-    try{totalsForDate(diary,date.value);pendingCsv=null;renderCsvPreview();reset();render();inform('Showing selected day.');}
+    try{totalsForDate(diary,date.value);reset();render();inform('Showing selected day.');}
     catch(error){inform(error.message,true);}
   });
   form.addEventListener('submit',event=>{
@@ -201,18 +190,21 @@ export function initFoodDiary(storage=localStorage){
   $('fd-csv-file').addEventListener('change',async event=>{
     const file=event.target.files?.[0];event.target.value='';
     if(!file)return;
+    const read=++csvRead;
     pendingCsv=null;renderCsvPreview();
     try{
       if(file.size>100000||!/\.csv$/i.test(file.name))
-        throw Error('Choose a daily food .csv file smaller than 100 KB.');
-      const selected=date.value,raw=storage.getItem(FOOD_KEY);
-      const preview=previewDailyFoodCsv(diary,await file.text(),selected);
-      if(date.value!==selected||storage.getItem(FOOD_KEY)!==raw)
-        throw Error('Selected date or Food Diary changed while reading the CSV. Choose it again.');
-      pendingCsv={preview,snapshot:raw,backupDownloaded:false};
+        throw Error('Choose a food .csv file smaller than 100 KB.');
+      const snapshot=storage.getItem(FOOD_KEY),contents=await file.text();
+      if(read!==csvRead)return;
+      if(storage.getItem(FOOD_KEY)!==snapshot)
+        throw Error('Food Diary changed while reading the CSV. Choose it again.');
+      const current=snapshot===null?EMPTY_DIARY():JSON.parse(snapshot);
+      const preview=previewDailyFoodCsv(current,contents);
+      pendingCsv={preview,snapshot};
       renderCsvPreview();
-      inform('Daily CSV preview ready. Review the items; nothing was imported yet.');
-    }catch(error){inform(error.message,true);}
+      inform('CSV preview ready. Review the dates and entries before importing.');
+    }catch(error){if(read===csvRead)inform(error.message,true);}
   });
   $('fd-export').addEventListener('click',()=>{
     try{exportFoodBackup();inform('Food Diary backup prepared. Save the file to Files.');}

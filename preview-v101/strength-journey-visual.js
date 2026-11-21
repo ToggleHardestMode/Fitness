@@ -1,8 +1,7 @@
+import { esc as escapeHtml } from './html.js';
 import {getExerciseJourney, recommendNextExercise} from './strength-journey.js';
 
 // Presentation only. Every point and set comes from persisted completed-workout logs.
-const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g,
-  character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 const fmt = number => Number(number).toLocaleString('en-SG', {maximumFractionDigits:2});
 const dateLabel = value => new Date(value+'T12:00:00').toLocaleDateString('en-US',
   {month:'short',day:'2-digit'});

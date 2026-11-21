@@ -1,7 +1,6 @@
+import { esc } from './html.js';
 import { linkCandidates } from './exercise-equivalence.js';
 
-const esc = value => String(value ?? '').replace(/[&<>"']/g, c =>
-  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 const label = (state, ref) => {
   const template = state.templates.find(t => t.id === ref.templateId);

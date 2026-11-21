@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {validateBackup} from '../preview-v101/core.js';
 import {getExerciseJourney, recommendNextExercise} from '../preview-v101/strength-journey.js';
-import {manualProgression} from '../preview-v101/manual-progression.js';
-import {manualProgressionPanel} from '../preview-v101/manual-progression-ui.js';
+import {manualProgression} from './support/manual-progression.js';
+import {manualProgressionPanel} from './support/manual-progression-ui.js';
 import {strengthNextSession} from '../preview-v101/strength-journey-ui.js';
 import {renderStrengthJourney} from '../preview-v101/strength-journey-visual.js';
 import {addExerciseEquivalence, removeExerciseEquivalence, linkedSources, linkCandidates,

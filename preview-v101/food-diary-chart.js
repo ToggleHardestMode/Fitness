@@ -1,6 +1,6 @@
+import { esc as escapeHtml } from './html.js';
 import { FOOD_KEY, validateDiary } from './food-diary-core.js';
 
-const escapeHtml = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = value => value.toLocaleString('en-SG', { maximumFractionDigits: 1 });
 function shiftDay(key, offset) {
   const d = new Date(`${key}T12:00:00Z`);
@@ -91,6 +91,6 @@ export function readFoodDiaryChart(storage, endDate) {
     const value = storage.getItem(FOOD_KEY);
     return foodDiaryChartMarkup(diaryCalorieHistory(value ? JSON.parse(value) : { version: 1, entries: [] }, endDate));
   } catch (error) {
-    return `<section class="card fd-chart-panel" role="alert"><h2>Food Diary · Daily calories</h2><p>Food Diary data could not be read (${escapeHtml(error.message)}). No records were changed. Export or recover your original data before making changes.</p></section>`;
+    return `<section class="card fd-chart-panel" role="alert"><h2>Food Diary · Daily calories</h2><p>Food Diary data could not be read (${escapeHtml(String(error.message))}). No records were changed. Export or recover your original data before making changes.</p></section>`;
   }
 }

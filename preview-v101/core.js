@@ -365,7 +365,9 @@ export function calendarICS(state, now = new Date()) {
     if(next <= now)next.setDate(next.getDate()+7);
     const end=new Date(next);end.setHours(end.getHours()+1);
     const name=icsEscape(`${t.name} · FitnessPilot`);
-    lines.push("BEGIN:VEVENT",`UID:fitnesspilot-${day}-${encodeURIComponent(t.id)}@local`,`DTSTAMP:${stamp}`,`DTSTART:${icsDate(next)}`,`DTEND:${icsDate(end)}`,`SUMMARY:${name}`,"RRULE:FREQ=WEEKLY",`DESCRIPTION:${icsEscape("Open FitnessPilot and log your workout.")}`,"BEGIN:VALARM","ACTION:DISPLAY",`TRIGGER:${lead===0?"PT0M":`-PT${lead}M`}`,"DESCRIPTION:Time to train","END:VALARM","END:VEVENT"); count++;
+    const workoutId = t.id.replace(/[^A-Za-z0-9_-]/gu, char => `.${char.codePointAt(0).toString(16)}.`);
+    const uidLine = `UID:fitnesspilot-${day}-${workoutId}@local`.match(/.{1,74}/g).join("\r\n ");
+    lines.push("BEGIN:VEVENT",uidLine,`DTSTAMP:${stamp}`,`DTSTART:${icsDate(next)}`,`DTEND:${icsDate(end)}`,`SUMMARY:${name}`,"RRULE:FREQ=WEEKLY",`DESCRIPTION:${icsEscape("Open FitnessPilot and log your workout.")}`,"BEGIN:VALARM","ACTION:DISPLAY",`TRIGGER:${lead===0?"PT0M":`-PT${lead}M`}`,"DESCRIPTION:Time to train","END:VALARM","END:VEVENT"); count++;
   }
   lines.push("END:VCALENDAR");
   if(!count)fail("Assign at least one workout day before exporting calendar reminders.");

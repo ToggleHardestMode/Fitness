@@ -18,7 +18,7 @@ const old=()=>saveEntry(EMPTY_DIARY(),{
 
 test('preview parses one day, quoted names, servings and unknown-vs-zero macros',()=>{
   const p=previewDailyFoodCsv(old(),sample,date);
-  assert.equal(p.date,date);assert.equal(p.add.length,2);assert.equal(p.skipped.length,0);
+  assert.deepEqual(p.dates,[date]);assert.equal(p.add.length,2);assert.equal(p.skipped.length,0);
   assert.equal(p.add[0].name,'Chicken rice, small');
   assert.equal(p.add[1].protein,null);assert.equal(p.add[1].fat,null);
   assert.equal(p.add[1].kcal,90);assert.equal(p.add[1].servings,2);
@@ -85,14 +85,34 @@ test('ambiguous same-name same-day manual food is blocked, not silently double l
   assert.deepEqual(doc,before);
 });
 
-test('mixed dates, corrupt numeric values, bad CSV and formulas reject without writing',()=>{
-  assert.throws(()=>previewDailyFoodCsv(EMPTY_DIARY(),food(['2026-11-10,Meal,meal,1,100,1,1,1']),date),/must match selected day/);
+test('invalid dates, corrupt numeric values, bad CSV and formulas reject without writing',()=>{
+  assert.throws(()=>previewDailyFoodCsv(EMPTY_DIARY(),food([
+    '2026-11-09,Valid meal,meal,1,100,1,1,1',
+    '2026-02-30,Invalid meal,meal,1,100,1,1,1'
+  ])),/CSV row 3: enter a valid date in YYYY-MM-DD format/);
   assert.throws(()=>previewDailyFoodCsv(EMPTY_DIARY(),food(['2026-11-09,Meal,meal,0,100,1,1,1']),date),/Servings/);
   assert.throws(()=>previewDailyFoodCsv(EMPTY_DIARY(),food(['2026-11-09,Meal,meal,1,=SUM(A1),1,1,1']),date),/nonnegative decimal/);
   assert.throws(()=>previewDailyFoodCsv(EMPTY_DIARY(),food(['2026-11-09,Meal,meal,1,-100,1,1,1']),date),/nonnegative decimal/);
   assert.throws(()=>previewDailyFoodCsv(EMPTY_DIARY(),header+'\n"unfinished',date),/unfinished quote/);
   assert.throws(()=>previewDailyFoodCsv(EMPTY_DIARY(),'date,name,occasion\n2026-11-09,X,meal',date),/columns/);
-  assert.throws(()=>previewDailyFoodCsv(EMPTY_DIARY(),sample,'2026-02-30'),/valid daily import date/);
+  assert.throws(()=>blankDailyFoodCsv('2026-02-30'),/valid daily import date/);
+});
+
+test('a multi-date CSV adds and corrects by date and can be imported again without duplicates',()=>{
+  const prior=applyDailyFoodCsv(old(),previewDailyFoodCsv(old(),sample),{apply:true,confirmed:true}).diary;
+  const csv=food([
+    '2026-11-12,"Chicken rice, small",meal,1,650,32,62,19',
+    '2026-11-09,"Chicken rice, small",meal,1,600,31,61,18'
+  ]);
+  const preview=previewDailyFoodCsv(prior,csv);
+  assert.deepEqual(preview.dates,['2026-11-09','2026-11-12']);
+  assert.equal(preview.add[0].date,'2026-11-12');
+  assert.equal(preview.updates[0].after.id,prior.entries[1].id);
+  const out=applyDailyFoodCsv(prior,preview,{apply:true,confirmed:true}).diary;
+  assert.equal(totalsForDate(out,'2026-11-09').nutrients.kcal.value,780);
+  assert.equal(totalsForDate(out,'2026-11-12').nutrients.kcal.value,650);
+  assert.deepEqual(totalsForDate(out,'2026-11-08').rows,old().entries);
+  assert.equal(previewDailyFoodCsv(out,csv).skipped.length,2);
 });
 
 test('stale or malicious apply ID conflicts fail and 3000-entry cap holds',()=>{
@@ -112,16 +132,15 @@ test('blank template is valid CSV skeleton but is not mistaken for a logged meal
     food(['2026-11-09,,meal,1,,,,']),date),/Food name/);
 });
 
-test('Food Diary UI has explicit per-day preview, backup acknowledgement and apply gate',()=>{
+test('Food Diary UI previews CSV dates and keeps explicit apply and separate export and restore',()=>{
   const html=readFileSync(new URL('../preview-v101/food-diary.html',import.meta.url),'utf8');
   const js=readFileSync(new URL('../preview-v101/food-diary.js',import.meta.url),'utf8');
   const sw=readFileSync(new URL('../preview-v101/sw.js',import.meta.url),'utf8');
-  for(const id of ['fd-csv-file','fd-csv-template','fd-csv-preview'])assert.ok(html.includes('id="'+id+'"'));
-  assert.match(js,/previewDailyFoodCsv\(diary,await file\.text\(\),selected\)/);
-  assert.match(js,/applyDailyFoodCsv\(diary,preview,\{apply:true,confirmed:true\}\)/);
-  assert.match(js,/backupDownloaded/);
-  assert.match(js,/storage\.getItem\(FOOD_KEY\)!==pendingCsv\.snapshot/);
-  assert.match(js,/if\(!confirm\(/);
+  for(const id of ['fd-csv-file','fd-csv-template','fd-csv-preview','fd-export'])assert.ok(html.includes('id="'+id+'"'));
+  assert.match(js,/previewDailyFoodCsv\(current,contents\)/);
+  assert.match(js,/applyDailyFoodCsv\(current,preview,\{apply:true,confirmed:true\}\)/);
+  assert.doesNotMatch(js,/backupDownloaded|fd-csv-confirm/);
+  assert.match(js,/storage\.getItem\(FOOD_KEY\)!==snapshot/);
   assert.match(sw,/'\.\/food-diary-csv\.js'/);
   assert.match(js,/emptyOnlyRestore\(diary/);
 });
@@ -239,15 +258,15 @@ test('a concurrent or forged edit never changes stored rows during apply',()=>{
   assert.equal(withoutApply.applied,false);
 });
 
-test('old and new CSV workflow UI discloses every correction and retains safety gates',()=>{
+test('CSV workflow discloses and confirms corrections before apply',()=>{
   const html=readFileSync(new URL('../preview-v101/food-diary.html',import.meta.url),'utf8');
   const ui=readFileSync(new URL('../preview-v101/food-diary.js',import.meta.url),'utf8');
-  assert.match(html,/changes to previously CSV-imported meals require explicit confirmation/);
+  assert.match(html,/changes to previously CSV-imported meals require explicit confirmation/i);
   assert.match(html,/Missing rows in the revised CSV stay saved/);
   assert.match(ui,/for\(const \{before,after\} of preview\.updates\)/);
   assert.match(ui,/oldValue\+' → '\+newValue/);
   assert.match(ui,/preview\.add\.length\+preview\.updates\.length/);
-  assert.match(ui,/backupDownloaded/);
-  assert.match(ui,/storage\.getItem\(FOOD_KEY\)!==pendingCsv\.snapshot/);
-  assert.match(ui,/applyDailyFoodCsv\(diary,preview,\{apply:true,confirmed:true\}\)/);
+  assert.match(ui,/preview\.updates\.length&&!confirm\(/);
+  assert.match(ui,/storage\.getItem\(FOOD_KEY\)!==snapshot/);
+  assert.match(ui,/applyDailyFoodCsv\(current,preview,\{apply:true,confirmed:true\}\)/);
 });

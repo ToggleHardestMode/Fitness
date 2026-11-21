@@ -2,26 +2,30 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
+import {cacheName, cacheVersionToken, previewVersion} from './preview-version.mjs';
 
 const sw=readFileSync(new URL('../preview-v101/sw.js', import.meta.url),'utf8');
 const scope='https://example.test/Fitness/preview-v101/';
-function mockWorker() {
+function mockWorker(cacheKeys = []) {
   const handlers={};
   const shell=new Response('<html>cached FitnessPilot preview</html>',{status:200,headers:{'content-type':'text/html'}});
   const matchCalls=[];
+  const installs=[];
+  const deleted=[];
   const caches={
     match:async request=>{
       const url=String(typeof request==='string'?request:request.url);
       matchCalls.push(url);
       return url===scope+'index.html'?shell:undefined;
     },
-    open:async()=>({addAll:async()=>{},put:async()=>{}}),
-    keys:async()=>[]
+    open:async name=>({addAll:async assets=>{installs.push({name,assets:Array.from(assets)});},put:async()=>{}}),
+    keys:async()=>cacheKeys,
+    delete:async name=>{deleted.push(name);}
   };
   const self={location:{origin:'https://example.test'},registration:{scope},
-    addEventListener:(name,cb)=>{handlers[name]=cb;}};
+    addEventListener:(name,cb)=>{handlers[name]=cb;},skipWaiting:async()=>{},clients:{claim:async()=>{}}};
   runInNewContext(sw,{self,caches,fetch:async()=>{throw Error('Offline');},Response,URL,Promise});
-  return {handlers,matchCalls,shell};
+  return {handlers,matchCalls,shell,installs,deleted};
 }
 function request(url,mode='navigate'){
   return {url,mode,method:'GET'};
@@ -30,6 +34,12 @@ function send(worker,req){
   let handled;
   worker.handlers.fetch({request:req,respondWith:p=>{handled=p;},waitUntil:()=>{}});
   return handled;
+}
+function waitForLifecycle(handler){
+  let work;
+  handler({waitUntil:pending=>{work=pending;}});
+  assert.equal(typeof work?.then,'function');
+  return work;
 }
 test('offline cache-busted preview navigation falls back to cached shell',async()=>{
   const w=mockWorker();
@@ -51,8 +61,16 @@ test('other-origin requests are not intercepted',()=>{
   const w=mockWorker();
   assert.equal(send(w,request('https://other.test/file')),undefined);
 });
-test('the preview service worker uses a dedicated cache namespace',()=>{
-  assert.match(sw,/const CACHE = 'fitnesspilot-preview-v\d+-[a-z0-9-]+';/);
-  assert.match(sw,/startsWith\('fitnesspilot-preview-'\)/);
-  assert.match(sw,/'\.\/recovery-check\.js'/);
+test('install caches recovery checks and activation only deletes obsolete preview caches',async()=>{
+  const active=cacheName();
+  const oldPreview='fitnesspilot-preview-v1-obsolete';
+  const w=mockWorker([active,oldPreview,'fitnesspilot-web-v1','other-cache']);
+  await waitForLifecycle(w.handlers.install);
+  assert.equal(w.installs.length,1);
+  assert.equal(w.installs[0].name,active);
+  assert.match(w.installs[0].name,/^fitnesspilot-preview-v\d+-[a-z0-9-]+$/);
+  assert.ok(w.installs[0].name.includes(cacheVersionToken(previewVersion())));
+  assert.ok(w.installs[0].assets.includes('./recovery-check.js'));
+  await waitForLifecycle(w.handlers.activate);
+  assert.deepEqual(w.deleted,[oldPreview]);
 });
