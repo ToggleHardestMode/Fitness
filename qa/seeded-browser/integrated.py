@@ -395,6 +395,23 @@ def smoke(repo, chromium_binary=None, headed=False):
                     assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
                     findings.append("Plan editor cancel and V10.3 download, preview, stale rejection, cancel and explicit import passed.")
 
+                    # The overlap panel follows the saved schedule and reads both stores without modifying them.
+                    upper_a = next(t for t in after_program["templates"]
+                                   if t.get("sourceVersion") == "V10.3 Home" and t["day"] == 0)
+                    schedule = page.locator("#schedule-form")
+                    schedule.locator("#day0").select_option(upper_a["id"])
+                    schedule.locator("button[type=submit]").click()
+                    scheduled = get_store(page, WORKOUT_KEY)
+                    go(page, "dashboard")
+                    overlap = page.locator("section.v102-overlap").filter(
+                        has=page.get_by_role("heading", name="V10.3 muscle overlap", exact=True))
+                    assert "17 physical sets planned · 0 distinct sets logged" in overlap.inner_text()
+                    chest = overlap.get_by_role("row").filter(has=page.get_by_role("rowheader", name="Chest", exact=True))
+                    assert chest.get_by_role("cell").all_text_contents() == ["5", "0", "5", "0", "0", "0"]
+                    assert get_store(page, WORKOUT_KEY) == scheduled
+                    assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+                    findings.append("Dashboard V10.3 panel shows scheduled sets and Chest equivalents without changing either store.")
+
                     # Save one actual synthetic working set, then update it without duplicating.
                     go(page, "train")
                     page.locator("#active-date").fill("2026-10-29")

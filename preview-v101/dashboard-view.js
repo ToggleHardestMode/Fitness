@@ -7,7 +7,7 @@ import { METRIC_FIELDS, weeklyMetricSources } from './metric-breakdown.js';
 import { strengthDashboard } from './strength-journey-ui.js';
 import { lifetimeTrainingSets, setMilestoneProgress, weeklyTrainingAnalysis } from './training-analytics.js';
 import { trainingAnalyticsPanel } from './training-analytics-ui.js';
-import { v102OverlapPanel } from './v102-overlap-ui.js';
+import { v102OverlapPanel, v103OverlapPanel } from './v102-overlap-ui.js';
 import { setsBarsMarkup } from './volume-bars.js';
 import { latestLoggedWeek } from './week-window.js';
 
@@ -198,7 +198,7 @@ export function dashboardView(state, selection, helpers, storage) {
     `<div class="inline-meta">${daysAssigned} assigned day(s) with logged sets · ${s.planned} scheduled. ` +
     `This is not a workout-completion score.</div></section></div>
   ${trainingAnalyticsPanel(state, s.dates[0], today())}
-  ${v102OverlapPanel(state, s.dates[0])}
+  ${v102OverlapPanel(state, s.dates[0])}${v103OverlapPanel(state, s.dates[0])}
   <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>Nutrition & Weight Journey</h2>` +
     '<p>Record meals and derive daily calories/protein/carbs/fat in a separate diary. Existing check-ins are unchanged.</p></div></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><a class="btn" href="./food-diary.html">Open Food Diary →</a>' +
