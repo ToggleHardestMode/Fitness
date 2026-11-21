@@ -146,6 +146,53 @@ def check_nutrition_navigation(context, base, errors):
         page.close()
 
 
+def check_calendar_exports(context, base, fixtures, errors):
+    page = context.new_page()
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    page.goto(base + "/index.html", wait_until="domcontentloaded")
+    page.locator("nav.bottom-tabs button[data-page='tools']").wait_for()
+    set_seed(page, fixtures)
+    page.reload(wait_until="domcontentloaded")
+    go(page, "tools")
+    export = page.get_by_role("button", name="Export Calendar reminders (.ics)", exact=True)
+    downloads = []
+    for now, filename_date in (
+        ("2026-11-16T10:29:00Z", "2026-11-16"),
+        ("2026-11-17T10:29:00Z", "2026-11-17"),
+    ):
+        page.clock.set_fixed_time(now)
+        with page.expect_download() as calendar:
+            export.click()
+        download = calendar.value
+        assert download.suggested_filename == f"FitnessPilot-weekly-reminders-{filename_date}.ics"
+        lines = Path(download.path()).read_bytes().decode("utf-8").split("\r\n")
+        assert lines.count("BEGIN:VEVENT") == lines.count("BEGIN:VALARM") == 1
+        assert "RRULE:FREQ=WEEKLY" in lines and "TRIGGER:PT0M" in lines
+        downloads.append(lines)
+
+    first, second = downloads
+    assert [line for line in first if line.startswith("UID:")] == [
+        line for line in second if line.startswith("UID:")
+    ] == ["UID:fitnesspilot-0-fixture-upper-001@local"]
+    assert "DTSTAMP:20261116T102900Z" in first and "DTSTAMP:20261117T102900Z" in second
+    assert "DTSTART:20261116T183000" in first and "DTEND:20261116T193000" in first
+    assert "DTSTART:20261123T183000" in second and "DTEND:20261123T193000" in second
+    assert get_store(page, WORKOUT_KEY) == fixtures[WORKOUT_KEY]
+    assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+
+    unassigned = {**fixtures[WORKOUT_KEY], "assignments": {}}
+    set_seed(page, {**fixtures, WORKOUT_KEY: unassigned})
+    page.reload(wait_until="domcontentloaded")
+    go(page, "tools")
+    unexpected_downloads = []
+    page.on("download", lambda download: unexpected_downloads.append(download))
+    export.click()
+    page.get_by_text("Assign at least one workout day before exporting calendar reminders.", exact=True).wait_for()
+    assert not unexpected_downloads
+    assert get_store(page, WORKOUT_KEY) == unassigned
+    assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+
+
 def check_food_csv(context, base, errors):
     from playwright.sync_api import expect
 
@@ -501,10 +548,6 @@ def smoke(repo, chromium_binary=None, headed=False):
                         page.get_by_role("button", name="Download full history (.csv)").click()
                     assert logbook.value.suggested_filename.startswith("FitnessPilot-workout-history-")
                     assert "Synthetic seated press" in Path(logbook.value.path()).read_text(encoding="utf-8")
-                    with page.expect_download() as calendar:
-                        page.get_by_role("button", name="Export Calendar reminders (.ics)").click()
-                    assert calendar.value.suggested_filename.endswith(".ics")
-                    assert "BEGIN:VEVENT" in Path(calendar.value.path()).read_text(encoding="utf-8")
                     assert get_store(page, WORKOUT_KEY) == before_export
                     assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
                     findings.append("Tools QA link, persistence status, reset guard and read-only exports passed.")
@@ -633,6 +676,15 @@ def smoke(repo, chromium_binary=None, headed=False):
                 with browser.new_context(service_workers="block", viewport={"width": 390, "height": 844}) as food_csv:
                     check_food_csv(food_csv, base, errors)
                     findings.append("Food CSV imported by row date without a backup; reimport and correction checks passed.")
+                with browser.new_context(
+                    accept_downloads=True, service_workers="block",
+                    timezone_id="Asia/Singapore", viewport={"width": 390, "height": 844},
+                ) as calendar:
+                    check_calendar_exports(calendar, base, fixtures, errors)
+                    findings.append(
+                        "Two actual Tools .ics downloads one day apart kept the same UID, "
+                        "advanced the occurrence, preserved both stores, and rejected an empty schedule."
+                    )
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
                 assert not errors, "Browser JavaScript errors: " + " | ".join(errors[:5])
                 train_baseline = [
