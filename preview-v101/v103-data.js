@@ -57,3 +57,19 @@ export function v103Templates() {
     }))
   }));
 }
+
+function v103TemplateIdentity({ day, name, requiresClinicalReview, exercises }) {
+  return JSON.stringify([day, name, Boolean(requiresClinicalReview), exercises.map(exercise => [
+    exercise.name, exercise.muscle, exercise.sets, exercise.min, exercise.max, exercise.rest,
+    exercise.repUnit, exercise.equipment, exercise.sourceNote,
+    exercise.setTargets?.map(target => [target.min, target.max])
+  ])]);
+}
+
+const v103CsvIdentities = new Set(parseWorkouts(V103_CSV).map(v103TemplateIdentity));
+
+export function isV103OverlapTemplate(template) {
+  // Generic CSV imports lack the version tag. Only the full canonical workout matches.
+  return template.sourceVersion === V103_VERSION ||
+    (template.sourceVersion === undefined && v103CsvIdentities.has(v103TemplateIdentity(template)));
+}

@@ -1,11 +1,10 @@
-import { weeklyV102Overlap, weeklyV103Overlap, V102_REGIONS } from './v102-overlap.js';
-import { V102_VERSION } from './v102-data.js';
-import { V103_VERSION } from './v103-data.js';
+import { isV102OverlapTemplate, weeklyV102Overlap, weeklyV103Overlap, V102_REGIONS } from './v102-overlap.js';
+import { isV103OverlapTemplate } from './v103-data.js';
 
 const value = number => Number(number.toFixed(1)).toLocaleString('en-SG', {maximumFractionDigits:1});
 
-function overlapPanel(state, monday, version, label, summarize) {
-  if (!(state.templates || []).some(t => t.sourceVersion === version)) return '';
+function overlapPanel(state, monday, matchesTemplate, label, summarize) {
+  if (!(state.templates || []).some(matchesTemplate)) return '';
   const report = summarize(state, monday);
   const rows = V102_REGIONS.map(region => {
     const p = report.planned[region], l = report.logged[region];
@@ -20,9 +19,9 @@ function overlapPanel(state, monday, version, label, summarize) {
 }
 
 export function v102OverlapPanel(state, monday) {
-  return overlapPanel(state, monday, V102_VERSION, 'V10.2', weeklyV102Overlap);
+  return overlapPanel(state, monday, isV102OverlapTemplate, 'V10.2', weeklyV102Overlap);
 }
 
 export function v103OverlapPanel(state, monday) {
-  return overlapPanel(state, monday, V103_VERSION, 'V10.3', weeklyV103Overlap);
+  return overlapPanel(state, monday, isV103OverlapTemplate, 'V10.3', weeklyV103Overlap);
 }

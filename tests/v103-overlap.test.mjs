@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { addWorkouts, emptyState, parseWorkouts } from '../preview-v101/core.js';
 import { V102_CSV, V102_VERSION } from '../preview-v101/v102-data.js';
-import { V103_COEFFICIENTS_CSV, v103Templates } from '../preview-v101/v103-data.js';
+import { V103_COEFFICIENTS_CSV, V103_CSV, v103Templates } from '../preview-v101/v103-data.js';
 import { parseV103Coefficients, validateV103Mapping, weeklyV102Overlap, weeklyV103Overlap } from '../preview-v101/v102-overlap.js';
 import { createExerciseVersion } from '../preview-v101/template-version.js';
+import { v103OverlapPanel } from '../preview-v101/v102-overlap-ui.js';
 
 const monday = '2026-11-16';
 
@@ -78,4 +79,23 @@ test('a custom V10.3-derived workout and an unmatched canonical exercise receive
   const unmatched = weeklyV103Overlap(state, monday);
   assert.deepEqual([unmatched.physicalPlanned, unmatched.physicalLogged, unmatched.unmapped], [14, 0, 4]);
   assert.equal(unmatched.logged.Chest.direct, 0);
+});
+
+test('an exact V10.3 generic CSV import appears in overlap without rewriting its version or logs', () => {
+  let nextId = 0;
+  const { state } = addWorkouts(emptyState(), parseWorkouts(V103_CSV), false, () => `v103-csv-${++nextId}`);
+  const upper = state.templates.find(template => template.day === 0);
+  state.assignments = { 0: upper.id };
+  state.logs = [{ date: monday, templateId: upper.id, exerciseIndex: 0, set: 1, kg: 20, reps: 10 }];
+  const before = structuredClone(state);
+  const report = weeklyV103Overlap(state, monday);
+  assert.deepEqual([report.physicalPlanned, report.physicalLogged], [17, 1]);
+  assert.match(v103OverlapPanel(state, monday), /17 physical sets planned/);
+  assert.deepEqual(state, before);
+  assert.equal(upper.sourceVersion, undefined);
+
+  upper.exercises[0].rest += 5;
+  const edited = weeklyV103Overlap(state, monday);
+  assert.deepEqual([edited.physicalPlanned, edited.physicalLogged], [0, 0]);
+  assert.equal(v103OverlapPanel({ ...state, templates: [upper] }, monday), '');
 });

@@ -1,5 +1,5 @@
 import { V102_COEFFICIENTS_CSV, V102_VERSION } from './v102-data.js';
-import { V103_COEFFICIENTS_CSV, V103_VERSION } from './v103-data.js';
+import { isV103OverlapTemplate, V103_COEFFICIENTS_CSV, V103_VERSION } from './v103-data.js';
 
 export const V102_REGIONS = Object.freeze([
   'Chest', 'Lats', 'Upper Back', 'Front Delts', 'Side Delts', 'Rear Delts',
@@ -132,7 +132,7 @@ function add(regions, weights, number) {
 }
 
 /** Per-region planning estimates, not additional physical working sets. */
-function weeklyOverlap(state, weekMonday, version, coefficients) {
+function weeklyOverlap(state, weekMonday, matchesTemplate, coefficients) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(weekMonday)) throw Error('Week start must be YYYY-MM-DD.');
   const base = new Date(`${weekMonday}T12:00:00Z`);
   if (Number.isNaN(base.getTime()) || base.toISOString().slice(0, 10) !== weekMonday || base.getUTCDay() !== 1) {
@@ -144,13 +144,13 @@ function weeklyOverlap(state, weekMonday, version, coefficients) {
     return d.toISOString().slice(0,10);
   });
   const datesSet = new Set(dates);
-  const templates = new Map((state.templates || []).map(t => [t.id, t]));
+  const templates = new Map((state.templates || []).filter(matchesTemplate).map(t => [t.id, t]));
   const planned = emptyRegions(), logged = emptyRegions();
   let physicalPlanned = 0, physicalLogged = 0, unmapped = 0;
   // Planned counts follow the actual scheduled templates, never library membership alone.
   for (let i = 0; i < dates.length; i++) {
     const template = templates.get(state.assignments?.[i]);
-    if (!template || template.sourceVersion !== version) continue;
+    if (!template) continue;
     for (const exercise of template.exercises) {
       const entry = coefficients.get(key(DAY[template.day], exercise.name));
       if (!entry || entry.sets !== exercise.sets) {unmapped += exercise.sets;continue;}
@@ -162,7 +162,7 @@ function weeklyOverlap(state, weekMonday, version, coefficients) {
   for (const log of (state.logs || [])) {
     if (!datesSet.has(log.date) || log.isWarmup === true || log.kind === 'warmup') continue;
     const template = templates.get(log.templateId);
-    if (!template || template.sourceVersion !== version) continue;
+    if (!template) continue;
     const exercise = template.exercises?.[log.exerciseIndex];
     if (!exercise || !Number.isInteger(log.set) || log.set < 1 || log.set > exercise.sets) continue;
     const unique = `${log.date}|${log.templateId}|${log.exerciseIndex}|${log.set}`;
@@ -182,10 +182,12 @@ function weeklyOverlap(state, weekMonday, version, coefficients) {
     note: 'Indirect coefficients are approximate planning weights. Count physical working sets once; no medical clearance implied.'};
 }
 
+export const isV102OverlapTemplate = template => template.sourceVersion === V102_VERSION;
+
 export function weeklyV102Overlap(state, monday, coefficients = parseV102Coefficients()) {
-  return weeklyOverlap(state, monday, V102_VERSION, coefficients);
+  return weeklyOverlap(state, monday, isV102OverlapTemplate, coefficients);
 }
 
 export function weeklyV103Overlap(state, monday, coefficients = parseV103Coefficients()) {
-  return weeklyOverlap(state, monday, V103_VERSION, coefficients);
+  return weeklyOverlap(state, monday, isV103OverlapTemplate, coefficients);
 }
