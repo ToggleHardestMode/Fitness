@@ -277,6 +277,14 @@ def run(root, destination, target, headed=False, chromium_binary=None, compare_v
                             "Served preview version differs from the checked-out source."
                         )
                         fixtures = create_fixtures()
+                        workout = fixtures[WORKOUT_KEY]
+                        workout["templates"].append({
+                            "id": "fixture-v103-overlap", "name": "Synthetic V10.3 overlap workout",
+                            "sourceVersion": "V10.3 Home", "day": 3,
+                            "exercises": [{"name": "Incline DB Press", "muscle": "Chest", "sets": 3,
+                                           "min": 8, "max": 12, "rest": 90}],
+                        })
+                        workout["assignments"]["3"] = "fixture-v103-overlap"
                         set_seed(page, fixtures)
                         page.reload(wait_until="load")
                         page.evaluate("() => document.fonts.ready.then(() => true)")

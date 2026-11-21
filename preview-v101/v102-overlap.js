@@ -1,4 +1,5 @@
 import { V102_COEFFICIENTS_CSV, V102_VERSION } from './v102-data.js';
+import { isV103OverlapTemplate, V103_COEFFICIENTS_CSV, V103_VERSION } from './v103-data.js';
 
 export const V102_REGIONS = Object.freeze([
   'Chest', 'Lats', 'Upper Back', 'Front Delts', 'Side Delts', 'Rear Delts',
@@ -50,7 +51,7 @@ function parseCoefficientRows(csv) {
   });
 }
 
-export function parseV102Coefficients(csv = V102_COEFFICIENTS_CSV) {
+function parseCoefficients(csv, version, exerciseCount) {
   const rows = parseCoefficientRows(csv);
   const result = new Map();
   for (const [i, row] of rows.entries()) {
@@ -59,49 +60,67 @@ export function parseV102Coefficients(csv = V102_COEFFICIENTS_CSV) {
     const name = row.exercise;
     const sets = Number(row.prescribed_sets);
     if (!DAY.includes(day) || !name || !Number.isInteger(sets) || sets < 1 || sets > 10) {
-      throw Error(`V10.2 coefficient row ${rowNo}: invalid day, exercise or sets.`);
+      throw Error(`${version} coefficient row ${rowNo}: invalid day, exercise or sets.`);
     }
     const weights = {};
     let primary = 0;
     for (const region of V102_REGIONS) {
       const raw = row[region];
       if (!['0', '0.5', '1'].includes(raw)) {
-        throw Error(`V10.2 coefficient row ${rowNo}: invalid ${region} coefficient.`);
+        throw Error(`${version} coefficient row ${rowNo}: invalid ${region} coefficient.`);
       }
       weights[region] = Number(raw);
       if (weights[region] === 1) primary++;
     }
     if (primary !== 1 || !['YES','NO'].includes(row.PT_review)) {
-      throw Error(`V10.2 coefficient row ${rowNo}: expected one primary region and valid PT label.`);
+      throw Error(`${version} coefficient row ${rowNo}: expected one primary region and valid PT label.`);
     }
     const id = key(day, name);
-    if (result.has(id)) throw Error(`V10.2 coefficient row ${rowNo}: duplicate exercise.`);
+    if (result.has(id)) throw Error(`${version} coefficient row ${rowNo}: duplicate exercise.`);
     result.set(id, { sets, weights, ptReview: row.PT_review === 'YES' });
   }
-  if (result.size !== 24) throw Error(`V10.2 coefficients must describe 24 exercises, got ${result.size}.`);
+  if (result.size !== exerciseCount) {
+    throw Error(`${version} coefficients must describe ${exerciseCount} exercises, got ${result.size}.`);
+  }
   return result;
 }
 
-export function validateV102Mapping(templates, coefficients = parseV102Coefficients()) {
+export function parseV102Coefficients(csv = V102_COEFFICIENTS_CSV) {
+  return parseCoefficients(csv, 'V10.2', 24);
+}
+
+export function parseV103Coefficients(csv = V103_COEFFICIENTS_CSV) {
+  return parseCoefficients(csv, 'V10.3', 27);
+}
+
+function validateMapping(templates, coefficients, sourceVersion, label) {
   const observed = new Set();
-  const workouts = templates.filter(t => t.sourceVersion === V102_VERSION);
-  if (workouts.length !== 4) throw Error('V10.2 source must provide four versioned workouts.');
+  const workouts = templates.filter(t => t.sourceVersion === sourceVersion);
+  if (workouts.length !== 4) throw Error(`${label} source must provide four versioned workouts.`);
   for (const template of workouts) {
     const day = DAY[template.day];
     for (const exercise of template.exercises) {
       const id = key(day, exercise.name);
       const entry = coefficients.get(id);
       if (!entry || entry.sets !== exercise.sets || observed.has(id)) {
-        throw Error(`V10.2 mapping mismatch: ${day} / ${exercise.name}.`);
+        throw Error(`${label} mapping mismatch: ${day} / ${exercise.name}.`);
       }
       if (entry.ptReview !== !!template.requiresClinicalReview) {
-        throw Error(`V10.2 clinical-label mismatch: ${day} / ${exercise.name}.`);
+        throw Error(`${label} clinical-label mismatch: ${day} / ${exercise.name}.`);
       }
       observed.add(id);
     }
   }
-  if (observed.size !== coefficients.size) throw Error('V10.2 coefficient table has unmatched entries.');
+  if (observed.size !== coefficients.size) throw Error(`${label} coefficient table has unmatched entries.`);
   return true;
+}
+
+export function validateV102Mapping(templates, coefficients = parseV102Coefficients()) {
+  return validateMapping(templates, coefficients, V102_VERSION, 'V10.2');
+}
+
+export function validateV103Mapping(templates, coefficients = parseV103Coefficients()) {
+  return validateMapping(templates, coefficients, V103_VERSION, 'V10.3');
 }
 
 function add(regions, weights, number) {
@@ -113,7 +132,7 @@ function add(regions, weights, number) {
 }
 
 /** Per-region planning estimates, not additional physical working sets. */
-export function weeklyV102Overlap(state, weekMonday, coefficients = parseV102Coefficients()) {
+function weeklyOverlap(state, weekMonday, matchesTemplate, coefficients) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(weekMonday)) throw Error('Week start must be YYYY-MM-DD.');
   const base = new Date(`${weekMonday}T12:00:00Z`);
   if (Number.isNaN(base.getTime()) || base.toISOString().slice(0, 10) !== weekMonday || base.getUTCDay() !== 1) {
@@ -125,13 +144,13 @@ export function weeklyV102Overlap(state, weekMonday, coefficients = parseV102Coe
     return d.toISOString().slice(0,10);
   });
   const datesSet = new Set(dates);
-  const templates = new Map((state.templates || []).map(t => [t.id, t]));
+  const templates = new Map((state.templates || []).filter(matchesTemplate).map(t => [t.id, t]));
   const planned = emptyRegions(), logged = emptyRegions();
   let physicalPlanned = 0, physicalLogged = 0, unmapped = 0;
   // Planned counts follow the actual scheduled templates, never library membership alone.
   for (let i = 0; i < dates.length; i++) {
     const template = templates.get(state.assignments?.[i]);
-    if (!template || template.sourceVersion !== V102_VERSION) continue;
+    if (!template) continue;
     for (const exercise of template.exercises) {
       const entry = coefficients.get(key(DAY[template.day], exercise.name));
       if (!entry || entry.sets !== exercise.sets) {unmapped += exercise.sets;continue;}
@@ -143,7 +162,7 @@ export function weeklyV102Overlap(state, weekMonday, coefficients = parseV102Coe
   for (const log of (state.logs || [])) {
     if (!datesSet.has(log.date) || log.isWarmup === true || log.kind === 'warmup') continue;
     const template = templates.get(log.templateId);
-    if (!template || template.sourceVersion !== V102_VERSION) continue;
+    if (!template) continue;
     const exercise = template.exercises?.[log.exerciseIndex];
     if (!exercise || !Number.isInteger(log.set) || log.set < 1 || log.set > exercise.sets) continue;
     const unique = `${log.date}|${log.templateId}|${log.exerciseIndex}|${log.set}`;
@@ -161,4 +180,14 @@ export function weeklyV102Overlap(state, weekMonday, coefficients = parseV102Coe
   }
   return {planned, logged, physicalPlanned, physicalLogged, unmapped,
     note: 'Indirect coefficients are approximate planning weights. Count physical working sets once; no medical clearance implied.'};
+}
+
+export const isV102OverlapTemplate = template => template.sourceVersion === V102_VERSION;
+
+export function weeklyV102Overlap(state, monday, coefficients = parseV102Coefficients()) {
+  return weeklyOverlap(state, monday, isV102OverlapTemplate, coefficients);
+}
+
+export function weeklyV103Overlap(state, monday, coefficients = parseV103Coefficients()) {
+  return weeklyOverlap(state, monday, isV103OverlapTemplate, coefficients);
 }
