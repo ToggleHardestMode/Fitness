@@ -1,5 +1,6 @@
 import { esc as escapeHtml } from './html.js';
 import {getExerciseJourney, recommendNextExercise} from './strength-journey.js';
+import {isV103OverlapTemplate} from './v103-data.js';
 
 // Presentation only. Every point and set comes from persisted completed-workout logs.
 const fmt = number => Number(number).toLocaleString('en-SG', {maximumFractionDigits:2});
@@ -193,8 +194,18 @@ function recommendationMarkup(state,journey,today) {
 export function renderStrengthJourney(state, selectedIndex=0, settings={}) {
   const options={today:settings.today || new Date().toLocaleDateString('en-CA'),
     metric:safeMode(settings.metric),range:safeRange(settings.range)};
+  const templates = state.templates || [];
+  const current = templates.filter(template => isV103OverlapTemplate(template) ||
+    template.returnStageMode === 'one-per-exercise');
+  const showCurrent = current.length > 0 && settings.planScope !== 'all';
+  const scopePicker = current.length > 0 && current.length < templates.length
+    ? '<label class="sj-switch" for="strength-plan-scope"><span id="strength-plan-scope-label">Workout plans</span>' +
+      '<select class="field" id="strength-plan-scope" aria-labelledby="strength-plan-scope-label">' +
+      '<option value="current"' + (showCurrent ? ' selected' : '') + '>Current plans</option>' +
+      '<option value="all"' + (showCurrent ? '' : ' selected') + '>All plans</option></select></label>'
+    : '';
   const choices=[];
-  for(const template of state.templates || []){
+  for(const template of showCurrent ? current : templates){
     template.exercises.forEach((exercise,exerciseIndex)=>{
       if(exercise.repUnit==='seconds_per_side')return;
       choices.push({template,exercise,exerciseIndex,
@@ -204,6 +215,7 @@ export function renderStrengthJourney(state, selectedIndex=0, settings={}) {
   choices.sort((a,b)=>Number(Boolean(b.journey.sessions.length))-Number(Boolean(a.journey.sessions.length)));
   if(!choices.length)return '<section class="sj-journey sj-empty" aria-label="Strength Journey">'+
     '<div class="sj-kicker">✦ Strength Journey</div><h2>Your strength journey starts here</h2>'+
+    scopePicker+
     '<p>Add a workout template in Plan, then log completed working sets in Train. No sample progress is shown.</p>'+
     startDateForm(state)+'<button class="btn secondary" data-page="plan">Open Plan →</button></section>';
   const index=Number.isInteger(selectedIndex)&&selectedIndex>=0&&selectedIndex<choices.length?selectedIndex:0;
@@ -222,6 +234,7 @@ export function renderStrengthJourney(state, selectedIndex=0, settings={}) {
     '<div class="sj-hero"><div class="sj-hero-symbol" aria-hidden="true">⚒</div><div class="sj-hero-text">'+
     '<h2>'+escapeHtml(exercise.name)+'</h2><p>'+escapeHtml(template.name)+' · '+
     escapeHtml(exercise.muscle||'Exercise')+'</p></div></div>'+
+    scopePicker+
     '<label class="sj-switch" for="strength-exercise"><span>⇄ Change Exercise</span>'+
     '<select class="field" id="strength-exercise" aria-label="Choose exercise and workout version">'+
     exerciseItems+'</select></label>'+

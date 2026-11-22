@@ -74,6 +74,7 @@ export function createActions({ render, today, isPTReview }) {
     pendingReturnStage = null,
     pendingV103 = null;
   let strengthJourneyIndex = 0;
+  let strengthPlanScope;
   let selectedWeekStart = null; // UI-only; null always follows the current week.
   let strengthViewMetric = 'load',
     strengthHistoryFilter = 'all';
@@ -222,6 +223,7 @@ export function createActions({ render, today, isPTReview }) {
       return {
         selectedWeekStart,
         strengthJourneyIndex,
+        strengthPlanScope,
         strengthViewMetric,
         strengthHistoryFilter,
         walkerDataUrl
@@ -947,6 +949,13 @@ export function createActions({ render, today, isPTReview }) {
         return;
       }
       strengthHistoryFilter = target.value;
+      render();
+      return;
+    }
+    if (target.id === 'strength-plan-scope') {
+      if (target.value !== 'current' && target.value !== 'all') return;
+      strengthPlanScope = target.value;
+      strengthJourneyIndex = 0;
       render();
       return;
     }
