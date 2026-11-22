@@ -199,8 +199,8 @@ export function renderStrengthJourney(state, selectedIndex=0, settings={}) {
     template.returnStageMode === 'one-per-exercise');
   const showCurrent = current.length > 0 && settings.planScope !== 'all';
   const scopePicker = current.length > 0 && current.length < templates.length
-    ? '<label class="sj-switch" for="strength-plan-scope"><span>Workout plans</span>' +
-      '<select class="field" id="strength-plan-scope">' +
+    ? '<label class="sj-switch" for="strength-plan-scope"><span id="strength-plan-scope-label">Workout plans</span>' +
+      '<select class="field" id="strength-plan-scope" aria-labelledby="strength-plan-scope-label">' +
       '<option value="current"' + (showCurrent ? ' selected' : '') + '>Current plans</option>' +
       '<option value="all"' + (showCurrent ? '' : ' selected') + '>All plans</option></select></label>'
     : '';
