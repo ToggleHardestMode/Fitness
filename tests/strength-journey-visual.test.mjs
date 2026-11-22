@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {renderStrengthJourney} from '../preview-v101/strength-journey-visual.js';
+import {generateOneSetCoverage} from '../preview-v101/return-coverage.js';
+import {v103Templates} from '../preview-v101/v103-data.js';
 
 const base = () => ({
   version:1,templates:[{id:'upper',name:'Upper A',day:0,exercises:[{
@@ -77,6 +79,41 @@ test('one logged exercise and another workout version never combine counts',()=>
   assert.match(html,/data-session-count="3"/);
   assert.match(html,/Upper A custom/);
   assert.match(html,/Workout versions stay separate/);
+});
+test('Current plans shows built-in, canonical CSV and Coverage-First workouts',()=>{
+  const state=base();
+  const templates=v103Templates();
+  const upper=templates.find(template=>template.day===0);
+  const {sourceVersion, ...csvUpperB}=templates.find(template=>template.day===3);
+  const reintro=generateOneSetCoverage([{...upper,id:'current-upper'}]).workouts[0];
+  state.templates.push(
+    {...upper,id:'current-upper'},
+    {...csvUpperB,id:'csv-upper'},
+    {...reintro,id:'coverage-upper'},
+    {...state.templates[0],id:'legacy-return',name:'Old return stage',returnStageMode:'percentage'}
+  );
+  const before=structuredClone(state);
+  const html=markup(state);
+  assert.match(html,/value="current" selected>Current plans/);
+  const exercisePicker=html.match(/id="strength-exercise"[^>]*>([\s\S]*?)<\/select>/)[1];
+  assert.match(exercisePicker,/V10\.3 Home — Upper A<\/option>/);
+  assert.match(exercisePicker,/V10\.3 Home — Upper B<\/option>/);
+  assert.match(exercisePicker,/Return 1 set<\/option>/);
+  assert.doesNotMatch(exercisePicker,/Flat Dumbbell Bench Press|Old return stage/);
+  assert.deepEqual(state,before);
+});
+test('All plans restores an archived exercise and its saved history',()=>{
+  const state=base();
+  state.templates.push({...v103Templates()[0],id:'current-upper'});
+  state.logs=sessions(3);
+  const current=markup(state);
+  const all=markup(state,{planScope:'all'});
+  assert.match(current,/data-session-count="0"/);
+  assert.doesNotMatch(current,/Flat Dumbbell Bench Press/);
+  assert.match(all,/value="all" selected>All plans/);
+  assert.match(all,/<h2>Flat Dumbbell Bench Press<\/h2>/);
+  assert.match(all,/data-session-count="3"/);
+  assert.equal(state.logs.length,6);
 });
 test('explicit restart date filters rendered history without erasing source logs',()=>{
   const state=base();state.logs=sessions(9);state.strengthJourneyStartDate='2026-11-20';

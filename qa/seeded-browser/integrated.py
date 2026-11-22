@@ -408,9 +408,24 @@ def smoke(repo, chromium_binary=None, headed=False):
                     assert "17 physical sets planned · 0 distinct sets logged" in overlap.inner_text()
                     chest = overlap.get_by_role("row").filter(has=page.get_by_role("rowheader", name="Chest", exact=True))
                     assert chest.get_by_role("cell").all_text_contents() == ["5", "0", "5", "0", "0", "0"]
+                    plan_scope = page.get_by_label("Workout plans", exact=True)
+                    exercises = page.get_by_label("Choose exercise and workout version", exact=True)
+                    assert plan_scope.input_value() == "current"
+                    assert all("V10.3 Home" in name for name in exercises.locator("option").all_text_contents())
+                    plan_scope.select_option("all")
+                    archived = next(name for name in exercises.locator("option").all_text_contents()
+                                    if name.startswith("Synthetic seated press · "))
+                    exercises.select_option(label=archived)
+                    assert page.get_by_role("heading", name="Synthetic seated press", exact=True).is_visible()
+                    assert int(page.locator(".sj-journey").get_attribute("data-session-count")) > 0
+                    plan_scope.select_option("current")
+                    assert all("V10.3 Home" in name for name in exercises.locator("option").all_text_contents())
+                    page.reload(wait_until="domcontentloaded")
+                    assert plan_scope.input_value() == "current"
                     assert get_store(page, WORKOUT_KEY) == scheduled
                     assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
                     findings.append("Dashboard V10.3 panel shows scheduled sets and Chest equivalents without changing either store.")
+                    findings.append("Current plans filter and All plans restore the chosen exercise history without writes.")
 
                     # Save one actual synthetic working set, then update it without duplicating.
                     go(page, "train")

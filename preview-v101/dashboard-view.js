@@ -124,7 +124,8 @@ function workoutCard(nextDay, { today, nice, isPTReview }) {
 }
 
 export function dashboardView(state, selection, helpers, storage) {
-  const { selectedWeekStart, strengthJourneyIndex, strengthViewMetric, strengthHistoryFilter, walkerDataUrl } = selection;
+  const { selectedWeekStart, strengthJourneyIndex, strengthPlanScope, strengthViewMetric, strengthHistoryFilter, walkerDataUrl } =
+    selection;
   const { today, fmt, nice, shellHeading } = helpers;
   const s = weeklyStats(state, selectedWeekStart || today());
   const analysis = weeklyTrainingAnalysis(state, s.dates[0]);
@@ -176,7 +177,9 @@ export function dashboardView(state, selection, helpers, storage) {
     '<a class="btn fp-top-nutrition-link" href="./nutrition.html">Nutrition</a>' +
     '<a class="btn secondary fp-top-nutrition-link" href="./nutrition-cheatsheet.html">Cheatsheet</a></nav>' +
     `${backupReminderCard(storage, today)}` +
-    `${strengthDashboard(state, strengthJourneyIndex, { today: today(), metric: strengthViewMetric, range: strengthHistoryFilter })}` +
+    `${strengthDashboard(state, strengthJourneyIndex, {
+      today: today(), metric: strengthViewMetric, range: strengthHistoryFilter, planScope: strengthPlanScope
+    })}` +
     `${dashboardWalkerBanner(walkerDataUrl)}${gildedSummary(analysis, nextDay, lifetimeTrainingSets(state), s.dates, helpers)}` +
     `${!state.templates.length ? initialCard() : workoutCard(nextDay, helpers)}
   <div class="section-label"><h2>Selected training week</h2><span>${nice(s.dates[0])} – ${nice(s.dates[6])}</span></div>
