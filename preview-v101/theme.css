@@ -1332,6 +1332,13 @@ a,
   margin: 14px 0 8px;
 }
 
+.codex-progress .data-row > .score {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
 .codex-muscle-row {
   padding: 11px 0;
   border-bottom: 1px solid #ffffff15;
