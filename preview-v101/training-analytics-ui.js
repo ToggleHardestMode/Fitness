@@ -42,7 +42,14 @@ export function trainingAnalyticsPanel(state, monday, today) {
       : '<p class="hint">No planned or recorded sets for this week.</p>'}
     <p class="hint">Direct sets mean sets focused on the listed muscle: a bench press is counted for chest, not again for its assisting triceps. V10.1 biceps and triceps are separated; older ambiguous Arms exercises appear as unclassified. Unilateral work counts once.</p>
     <div class="section-label"><h2>Daily set status</h2></div>
-    ${report.days.map(d=>`<div class="data-row"><strong>${DAY_NAMES[d.day]}</strong><div class="score">${d.assignedCompleted} logged of ${d.planned} planned · ${esc(STATUS[d.status])}${d.offPlan?` · ${d.offPlan} off-plan`:''}</div></div>`).join('')}
+    ${report.days.map(d => {
+      const assigned = state.templates.find(t => t.id === d.templateId);
+      const actual = `${d.completed} ${d.completed === 1 ? 'set' : 'sets'} logged`;
+      const comparison = assigned
+        ? `${esc(assigned.name)}: ${d.assignedCompleted} of ${d.planned} planned · ${esc(STATUS[d.status])}${d.offPlan ? ` · ${d.offPlan} off-plan` : ''}`
+        : 'No workout scheduled';
+      return `<div class="data-row"><strong>${DAY_NAMES[d.day]}</strong><div class="score">${actual} · ${comparison}</div></div>`;
+    }).join('')}
     ${report.timedHolds.length?`<p class="hint">Timed holds: ${report.timedHolds.map(h=>`${esc(h.exercise)} ${h.secondsPerSide}s/side (${esc(h.date)})`).join('; ')}. Excluded from kg × repetitions.</p>`:''}
     </section>
     <div class="section-label"><h2>Recovery response</h2><span>Decision support, not medical approval</span></div>
