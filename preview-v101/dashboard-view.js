@@ -203,7 +203,7 @@ export function dashboardView(state, selection, helpers, storage) {
     '<p>Record meals and derive daily calories/protein/carbs/fat in a separate diary. Existing check-ins are unchanged.</p></div></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><a class="btn" href="./food-diary.html">Open Food Diary →</a>' +
     `<a class="btn secondary" href="./nutrition.html">Nutrition trends →</a></div></section>
-  ${readFoodDiaryChart(storage, today())}
+  ${readFoodDiaryChart(storage, today(), s.dates[0])}
   <div class="section-label"><h2>Insights</h2><span>Only real entries</span></div>
   <div class="two-panels"><section class="card"><div class="card-head"><div><h2>Manual daily check-ins</h2>` +
     '<p>Weekly averages · not derived from Food Diary</p></div><button class="btn ghost small-btn" data-page="train">Add →</button>' +
