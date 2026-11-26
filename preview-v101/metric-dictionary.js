@@ -130,6 +130,27 @@ const definitions = [
     formula: 'sum(recorded recovery scores) / count(recorded recovery dates)',
     missing: 'null without recorded observations; missing dates never imputed',
     meaning: 'self-reported recovery, not medical clearance or progression approval'
+  },
+  {
+    id: 'checkin.calories_mean_week.v1', label: 'Recorded average manual calories', unit: 'kcal',
+    grain: 'selected Monday–Sunday week or explicitly matched elapsed weekdays', source: 'workoutState.metrics.calories',
+    formula: 'sum(recorded manual calories) / count(recorded calorie dates)',
+    missing: 'null without recorded observations; numeric zero remains recorded',
+    meaning: 'manual check-in only; never add to Food Diary'
+  },
+  {
+    id: 'checkin.protein_mean_week.v1', label: 'Recorded average manual protein', unit: 'g',
+    grain: 'selected Monday–Sunday week or explicitly matched elapsed weekdays', source: 'workoutState.metrics.protein',
+    formula: 'sum(recorded manual protein) / count(recorded protein dates)',
+    missing: 'null without recorded observations; numeric zero remains recorded',
+    meaning: 'manual check-in only; never add to Food Diary'
+  },
+  {
+    id: 'food.entry_coverage_period.v1', label: 'Dates with Food Diary entries', unit: 'days',
+    grain: 'selected Monday–Sunday week or explicitly matched elapsed weekdays', source: 'foodDiary.entries',
+    formula: 'count distinct dates containing at least one saved food entry; denominator = actual dates in period',
+    missing: 'null if diary unavailable; zero means no records, not no intake',
+    meaning: 'recording coverage, not verified intake or nutritional adherence'
   }
 ];
 export const METRIC_DICTIONARY_VERSION = 1;

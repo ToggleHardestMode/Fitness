@@ -27,7 +27,11 @@ const log=(id,date,templateId,exerciseIndex,set,kg,reps,extra={})=>({
 
 test('dictionary has distinct versioned definitions, source identities and meaning',()=>{
   const ids=Object.keys(METRIC_DICTIONARY);
-  assert.equal(ids.length,18);
+  assert.equal(ids.length,21);
+  for (const id of ['food.known_kcal.v1', 'food.known_protein_g.v1', 'checkin.calories_manual.v1',
+    'checkin.protein_manual.v1', 'weight.mean_7d.v1', 'train.saved_working_sets_week.v1',
+    'train.kg_reps_week.v1', 'train.assigned_plan_progress_week.v1', 'food.entry_coverage_week.v1',
+    'food.complete_day_adherence.v0']) assert.ok(ids.includes(id), 'original metric retained: ' + id);
   assert.equal(new Set(ids).size,ids.length);
   for(const [id,item] of Object.entries(METRIC_DICTIONARY)){
     assert.equal(item.id,id);

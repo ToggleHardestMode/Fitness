@@ -166,7 +166,7 @@ function manualForDates(state, dates) {
   return Object.fromEntries(METRIC_FIELDS.map(([, key]) => {
     const records = sources[key];
     const value = records.length ? records.reduce((sum, m) => sum + m.value, 0) / records.length : null;
-    const ids = {calories: 'checkin.calories_manual.v1', protein: 'checkin.protein_manual.v1',
+    const ids = {calories: 'checkin.calories_mean_week.v1', protein: 'checkin.protein_mean_week.v1',
       sleep: 'checkin.sleep_mean_week.v1', recovery: 'checkin.recovery_mean_week.v1'};
     return [key, metric(ids[key], value, {source: 'manual_daily_checkin', observations: records.length,
       records, status: records.length ? 'recorded_average' : 'not_recorded'})];
@@ -187,7 +187,9 @@ function periodSnapshot(state, diary, report, dates) {
       assignedSets: sum('assignedCompleted'), plannedSets: sum('planned'), offPlanSets: sum('offPlan'),
       byDay: days.map(d => ({...d}))
     },
-    food, foodMetrics: food === null ? null : Object.fromEntries(NUTRIENTS.map(key => {
+    food, foodCoverage: food === null ? null : metric('food.entry_coverage_period.v1', food.recordedDays, {
+      source: 'food_diary', periodDays: dates.length, completeness: 'not_verified', nutritionAdherence: null}),
+    foodMetrics: food === null ? null : Object.fromEntries(NUTRIENTS.map(key => {
       const n = food.nutrients[key];
       return [key, metric(FOOD_WEEK_IDS[key], n.total, {...n, source: 'food_diary',
         status: !food.foodCount ? 'not_logged' : n.total === null ? 'all_values_unknown' : 'known_recorded_subtotal',

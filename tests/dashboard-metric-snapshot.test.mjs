@@ -42,6 +42,10 @@ test('full selected week retains saved records; comparison matches elapsed weekd
   assert.equal(r.comparison.current.foodMetrics.protein.unknownFoods, 1);
   assert.equal(r.comparison.current.foodMetrics.fat.value, 0);
   assert.equal(r.selected.manual.calories.value, 2000);
+  assert.equal(r.selected.manual.calories.id, 'checkin.calories_mean_week.v1');
+  assert.equal(r.comparison.current.foodCoverage.value, 2);
+  assert.equal(r.comparison.current.foodCoverage.periodDays, 3);
+  assert.equal(r.comparison.current.foodCoverage.nutritionAdherence, null);
   assert.equal(r.selected.manual.sleep.value, 0);
   assert.equal(r.selected.manual.recovery.observations, 1);
   assert.deepEqual({state, diary}, before);
@@ -65,6 +69,7 @@ test('unavailable diary differs from empty diary and does not suppress training;
   const missing = dashboardMetricSnapshot(state, null, monday, today);
   assert.equal(missing.selected.food, null);
   assert.equal(missing.selected.foodMetrics, null);
+  assert.equal(missing.selected.foodCoverage, null);
   assert.equal(missing.selected.training.savedSets.value, 3);
   const empty = dashboardMetricSnapshot(state, {version: 1, entries: []}, monday, today);
   assert.equal(empty.selected.food.recordedDays, 0);
