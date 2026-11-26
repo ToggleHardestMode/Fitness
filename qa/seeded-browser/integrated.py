@@ -165,6 +165,64 @@ def check_nutrition_navigation(context, base, errors):
         page.close()
 
 
+def check_ledger_prototype(browser, base, errors):
+    # Native IndexedDB, two connections, interrupted transaction, clean-profile restore.
+    # All data is fictional and all contexts are disposable.
+    with browser.new_context(service_workers="block") as context:
+        page = context.new_page()
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.goto(base + "/index.html", wait_until="domcontentloaded")
+        fixtures = create_fixtures()
+        set_seed(page, fixtures)
+        result = page.evaluate("""async ([legacy, key]) => {
+          const m=await import('./ledger-model.js'), p=await import('./ledger-prototype.js');
+          const old=await import('./state.js');
+          const assert=(ok,msg)=>{if(!ok)throw Error(msg);};
+          const reject=async (fn,part)=>{try{await fn();}catch(e){assert(e.message.includes(part),e.message);return;}
+            throw Error('Expected rejection: '+part);};
+          const doc=m.migrateLegacyWorkout(legacy);
+          const a=await p.openLedgerPrototype('fitnesspilot-preview-ledger-fixture-main');
+          const b=await p.openLedgerPrototype('fitnesspilot-preview-ledger-fixture-main');
+          const add=(doc,id)=>{const d=structuredClone(doc);d.catalog.push({id,name:'Synthetic '+id,muscle:null});return d;};
+          try{
+            assert(await p.readLedgerPrototype(a)===null,'Fixture database not empty');
+            await reject(()=>p.commitLedgerPrototype(a,doc,0,{abortAfterPut:true}),'aborted');
+            assert(await p.readLedgerPrototype(b)===null,'Aborted initial write persisted');
+            await p.restoreLedgerPrototype(a,JSON.stringify(legacy));
+            const start=await p.readLedgerPrototype(b);
+            assert(start.revision===1,'Migration revision');
+            const results=await Promise.allSettled([p.commitLedgerPrototype(a,add(doc,'first'),1),
+              p.commitLedgerPrototype(b,add(doc,'second'),1)]);
+            assert(results.filter(r=>r.status==='fulfilled').length===1,'Two stale writers succeeded');
+            assert(results.filter(r=>r.status==='rejected'&&r.reason.message.includes('Revision conflict')).length===1,
+              'Missing revision conflict');
+            const after=await p.readLedgerPrototype(a);
+            assert(after.revision===2&&after.document.catalog.length===1,'Atomic revision failed');
+            await reject(()=>p.commitLedgerPrototype(b,add(after.document,'third'),2,{abortAfterPut:true}),'aborted');
+            assert(JSON.stringify(await p.readLedgerPrototype(a))===JSON.stringify(after),'Abort altered snapshot');
+            await reject(()=>p.restoreLedgerPrototype(a,JSON.stringify(legacy)),'Revision conflict');
+            const stale=old.loadWorkoutState();
+            const later=structuredClone(stale.state);later.logs[0].kg=99;
+            old.saveWorkoutState(later,null);
+            assert(m.legacyHasDiverged(after.document,JSON.parse(localStorage.getItem(key))),'Legacy divergence missed');
+            assert(JSON.stringify(await p.readLedgerPrototype(b))===JSON.stringify(after),'Legacy writer altered ledger');
+            return {backup:await p.exportLedgerPrototype(a),document:after.document};
+          }finally{a.close();b.close();}
+        }""", [fixtures[WORKOUT_KEY], WORKOUT_KEY])
+    with browser.new_context(service_workers="block") as clean:
+        page = clean.new_page()
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.goto(base + "/index.html", wait_until="domcontentloaded")
+        restored = page.evaluate("""async backup=>{
+          const p=await import('./ledger-prototype.js');
+          const db=await p.openLedgerPrototype('fitnesspilot-preview-ledger-fixture-recovery');
+          try{await p.restoreLedgerPrototype(db,backup);return (await p.readLedgerPrototype(db)).document;}
+          finally{db.close();}
+        }""", result["backup"])
+        assert restored == result["document"]
+        assert_absent(page)
+
+
 def check_batch_csv(context, base, errors):
     from playwright.sync_api import expect
 
@@ -740,6 +798,8 @@ def smoke(repo, chromium_binary=None, headed=False):
                 with browser.new_context(service_workers="block", viewport={"width": 390, "height": 844}) as batch_csv:
                     check_batch_csv(batch_csv, base, errors)
                     findings.append("Multi-file workout and food CSV previews, cancellation, import and retry preserved both stores.")
+                check_ledger_prototype(browser, base, errors)
+                findings.append("Native IndexedDB fixture: migration, concurrent revision conflict, abort rollback, legacy divergence and clean-profile recovery.")
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
                 assert not errors, "Browser JavaScript errors: " + " | ".join(errors[:5])
                 train_baseline = [
