@@ -338,6 +338,28 @@ def smoke(repo, chromium_binary=None, headed=False):
                     assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
                     findings.append("Dashboard bars, responsive Nutrition links, converter and avatar display/fallback passed.")
 
+                    # Dashboard workout shortcut must replace stale Train date/selection without saving.
+                    scheduled = page.locator("[data-action='open-scheduled-workout']")
+                    expected_date = scheduled.get_attribute("data-workout-date")
+                    expected_id = scheduled.get_attribute("data-workout-id")
+                    go(page, "train")
+                    page.locator("#active-date").fill("2026-10-01")
+                    go(page, "dashboard")
+                    scheduled.click()
+                    assert page.locator("#active-date").input_value() == expected_date
+                    assert page.locator("#active-workout").input_value() == expected_id
+                    go(page, "dashboard")
+                    page.locator("[data-action='open-today-workout']").click()
+                    local_today = page.evaluate("""() => {
+                        const d = new Date();
+                        return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'),
+                            String(d.getDate()).padStart(2,'0')].join('-');
+                    }""")
+                    assert page.locator("#active-date").input_value() == local_today
+                    assert get_store(page, WORKOUT_KEY) == fixtures[WORKOUT_KEY]
+                    assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+                    findings.append("Dashboard workout shortcuts open the displayed date and preserve both stores.")
+
                     # Plan must be an explicit save, never a silent assignment rewrite.
                     go(page, "plan")
                     page.locator("#schedule-form").wait_for()

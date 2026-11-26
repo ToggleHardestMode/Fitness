@@ -1778,3 +1778,36 @@ A nowrap flex item otherwise expands the mobile layout viewport and fixed tabs. 
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* Compact Today / next workout navigation; the actual selection stays in Train. */
+:where([data-workout-preview]) .fp-today {
+  margin: 12px 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+:where([data-workout-preview]) .fp-today h2 {
+  margin: 0 0 8px;
+}
+:where([data-workout-preview]) .fp-today-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+:where([data-workout-preview]) .fp-today-main > div {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+:where([data-workout-preview]) .fp-today-main p {
+  margin: 4px 0;
+}
+:where([data-workout-preview]) .fp-today-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+:where([data-workout-preview]) .fp-today .btn {
+  min-height: 44px;
+  white-space: normal;
+}

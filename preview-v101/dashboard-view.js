@@ -13,24 +13,13 @@ import { v102OverlapPanel, v103OverlapPanel } from './v102-overlap-ui.js';
 import { setsBarsMarkup } from './volume-bars.js';
 import { latestLoggedWeek } from './week-window.js';
 
-function initialCard() {
-  return '<section class="hero codex-quest">' +
-    '<div class="quest-topline"><span>✦ FITNESSPILOT</span><span class="quest-date">GET STARTED</span></div>' +
-    '<h1>Set up your first workout plan.</h1>' +
-    '<p class="quest-subtitle">Add reusable workout plans, assign training days, and record the sets you actually complete.</p>' +
-    '<div class="quest-facts"><span>Private training journal</span><span>Offline-first</span></div>' +
-    '<button class="btn" data-page="plan">Open Plan →</button></section>';
-}
-
-function gildedSummary(analysis, nextDay, lifetimeSets, dates, { today, nice, fmt }) {
+function gildedSummary(analysis, lifetimeSets, dates, { nice, fmt }) {
   const milestone = setMilestoneProgress(lifetimeSets);
   const daysLogged = analysis.days.filter(day => day.completed > 0).length;
   // Off-plan sets are included in the logged total, but not in schedule completion.
   const completion = analysis.planned > 0
     ? `${Math.min(100, Math.round(100 * analysis.assignedCompleted / analysis.planned))}%`
     : '—';
-  const nextName = nextDay ? esc(nextDay.t.name) : 'Not scheduled';
-  const nextDate = nextDay ? (nextDay.date === today() ? 'Today' : nice(nextDay.date)) : 'Choose days in Plan';
   const milestoneLabel = milestone.earned
     ? `Last milestone reached: ${fmt(milestone.earned)} sets`
     : 'First milestone: 25 saved working sets';
@@ -53,7 +42,6 @@ function gildedSummary(analysis, nextDay, lifetimeSets, dates, { today, nice, fm
       <div><span>Schedule completion</span><strong>${completion}</strong></div>
       <div><span>Days with logs</span><strong>${daysLogged}</strong></div>
     </div>
-    <div class="v151-gold-next"><span>Next scheduled workout</span><strong>${nextName}</strong><small>${nextDate}</small></div>
     <p>Displayed period: ${nice(dates[0])} – ${nice(dates[6])}. Scheduled sets use the current weekday assignments; ` +
     `saved off-plan sets still count toward logged totals. One saved set makes one logged day, not a finished workout.</p>
   </section>`;
@@ -106,23 +94,28 @@ function backupReminderCard(storage, today) {
   </section>`;
 }
 
-function workoutCard(nextDay, { today, nice, isPTReview }) {
-  const date = nextDay ? (nextDay.date === today() ? 'TODAY' : nice(nextDay.date)) : 'UNASSIGNED';
-  const title = nextDay ? esc(nextDay.t.name) : 'Your weekly plan is ready to set up.';
-  const subtitle = nextDay
-    ? 'Your next scheduled workout. Only saved working sets count as progress.'
-    : 'Choose your training days in Plan before heading into the training hall.';
-  const facts = nextDay
-    ? `<span>${nextDay.t.exercises.length} exercises</span>` +
-      `<span>${nextDay.t.exercises.reduce((n,e)=>n+e.sets,0)} planned sets</span>` +
-      `<span>${isPTReview(nextDay.t) ? 'PT review required' : 'Scheduled'}</span>`
-    : '<span>Choose a plan</span><span>Log actual sets</span>';
-  const caution = nextDay && isPTReview(nextDay.t) ? '<span class="quest-caution">PT Review is not medical clearance.</span>' : '';
-  return '<section class="hero codex-quest">' +
-    `<div class="quest-topline"><span>✦ NEXT WORKOUT</span><span class="quest-date">${date}</span></div>` +
-    `<h1>${title}</h1><p class="quest-subtitle">${subtitle}</p><div class="quest-facts">${facts}</div>` +
-    `<button class="btn" data-page="${nextDay ? 'train' : 'plan'}">${nextDay ? 'Open Workout →' : 'Open Plan →'}</button>` +
-    `${caution}</section>`;
+function workoutCard(state, nextDay, { today, nice, isPTReview }) {
+  const date = today();
+  const assigned = nextDay?.date === date;
+  const header = '<section class="card fp-today" aria-label="Today and next workout">' +
+    '<h2>Today · ' + esc(nice(date)) + '</h2>';
+  if (!state.templates.length) return header +
+    '<p>Set up your first workout plan.</p><button class="btn" data-page="plan">Open Plan →</button></section>';
+  const todayButton = '<button type="button" class="btn secondary small-btn" data-action="open-today-workout">' +
+    (assigned ? 'Choose another workout' : 'Choose workout today') + '</button>';
+  if (!nextDay) return header + '<p>No workout scheduled. Assign training days in Plan.</p>' +
+    '<div class="fp-today-actions">' + todayButton + '<button class="btn" data-page="plan">Open Plan →</button></div></section>';
+  const t = nextDay.t;
+  const review = isPTReview(t);
+  const summary = (assigned ? 'Assigned today' : 'No workout scheduled today · Next: ' + nice(nextDay.date)) +
+    ' · ' + t.exercises.length + ' exercises · ' + t.exercises.reduce((n, e) => n + e.sets, 0) + ' planned sets';
+  const caution = review ? '<p class="hint">PT review required. PT Review is not medical clearance.</p>' : '';
+  return header + '<div class="fp-today-main"><div><strong>' + esc(t.name) + '</strong>' +
+    '<p class="hint">' + esc(summary) + '</p><p class="hint">Program: ' + esc(t.sourceVersion || 'Custom / unspecified') +
+    '</p></div><button type="button" class="btn" data-action="open-scheduled-workout" data-workout-date="' +
+    esc(nextDay.date) + '" data-workout-id="' + esc(t.id) + '">' + (assigned ? 'Start workout' : 'Open next workout') +
+    ' →</button></div>' + caution + '<div class="fp-today-actions">' + todayButton +
+    '<button type="button" class="btn ghost small-btn" data-page="plan">Open Plan →</button></div></section>';
 }
 
 export function dashboardView(state, selection, helpers, storage) {
@@ -191,10 +184,11 @@ export function dashboardView(state, selection, helpers, storage) {
     'Latest logged week</button>' +
     `<button type="button" class="btn secondary small-btn" data-action="week-next">Next week →</button></div>
   ${weeklyInsightsMarkup(snapshot, insights, fmt)}` +
+    `${workoutCard(state, nextDay, helpers)}` +
     `${backupReminderCard(storage, today)}` +
     `${strengthDashboard(state, strengthJourneyIndex, { today: today(), metric: strengthViewMetric, range: strengthHistoryFilter })}` +
-    `${dashboardWalkerBanner(walkerDataUrl)}${gildedSummary(analysis, nextDay, lifetimeTrainingSets(state), s.dates, helpers)}` +
-    `${!state.templates.length ? initialCard() : workoutCard(nextDay, helpers)}
+    `${dashboardWalkerBanner(walkerDataUrl)}${gildedSummary(analysis, lifetimeTrainingSets(state), s.dates, helpers)}` +
+    `
   ${earlierHint}${inWeekCards(s, analysis, fmt)}
   <div class="two-panels" style="margin-top:12px"><section class="card"><div class="card-head">` +
     '<div><h2>Completed sets by day</h2><p>Working sets logged each day</p></div><span class="badge">7 DAYS</span></div>' +
