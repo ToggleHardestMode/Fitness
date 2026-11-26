@@ -1,4 +1,4 @@
-import { DAYS, DAY_NAMES } from './core.js';
+import { DAYS, DAY_NAMES, isHistoricalWorkout } from './core.js';
 import { esc } from './html.js';
 import { returnStagePanel } from './return-training-ui.js';
 import { V101_EQUIPMENT } from './v101-data.js';
@@ -6,7 +6,7 @@ import { V101_EQUIPMENT } from './v101-data.js';
 function scheduleRows(state) {
   return DAYS.map((_, index) => {
     const assigned = state.assignments[index] || '';
-    const options = state.templates.map(t =>
+    const options = state.templates.filter(t => !isHistoricalWorkout(t)).map(t =>
       `<option value="${esc(t.id)}" ${assigned === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('');
     return `<div class="schedule-row"><label for="day${index}">${DAY_NAMES[index]}</label>` +
       `<select class="field" id="day${index}" name="day${index}">` +
@@ -78,6 +78,9 @@ function workoutLibrary(state, { rangeSummary, isPTReview }) {
       'Use the V10.1 import above, or import your own CSV below.</section>';
   }
   return state.templates.map(t => {
+    if (isHistoricalWorkout(t)) return '<details class="codex-library-entry"><summary>' +
+      esc(t.name) + ' · Historical record (not a plan)</summary><p class="hint">Recorded exercise identities only; not schedulable.</p><ul>' +
+      t.exercises.map(e => '<li>' + esc(e.name) + '</li>').join('') + '</ul></details>';
     const planned = t.exercises.reduce((n, e) => n + e.sets, 0);
     const scheduled = DAYS.filter((_, i) => state.assignments[i] === t.id).join(', ') || 'Not scheduled';
     const ptSuffix = isPTReview(t) ? ' · PT review required' : '';

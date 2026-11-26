@@ -1,9 +1,10 @@
-import { addWorkouts } from './core.js';
+import { addWorkouts, isHistoricalWorkout } from './core.js';
 
 // Append a custom template instead of editing a template referenced by saved logs.
 // The original keeps its ID, exercise indices, history and weekday assignments.
 export function createExerciseVersion(state, templateId, exerciseIndex, changes, makeId) {
   const original = state.templates.find(t => t.id === templateId);
+  if (isHistoricalWorkout(original)) throw Error('Historical records cannot be customized into a training plan.');
   const old = original?.exercises?.[exerciseIndex];
   if (!old || !Number.isInteger(exerciseIndex)) throw Error('Choose an existing workout exercise to customize.');
   const str = (key, max) => {

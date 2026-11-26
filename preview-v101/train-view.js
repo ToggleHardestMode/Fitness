@@ -1,5 +1,5 @@
 import { activeSetsLabel, activeSetsPanel } from './active-sets-ui.js';
-import { DAY_NAMES } from './core.js';
+import { DAY_NAMES, isHistoricalWorkout } from './core.js';
 import { clearancePanel } from './exercise-clearance-ui.js';
 import { equivalencePanel } from './exercise-equivalence-ui.js';
 import { effortHint, effortQuickLabel } from './floating-rest.js';
@@ -9,7 +9,29 @@ import { repeatLastSessionSet } from './quick-repeat.js';
 import { strengthNextSession, strengthWorkoutDay } from './strength-journey-ui.js';
 import { symptomPanel } from './symptom-ui.js';
 
-function completedCsvPanel(pending, selected, fmt) {
+function resolutionPanel(review, templates) {
+  if (!review) return '';
+  const options = templates.filter(t => !isHistoricalWorkout(t)).map(t =>
+    '<option value="match:' + esc(t.id) + '">' + esc(t.name) + '</option>').join('');
+  return '<div class="completed-csv-preview" aria-label="Workout import resolution"><h3>Resolve workout identities</h3>' +
+    '<p>Review each file. Edit CSV exercise names only to reflect the actual movement. Missing measurements must be supplied or the file excluded. Historical workouts are unscheduled, history only, and never linked to other plans automatically.</p>' +
+    review.map((file, i) => '<details open><summary>' + esc(file.name) + '</summary><p>' +
+      esc(file.error || 'Exact library match; check notes and actual movements.') + '</p>' +
+      '<label class="form-label" for="completed-review-choice-' + i + '">Resolution</label>' +
+      '<select class="field" id="completed-review-choice-' + i + '">' +
+      '<option value="">Choose a resolution</option><option value="exact"' +
+      (file.choice === 'exact' ? ' selected' : '') + '>Use exact library identity</option>' +
+      '<option value="historical">Create/reuse separate historical workout (one session)</option>' +
+      '<option value="skip">Exclude this file</option><optgroup label="Explicitly match existing workout">' +
+      options + '</optgroup></select><label class="form-label" for="completed-review-text-' + i +
+      '">CSV rows (editable; retain headings)</label><textarea class="field" rows="6" id="completed-review-text-' +
+      i + '">' + esc(file.text) + '</textarea></details>').join('') +
+    '<label><input type="checkbox" id="completed-review-ack"> I reviewed actual movements, units, notes and completed measurements. Historical templates are not training prescriptions.</label>' +
+    '<div class="quick-actions"><button class="btn" data-action="completed-csv-resolve">Preview resolved batch</button>' +
+    '<button class="btn secondary" data-action="completed-csv-cancel">Cancel</button></div></div>';
+}
+
+function completedCsvPanel(pending, selected, fmt, review, templates) {
   const preview = pending
     ? '<div class="completed-csv-preview" role="status"><strong>Completed-session import preview</strong>' +
       '<p>' + pending.add.length + ' new working set(s) to add · ' + pending.skipped.length +
@@ -18,6 +40,10 @@ function completedCsvPanel(pending, selected, fmt) {
         ' file(s) reviewed</summary>' + pending.files.map(file =>
         '<p>' + esc(file.name) + ' · ' + file.added + ' new · ' + file.skipped +
         ' already saved · ' + file.duplicates + ' batch duplicates</p>').join('') + '</details>' : '') +
+      (pending.historical?.length ? '<p class="hint">Historical workouts to create: ' +
+        pending.historical.map(t => esc(t.name)).join('; ') + '. Not scheduled or used as prescriptions.</p>' : '') +
+      (pending.excluded?.length ? '<p class="hint">Excluded files (untouched): ' +
+        pending.excluded.map(esc).join(', ') + '</p>' : '') +
       '<div class="completed-csv-list">' + pending.add.slice(0, 12).map(row =>
         '<div><strong>' + esc(row.date) + '</strong> · ' + esc(row.exerciseName) + ' · set ' + row.set +
         ' · ' + fmt(row.kg) + ' kg × ' + row.reps + ' reps' +
@@ -41,7 +67,7 @@ function completedCsvPanel(pending, selected, fmt) {
     '<button class="btn" type="button" data-action="completed-csv-pick">Choose completed CSV files</button></div>' +
     '<p class="hint">Choose a workout above to download a dated, exercise-matched worksheet. Fill kg and reps for completed sets, ' +
     'leave unperformed sets blank, then upload up to 20 CSV files here. Conflicts block the whole batch. Existing sets are never overwritten.</p>' +
-    preview + '</section>';
+    resolutionPanel(review, templates) + preview + '</section>';
 }
 
 function setFieldsMarkup(ex, current, previous, focusMode, focusSet) {
@@ -206,9 +232,9 @@ function metricsForm(metrics) {
 }
 
 export function trainView(state, selection, helpers) {
-  const { workout, activeDate, selected, day, focusMode, pendingCompletedCsv } = selection;
+  const { workout, activeDate, selected, day, focusMode, pendingCompletedCsv, pendingCompletedReview } = selection;
   const { fmt, nice, shellHeading, heading } = helpers;
-  const options = '<option value="">Select a workout</option>' + state.templates.map(t =>
+  const options = '<option value="">Select a workout</option>' + state.templates.filter(t => !isHistoricalWorkout(t)).map(t =>
     `<option value="${esc(t.id)}" ${t.id === selected ? 'selected' : ''}>${esc(t.name)}</option>`).join('');
   const metrics = state.metrics.find(m => m.date === activeDate) || {};
   const exercises = workout ? exerciseMarkup(state, selection, helpers)
@@ -229,7 +255,7 @@ export function trainView(state, selection, helpers) {
     '<label><span class="form-label" style="margin-top:0">Workout for this date</span>' +
     `<select class="field" id="active-workout">${options}</select></label></div>` +
     `<div class="inline-meta"><span class="dot"></span>${DAY_NAMES[day]} · ${daySets} set(s) saved</div></div>
-  ${completedCsvPanel(pendingCompletedCsv, selected, fmt)}
+  ${completedCsvPanel(pendingCompletedCsv, selected, fmt, pendingCompletedReview, state.templates)}
   ${workout ? workoutSummary(state, selection) : ''}
   ${mode}
   ${workout ? strengthWorkoutDay(state, { templateId: selected, date: activeDate }) : ''}

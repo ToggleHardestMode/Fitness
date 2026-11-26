@@ -7,6 +7,7 @@ import { validateExerciseClearances } from './exercise-clearance.js';
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 export const STORAGE_KEY = "fitnesspilot.preview.v101.v1";
+export const isHistoricalWorkout = t => t?.sourceVersion === 'Historical import';
 export const emptyState = () => ({ version: 1, templates: [], assignments: {}, logs: [], metrics: [], reminder: { hour: 18, minute: 30, lead: 0 } });
 
 export const STARTER_CSV = `day,workout,exercise,muscle,sets,rep_min,rep_max,rest_seconds
@@ -223,7 +224,7 @@ export function addWorkouts(state, workouts, makeAssignments = false, makeId = (
     existing.add(key);
     const template = { ...structuredClone(workout), id: makeId() };
     next.templates.push(template);
-    if (makeAssignments && !(template.requiresClinicalReview || template.name.includes('[PT Review]')) && !(String(workout.day) in next.assignments)) next.assignments[workout.day] = template.id;
+    if (makeAssignments && !isHistoricalWorkout(template) && !(template.requiresClinicalReview || template.name.includes('[PT Review]')) && !(String(workout.day) in next.assignments)) next.assignments[workout.day] = template.id;
     added++;
   }
   return { state: next, added, skipped };
