@@ -28,3 +28,14 @@ test('existing nutrition destinations remain real and cached with a synchronized
  assert.ok(nutrition, 'has the nutrition summary card');
  assert.match(nutrition[0], /href="\.\/food-diary\.html">Open Food Diary →<\/a>/);
 });
+
+test('daily Food Diary is a direct primary Dashboard shortcut immediately beside Nutrition', () => {
+  const html = dashboardHtml();
+  const nav = html.match(/<nav class="fp-top-nutrition"[^>]*>([\s\S]*?)<\/nav>/)[1];
+  const links = [...nav.matchAll(/<a class="([^"]+)" href="([^"]+)">([^<]+)<\/a>/g)];
+  assert.deepEqual(links.map(link => link[3]), ['Nutrition', 'Food Diary', 'Cheatsheet']);
+  assert.equal(links[1][1], 'btn fp-top-nutrition-link');
+  assert.equal(links[1][2], './food-diary.html');
+  assert.match(src('food-diary.html'), /id="fd-date"/);
+  assert.ok(src('sw.js').includes("'./food-diary.html'"));
+});

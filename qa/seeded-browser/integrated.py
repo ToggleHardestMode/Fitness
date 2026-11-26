@@ -60,13 +60,22 @@ def check_dashboard_layout(page):
     shortcuts = page.get_by_role("navigation", name="Nutrition quick links")
     expect(shortcuts).to_have_css("display", "grid")
     widths = []
-    for name in ("Nutrition", "Cheatsheet"):
+    for name in ("Nutrition", "Cheatsheet", "Food Diary"):
         link = shortcuts.get_by_role("link", name=name, exact=True)
         expect(link).to_be_visible()
         box = link.bounding_box()
         assert box["height"] >= 48, name
         widths.append(box["width"])
     assert abs(widths[0] - widths[1]) < 1, widths
+    assert abs(widths[0] - widths[2]) < 1, widths
+    for width in (320, 390, 428):
+        page.set_viewport_size({"width": width, "height": 844})
+        boxes = [shortcuts.get_by_role("link", name=name, exact=True).bounding_box()
+                 for name in ("Nutrition", "Food Diary", "Cheatsheet")]
+        assert all(box["height"] >= 48 for box in boxes), boxes
+        assert abs(boxes[0]["y"] - boxes[1]["y"]) < 1, boxes
+        assert boxes[0]["x"] < boxes[1]["x"] < boxes[2]["x"], boxes
+        assert boxes[2]["x"] + boxes[2]["width"] <= width + 1, boxes
     page.set_viewport_size({"width": 699, "height": 844})
     expect(shortcuts).to_have_css("display", "grid")
     page.set_viewport_size({"width": 700, "height": 844})
@@ -132,6 +141,11 @@ def check_nutrition_navigation(context, base, errors):
         shortcuts.get_by_role("link", name="Nutrition", exact=True).click()
         page.wait_for_url(base + "/nutrition.html")
         expect(page.locator(".preview-banner")).to_contain_text("PREVIEW")
+        page.go_back(wait_until="domcontentloaded")
+        shortcuts.get_by_role("link", name="Food Diary", exact=True).click()
+        page.wait_for_url(base + "/food-diary.html")
+        expect(page.locator("#fd-date")).to_be_visible()
+        expect(page.locator(".preview-banner")).to_contain_text("DAILY FOOD DIARY")
         page.go_back(wait_until="domcontentloaded")
         shortcuts.get_by_role("link", name="Cheatsheet", exact=True).click()
         page.wait_for_url(base + "/nutrition-cheatsheet.html")
