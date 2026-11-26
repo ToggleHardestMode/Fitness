@@ -92,6 +92,7 @@ export function recommendNextExercise(state, {templateId, exerciseIndex, date}) 
   const latest = sessions.at(-1) || null;
   const base = {version:STRENGTH_RULE_VERSION, status:"review", targets:[],
     reason:"", priorDate:latest?.date || null, sampleSessions:sessions.length};
+  if (template.sourceVersion === 'Historical import') return {...base, reason:"Historical record only; no training prescription."};
   if (ptReview(template, exercise) && !activeClearance(state, templateId, exerciseIndex, date)) return {...base, status:"pt-review",
     reason:"[PT Review]: previous sets are reference only. No loading recommendation."};
   if (exercise.repUnit === "seconds_per_side") return {...base, status:"timed",

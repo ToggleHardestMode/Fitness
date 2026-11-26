@@ -19,7 +19,8 @@ import { mondayOf, shiftWeek, latestLoggedWeek } from './week-window.js';
 import { setActiveSets } from './active-sets.js';
 import { recordExerciseClearance, revokeExerciseClearance } from './exercise-clearance.js';
 import { addExerciseEquivalence, removeExerciseEquivalence, linkCandidates } from './exercise-equivalence.js';
-import { readCsvBatch, previewWorkoutBatch } from './batch-import.js';
+import { readCsvBatch } from './batch-import.js';
+import { inspectWorkoutFiles, resolveWorkoutFiles } from './workout-import-review.js';
 import { applyCompletedCsv, blankCompletedCsv } from './completed-workout-csv.js';
 import { verifyLocalSnapshot, inspectBackupFileText } from './recovery-check.js';
 import {
@@ -33,6 +34,7 @@ import {
   DAY_NAMES,
   STORAGE_KEY,
   emptyState,
+  isHistoricalWorkout,
   STARTER_CSV,
   parseWorkouts,
   addWorkouts,
@@ -80,7 +82,7 @@ export function createActions({ render, today, isPTReview }) {
     strengthHistoryFilter = 'all';
   let pendingCompletedCsv = null,
     pendingCompletedSnapshot = null;
-  let completedRead = 0;
+  let completedRead = 0, pendingCompletedReview = null, completedReviewInput = null;
   let toastHandle = null;
   const SLIME_HIT_SETTING = 'fitnesspilot.preview.v101.ui.slime-hit.v1';
   let slimeHitEnabled = false,
@@ -205,7 +207,7 @@ export function createActions({ render, today, isPTReview }) {
   function trainOptions() {
     const day = weekdayOf(activeDate);
     const selected =
-      chosenTemplate && state.templates.some((t) => t.id === chosenTemplate)
+      chosenTemplate && state.templates.some((t) => t.id === chosenTemplate && !isHistoricalWorkout(t))
         ? chosenTemplate
         : state.assignments[day] || '';
     chosenTemplate = selected;
@@ -216,7 +218,7 @@ export function createActions({ render, today, isPTReview }) {
         focusSet = Math.min(Math.max(0, focusSet), workout.exercises[chosenExercise].sets - 1);
       }
     }
-    return { activeDate, day, selected, workout, chosenExercise, focusMode, focusSet, pendingCompletedCsv };
+    return { activeDate, day, selected, workout, chosenExercise, focusMode, focusSet, pendingCompletedCsv, pendingCompletedReview };
   }
 
   function viewOptions() {
@@ -316,6 +318,8 @@ export function createActions({ render, today, isPTReview }) {
   }
   async function readCompletedCsv(files) {
     const read = ++completedRead;
+    pendingCompletedReview = null;
+    completedReviewInput = null;
     pendingCompletedCsv = null;
     pendingCompletedSnapshot = null;
     render();
@@ -329,10 +333,19 @@ export function createActions({ render, today, isPTReview }) {
       if (read !== completedRead) return;
       if (localStorage.getItem(STORAGE_KEY) !== original)
         throw Error('Workout history changed while reading files. Reload and choose them again.');
-      pendingCompletedCsv = previewWorkoutBatch(baseline, input);
       pendingCompletedSnapshot = original;
+      const review = inspectWorkoutFiles(baseline, input);
+      pendingCompletedReview = review;
+      completedReviewInput = review;
+      if (review.every(file => file.choice === 'exact' && !file.hasNotes)) {
+        try {
+          pendingCompletedCsv = resolveWorkoutFiles(baseline, review);
+          pendingCompletedReview = null;
+        } catch (error) { toast(error.message, true); }
+      }
       render();
-      toast('Completed workout review ready. Nothing saved yet.');
+      toast(pendingCompletedReview ? 'Review file identities and notes before importing.' :
+        'Completed workout review ready. Nothing saved yet.');
     } catch (error) {
       if (read !== completedRead) return;
       pendingCompletedCsv = null;
@@ -737,9 +750,37 @@ export function createActions({ render, today, isPTReview }) {
       }
       if (act === 'completed-csv-cancel') {
         completedRead++;
+        pendingCompletedReview = null;
+        completedReviewInput = null;
         pendingCompletedCsv = null;
         pendingCompletedSnapshot = null;
         render();
+        return;
+      }
+      if (act === 'completed-csv-reopen') {
+        if (!completedReviewInput || localStorage.getItem(STORAGE_KEY) !== pendingCompletedSnapshot)
+          throw Error('Choose the files again; saved history may have changed.');
+        pendingCompletedReview = completedReviewInput;
+        pendingCompletedCsv = null;
+        render();
+        return;
+      }
+      if (act === 'completed-csv-resolve') {
+        if (storageError || !pendingCompletedReview) throw Error('Choose completed CSV files first.');
+        if (localStorage.getItem(STORAGE_KEY) !== pendingCompletedSnapshot)
+          throw Error('Workout history changed. Reload before reviewing the files.');
+        const reviewed = pendingCompletedReview.map((file, i) => ({
+          ...file, choice: $('#completed-review-choice-' + i).value,
+          text: $('#completed-review-text-' + i).value
+        }));
+        if (!$('#completed-review-ack')?.checked)
+          throw Error('Confirm the actual exercise names, notes and measurements first.');
+        const baseline = pendingCompletedSnapshot === null ? emptyState() : validateBackup(JSON.parse(pendingCompletedSnapshot));
+        pendingCompletedCsv = resolveWorkoutFiles(baseline, reviewed);
+        completedReviewInput = reviewed;
+        pendingCompletedReview = null;
+        render();
+        toast('Resolved batch ready. Nothing saved yet.');
         return;
       }
       if (act === 'completed-csv-apply') {
@@ -758,7 +799,8 @@ export function createActions({ render, today, isPTReview }) {
           !confirm(
             'Add ' +
               pendingCompletedCsv.add.length +
-              ' actual completed sets to your saved history? No existing sets will be replaced.'
+              ' actual completed sets and ' + (pendingCompletedCsv.historical?.length || 0) +
+              ' historical workout(s)? No existing sets or plans will be replaced.'
           )
         )
           return;
@@ -770,10 +812,12 @@ export function createActions({ render, today, isPTReview }) {
         }
         const count = pendingCompletedCsv.add.length;
         const baseline = pendingCompletedSnapshot === null ? emptyState() : validateBackup(JSON.parse(pendingCompletedSnapshot));
-        const next = applyCompletedCsv(baseline, pendingCompletedCsv);
+        baseline.templates.push(...(pendingCompletedCsv.historical || []));
+        const next = applyCompletedCsv(validateBackup(baseline), pendingCompletedCsv);
         commit(next, 'Imported ' + count + ' completed working sets; saved history preserved.');
         pendingCompletedCsv = null;
         pendingCompletedSnapshot = null;
+        completedReviewInput = null;
         render();
         return;
       }
@@ -1168,7 +1212,7 @@ export function createActions({ render, today, isPTReview }) {
         for (let i = 0; i < 7; i++) {
           const id = form.elements[`day${i}`].value;
           if (id) {
-            if (!state.templates.some((t) => t.id === id))
+            if (!state.templates.some((t) => t.id === id && !isHistoricalWorkout(t)))
               throw Error(`Unknown workout selected for ${DAY_NAMES[i]}.`);
             assignments[i] = id;
           }

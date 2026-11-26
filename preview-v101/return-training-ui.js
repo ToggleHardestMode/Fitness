@@ -6,7 +6,7 @@ import {generateOneSetCoverage} from './return-coverage.js';
 export function returnStagePanel(state, pending = null) {
   const selected = pending?.ids || DAYS.map((_,day) => state.assignments[day] || '');
   const selectors = DAYS.map((day, index) => {
-    const choices = state.templates.filter(t => t.day === index && !t.returnStagePercent);
+    const choices = state.templates.filter(t => t.day === index && !t.returnStagePercent && t.sourceVersion !== 'Historical import');
     return `<label><span class="form-label">${DAY_NAMES[index]}</span><select class="field" name="returnDay${index}">
       <option value="">No source workout</option>
       ${choices.map(t => `<option value="${esc(t.id)}" ${selected[index] === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}

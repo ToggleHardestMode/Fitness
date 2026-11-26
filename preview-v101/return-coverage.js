@@ -20,6 +20,7 @@ function validateCoverageSources(sources) {
     if (!source || typeof source.name !== 'string' || !Number.isInteger(source.day) ||
         source.day < 0 || source.day > 6 || days.has(source.day))
       throw Error('Choose at most one valid source workout per weekday.');
+    if (source.sourceVersion === 'Historical import') throw Error('Historical workouts are records, not return-stage plans.');
     days.add(source.day);
     if (!Array.isArray(source.exercises) || !source.exercises.length)
       throw Error('Every source workout needs at least one exercise.');
