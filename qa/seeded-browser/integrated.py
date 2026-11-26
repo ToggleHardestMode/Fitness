@@ -44,6 +44,11 @@ def assert_absent(page):
 def check_dashboard_layout(page):
     from playwright.sync_api import expect
 
+    summary = page.get_by_role("region", name="Weekly insights")
+    expect(summary).to_be_visible()
+    assert summary.bounding_box()["y"] < page.get_by_role("region", name="Recorded insights").bounding_box()["y"]
+    expect(page.locator("[data-action='week-current']")).to_have_count(1)
+
     chart = page.get_by_role("img", name="Completed sets by day", exact=False)
     page.get_by_role("button", name="Latest logged week").click()
     visible_bars = chart.locator(".bar")

@@ -1709,3 +1709,72 @@ A nowrap flex item otherwise expands the mobile layout viewport and fixed tabs. 
     text-align: right;
   }
 }
+
+/* Dashboard intelligence: compact, responsive presentation of read-only metrics. */
+:where([data-workout-preview]) .fp-intelligence {
+  margin: 12px 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+:where([data-workout-preview]) .fp-intelligence h3 {
+  font-size: 13px;
+  margin: 15px 0 8px;
+}
+:where([data-workout-preview]) .fp-intelligence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+:where([data-workout-preview]) .fp-intelligence-tile {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+:where([data-workout-preview]) .fp-intelligence-tile > span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+:where([data-workout-preview]) .fp-intelligence-tile > strong {
+  font-size: clamp(16px, 4.5vw, 23px);
+  line-height: 1.2;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+:where([data-workout-preview]) .fp-intelligence-tile small {
+  font-size: 11px;
+}
+:where([data-workout-preview]) .fp-evidence-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+:where([data-workout-preview]) .fp-evidence-row > small,
+:where([data-workout-preview]) .fp-evidence-track {
+  grid-column: 1 / -1;
+}
+:where([data-workout-preview]) .fp-evidence-row > small {
+  color: var(--muted);
+}
+:where([data-workout-preview]) .fp-evidence-track {
+  height: 5px;
+  overflow: hidden;
+  background: var(--line);
+  border-radius: 5px;
+}
+:where([data-workout-preview]) .fp-evidence-track > span {
+  display: block;
+  height: 100%;
+  background: #b99a65;
+}
+@media (min-width: 700px) {
+  :where([data-workout-preview]) .fp-intelligence-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
