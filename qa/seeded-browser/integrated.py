@@ -165,6 +165,36 @@ def check_nutrition_navigation(context, base, errors):
         page.close()
 
 
+def check_session_version_guard(context, base, errors):
+    from playwright.sync_api import expect
+
+    page = context.new_page()
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    try:
+        page.goto(base + "/index.html", wait_until="domcontentloaded")
+        fixtures = create_fixtures()
+        set_seed(page, fixtures)
+        page.reload(wait_until="domcontentloaded")
+        go(page, "plan")
+        page.locator("#day2").select_option("fixture-upper-001")
+        # A disposable future-format document arrives after the tab loaded v1.
+        future = {"version": 2, "legacy": fixtures[WORKOUT_KEY], "exercises": [], "sessions": []}
+        page.evaluate("([key, value]) => localStorage.setItem(key, JSON.stringify(value))", [WORKOUT_KEY, future])
+        raw = page.evaluate("(key) => localStorage.getItem(key)", WORKOUT_KEY)
+        page.locator("#schedule-form button[type=submit]").click()
+        expect(page.locator("#toast")).to_contain_text("Unsupported workout document version")
+        assert page.evaluate("(key) => localStorage.getItem(key)", WORKOUT_KEY) == raw
+        page.reload(wait_until="domcontentloaded")
+        expect(page.locator(".error-strip")).to_contain_text("Unsupported workout document version")
+        go(page, "plan")
+        page.locator("#schedule-form button[type=submit]").click()
+        expect(page.locator("#toast")).to_contain_text("Saved data is locked")
+        assert page.evaluate("(key) => localStorage.getItem(key)", WORKOUT_KEY) == raw
+        assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+    finally:
+        page.close()
+
+
 def check_batch_csv(context, base, errors):
     from playwright.sync_api import expect
 
@@ -740,6 +770,9 @@ def smoke(repo, chromium_binary=None, headed=False):
                 with browser.new_context(service_workers="block", viewport={"width": 390, "height": 844}) as batch_csv:
                     check_batch_csv(batch_csv, base, errors)
                     findings.append("Multi-file workout and food CSV previews, cancellation, import and retry preserved both stores.")
+                with browser.new_context(service_workers="block", viewport={"width": 390, "height": 844}) as version_guard:
+                    check_session_version_guard(version_guard, base, errors)
+                    findings.append("Future session document refused by stale-tab save and reload; both stores preserved.")
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
                 assert not errors, "Browser JavaScript errors: " + " | ".join(errors[:5])
                 train_baseline = [
