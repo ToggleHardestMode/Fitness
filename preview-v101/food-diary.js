@@ -81,7 +81,12 @@ export function initFoodDiary(storage=localStorage){
         'Import '+preview.add.length+' food entries';
       const ack=document.createElement('input');ack.type='checkbox';
       if(batch){
-        host.append(button('Download pre-import Food Diary JSON backup',exportFoodBackup));
+        host.append(button('Download pre-import Food Diary JSON backup',()=>{
+          try{
+            if(storage.getItem(FOOD_KEY)!==snapshot)throw Error('Food Diary changed. Reload and review the batch again.');
+            exportFoodBackup();
+          }catch(error){inform(error.message,true);}
+        }));
         const check=document.createElement('label');
         check.append(ack,document.createTextNode(' I saved a backup of my current Food Diary.'));
         host.append(check);
@@ -219,6 +224,8 @@ export function initFoodDiary(storage=localStorage){
       if(storage.getItem(FOOD_KEY)!==snapshot)
         throw Error('Food Diary changed while reading the CSV. Choose it again.');
       const current=snapshot===null?EMPTY_DIARY():JSON.parse(snapshot);
+      if(input.length>1&&JSON.stringify(validateDiary(current))!==JSON.stringify(diary))
+        throw Error('Food Diary changed in another tab. Reload before importing multiple files.');
       const contents=input[0].text;
       const preview=input.length===1?previewDailyFoodCsv(current,contents):previewFoodBatch(current,input);
       pendingCsv={preview,snapshot};
