@@ -1,5 +1,7 @@
 import { esc as escapeHtml } from './html.js';
 import { FOOD_KEY, NUTRIENTS, validateDiary } from './food-diary-core.js';
+import { selectedWeekFoodSummary } from './metric-selectors.js';
+export { selectedWeekFoodSummary };
 
 const fmt = value => value.toLocaleString('en-SG', { maximumFractionDigits: 1 });
 function shiftDay(key, offset) {
@@ -46,21 +48,6 @@ export function recordedCaloriesThisWeek(report) {
     daysWithCalorieValues:days.filter(row=>row.known>0).length,
     unknownFoods:days.reduce((n,row)=>n+row.unknown,0),
     knownFoods:days.reduce((n,row)=>n+row.known,0)};
-}
-
-// The selected Monday–Sunday week, independent of manual check-ins.
-export function selectedWeekFoodSummary(rawDiary, monday) {
-  const dates = Array.from({length: 7}, (_, i) => shiftDay(monday, i));
-  if (new Date(monday + 'T12:00:00Z').getUTCDay() !== 1) throw Error('Selected week must start on Monday.');
-  const rows = validateDiary(rawDiary).entries.filter(e => e.date >= dates[0] && e.date <= dates[6]);
-  const nutrients = Object.fromEntries(NUTRIENTS.map(key => {
-    const known = rows.filter(e => e[key] !== null);
-    const knownDays = new Set(known.map(e => e.date)).size;
-    const total = known.length ? known.reduce((sum, e) => sum + e[key] * e.servings, 0) : null;
-    return [key, {total, average: knownDays ? total / knownDays : null, knownDays, unknownFoods: rows.length - known.length}];
-  }));
-  return {start: dates[0], end: dates[6], recordedDays: new Set(rows.map(e => e.date)).size,
-    foodCount: rows.length, nutrients};
 }
 
 export function selectedWeekFoodMarkup(week) {
@@ -120,13 +107,30 @@ export function foodDiaryChartMarkup(report, selectedWeek = null) {
   <details class="volume-explanation"><summary>View all 28 daily calorie values</summary><div class="fd-chart-table-scroll"><table><thead><tr><th>Date</th><th>Recorded kcal</th><th>Coverage</th></tr></thead><tbody>${table}</tbody></table></div></details></section>`;
 }
 
-export function readFoodDiaryChart(storage, endDate, selectedMonday = null) {
+export function readFoodDiaryInput(storage) {
   try {
     const value = storage.getItem(FOOD_KEY);
-    const diary = value ? JSON.parse(value) : { version: 1, entries: [] };
-    const week = selectedMonday === null ? null : selectedWeekFoodSummary(diary, selectedMonday);
-    return foodDiaryChartMarkup(diaryCalorieHistory(diary, week?.end ?? endDate), week);
+    return {diary: validateDiary(value ? JSON.parse(value) : {version: 1, entries: []}), error: null};
+  } catch (error) {
+    return {diary: null, error: String(error.message)};
+  }
+}
+
+export function foodDiaryChartForInput(input, endDate, selectedWeek = null) {
+  try {
+    if (input.diary === null) throw Error(input.error);
+    return foodDiaryChartMarkup(diaryCalorieHistory(input.diary, selectedWeek?.end ?? endDate), selectedWeek);
   } catch (error) {
     return `<section class="card fd-chart-panel" role="alert"><h2>Food Diary · Daily calories</h2><p>Food Diary data could not be read (${escapeHtml(String(error.message))}). No records were changed. Export or recover your original data before making changes.</p></section>`;
+  }
+}
+
+export function readFoodDiaryChart(storage, endDate, selectedMonday = null) {
+  const input = readFoodDiaryInput(storage);
+  try {
+    const week = input.diary === null || selectedMonday === null ? null : selectedWeekFoodSummary(input.diary, selectedMonday);
+    return foodDiaryChartForInput(input, endDate, week);
+  } catch (error) {
+    return foodDiaryChartForInput({diary: null, error: String(error.message)}, endDate);
   }
 }

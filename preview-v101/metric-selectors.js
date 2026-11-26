@@ -2,9 +2,10 @@
  * Read-only metric selectors v1. All inputs are validated snapshots, never browser storage.
  * Existing authoritative parsers/analytics supply diary totals and training set semantics.
  */
-import {totalsForDate,validateDiary} from './food-diary-core.js';
+import {NUTRIENTS,totalsForDate,validateDiary} from './food-diary-core.js';
 import {weeklyTrainingAnalysis} from './training-analytics.js';
 import {metricDefinition} from './metric-dictionary.js';
+import {METRIC_FIELDS,weeklyMetricSources} from './metric-breakdown.js';
 
 function isoDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw Error('Expected a local YYYY-MM-DD date.');
@@ -76,7 +77,11 @@ export function weeklyTrainingMetrics(workoutState,anchorDate) {
   checkState(workoutState);
   const d=isoDate(anchorDate);
   const monday=offsetDay(anchorDate,-((d.getUTCDay()+6)%7));
-  const report=weeklyTrainingAnalysis(workoutState,monday);
+  return trainingMetricsFromReport(weeklyTrainingAnalysis(workoutState,monday));
+}
+
+function trainingMetricsFromReport(report) {
+  const monday=report.days[0].date;
   const eligibleCount=report.volumeEntries.length;
   return {
     weekStart:monday,weekEnd:offsetDay(monday,6),
@@ -119,4 +124,101 @@ export function sevenDayFoodCoverage(rawDiary,endDate) {
     days,source:'food_diary',status:'recording_coverage_only',
     completeness:'not_verified',nutritionAdherence:null
   });
+}
+
+// The same period math serves the chart and future Insights. Never impute a missing food.
+const FOOD_WEEK_IDS = Object.freeze({
+  kcal: 'food.recorded_kcal_week.v1', protein: 'food.recorded_protein_week.v1',
+  carbs: 'food.recorded_carbs_week.v1', fat: 'food.recorded_fat_week.v1'
+});
+function foodPeriod(entries, dates) {
+  const inPeriod = new Set(dates);
+  const rows = entries.filter(e => inPeriod.has(e.date));
+  const nutrients = Object.fromEntries(NUTRIENTS.map(key => {
+    const known = rows.filter(e => e[key] !== null);
+    const knownDays = new Set(known.map(e => e.date)).size;
+    const total = known.length ? known.reduce((sum, e) => sum + e[key] * e.servings, 0) : null;
+    return [key, {total, average: knownDays ? total / knownDays : null, knownDays, unknownFoods: rows.length - known.length}];
+  }));
+  return {start: dates[0], end: dates.at(-1), recordedDays: new Set(rows.map(e => e.date)).size,
+    foodCount: rows.length, nutrients};
+}
+
+export function selectedWeekFoodSummary(rawDiary, monday) {
+  if (isoDate(monday).getUTCDay() !== 1) throw Error('Selected week must start on Monday.');
+  const dates = Array.from({length: 7}, (_, i) => offsetDay(monday, i));
+  return foodPeriod(validateDiary(rawDiary).entries, dates);
+}
+
+function weightForDates(state, dates) {
+  const allowed = new Set(dates);
+  const records = state.metrics.filter(m => allowed.has(m.date) &&
+    typeof m.weight === 'number' && Number.isFinite(m.weight) && m.weight >= 1 && m.weight <= 400)
+    .map(m => ({date: m.date, kg: m.weight})).sort((a, b) => a.date.localeCompare(b.date));
+  if (new Set(records.map(m => m.date)).size !== records.length) throw Error('Duplicate weight check-in date.');
+  const value = records.length ? records.reduce((sum, m) => sum + m.kg, 0) / records.length : null;
+  return metric('weight.mean_week.v1', value, {source: 'manual_daily_checkin', observations: records.length,
+    records, status: records.length ? 'recorded_average' : 'not_recorded'});
+}
+
+function manualForDates(state, dates) {
+  const sources = weeklyMetricSources(state.metrics, dates);
+  return Object.fromEntries(METRIC_FIELDS.map(([, key]) => {
+    const records = sources[key];
+    const value = records.length ? records.reduce((sum, m) => sum + m.value, 0) / records.length : null;
+    const ids = {calories: 'checkin.calories_mean_week.v1', protein: 'checkin.protein_mean_week.v1',
+      sleep: 'checkin.sleep_mean_week.v1', recovery: 'checkin.recovery_mean_week.v1'};
+    return [key, metric(ids[key], value, {source: 'manual_daily_checkin', observations: records.length,
+      records, status: records.length ? 'recorded_average' : 'not_recorded'})];
+  }));
+}
+
+function periodSnapshot(state, diary, report, dates) {
+  const inPeriod = new Set(dates);
+  const days = report.days.filter(d => inPeriod.has(d.date));
+  const sum = key => days.reduce((n, d) => n + d[key], 0);
+  const food = diary === null ? null : foodPeriod(diary.entries, dates);
+  return {
+    from: dates[0], to: dates.at(-1), periodDays: dates.length,
+    training: {
+      savedSets: metric('train.saved_working_sets_week.v1', sum('completed'), {source: 'working_set_logs'}),
+      loggedDays: metric('train.logged_days_week.v1', days.filter(d => d.completed > 0).length,
+        {source: 'working_set_logs'}),
+      assignedSets: sum('assignedCompleted'), plannedSets: sum('planned'), offPlanSets: sum('offPlan'),
+      byDay: days.map(d => ({...d}))
+    },
+    food, foodCoverage: food === null ? null : metric('food.entry_coverage_period.v1', food.recordedDays, {
+      source: 'food_diary', periodDays: dates.length, completeness: 'not_verified', nutritionAdherence: null}),
+    foodMetrics: food === null ? null : Object.fromEntries(NUTRIENTS.map(key => {
+      const n = food.nutrients[key];
+      return [key, metric(FOOD_WEEK_IDS[key], n.total, {...n, source: 'food_diary',
+        status: !food.foodCount ? 'not_logged' : n.total === null ? 'all_values_unknown' : 'known_recorded_subtotal',
+        completeness: 'not_verified'})];
+    })),
+    weight: weightForDates(state, dates), manual: manualForDates(state, dates)
+  };
+}
+
+/** Full selected week plus a same-elapsed-weekday comparison; null diary means unavailable, not empty. */
+export function dashboardMetricSnapshot(state, rawDiary, anchorDate, today) {
+  checkState(state);
+  const anchor = isoDate(anchorDate);
+  isoDate(today);
+  const monday = offsetDay(anchorDate, -((anchor.getUTCDay() + 6) % 7));
+  const dates = Array.from({length: 7}, (_, i) => offsetDay(monday, i));
+  const diary = rawDiary === null ? null : validateDiary(rawDiary);
+  const report = weeklyTrainingAnalysis(state, monday);
+  const selected = periodSnapshot(state, diary, report, dates);
+  const elapsed = dates.filter(date => date <= today);
+  let comparison = null;
+  if (elapsed.length) {
+    const previousDates = elapsed.map(date => offsetDay(date, -7));
+    const previousReport = weeklyTrainingAnalysis(state, previousDates[0]);
+    const current = periodSnapshot(state, diary, report, elapsed);
+    const previous = periodSnapshot(state, diary, previousReport, previousDates);
+    comparison = {current, previous,
+      weightChange: current.weight.observations >= 2 && previous.weight.observations >= 2
+        ? current.weight.value - previous.weight.value : null};
+  }
+  return {selected, comparison, trainingReport: report, trainingMetrics: trainingMetricsFromReport(report)};
 }
