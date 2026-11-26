@@ -165,6 +165,69 @@ def check_nutrition_navigation(context, base, errors):
         page.close()
 
 
+def check_batch_csv(context, base, errors):
+    from playwright.sync_api import expect
+
+    page = context.new_page()
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    page.goto(base + "/index.html", wait_until="domcontentloaded")
+    fixtures = create_fixtures()
+    set_seed(page, fixtures)
+    page.reload(wait_until="domcontentloaded")
+    go(page, "train")
+
+    def file(name, text):
+        return {"name": name, "mimeType": "text/csv", "buffer": text.encode()}
+
+    header = "date,workout,exercise,set,kg,reps\n"
+    a = file("day-one.csv", header + "2026-10-27,Synthetic upper-body workout,Synthetic seated press,1,10,8\n")
+    b = file("day-two.csv", header + "2026-10-28,Synthetic upper-body workout,Synthetic seated press,1,12,8\n")
+    upload = page.locator("#completed-workout-file")
+    preview = page.locator(".completed-csv-preview")
+    before = get_store(page, WORKOUT_KEY)
+    upload.set_input_files([a, b])
+    expect(preview).to_contain_text("2 new working set(s)")
+    assert get_store(page, WORKOUT_KEY) == before
+    preview.get_by_role("button", name="Cancel", exact=True).click()
+    assert get_store(page, WORKOUT_KEY) == before
+    upload.set_input_files([a, b, a])
+    expect(preview).to_contain_text("1 batch duplicates")
+    page.locator("#completed-import-backup-ack").check()
+    page.once("dialog", lambda dialog: dialog.accept())
+    preview.get_by_role("button", name="Import 2 completed set(s)").click()
+    assert len(get_store(page, WORKOUT_KEY)["logs"]) == len(before["logs"]) + 2
+    saved = get_store(page, WORKOUT_KEY)
+    upload.set_input_files([a, b])
+    expect(preview).to_contain_text("All completed rows already exist")
+    assert get_store(page, WORKOUT_KEY) == saved
+    assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
+
+    page.goto(base + "/food-diary.html", wait_until="domcontentloaded")
+    header = "date,name,occasion,servings,kcal,protein,carbs,fat\n"
+    a = file("food-one.csv", header + "2026-10-29,Synthetic new meal,meal,1,100,5,10,3\n")
+    b = file("food-two.csv", header + "2026-10-30,Synthetic new meal,meal,1,200,,20,4\n")
+    upload = page.locator("#fd-csv-file")
+    preview = page.locator("#fd-csv-preview")
+    before = get_store(page, FOOD_KEY)
+    upload.set_input_files([a, b])
+    expect(preview).to_contain_text("2 new, 0 corrected, 0 unchanged")
+    assert get_store(page, FOOD_KEY) == before
+    preview.get_by_role("button", name="Cancel CSV preview").click()
+    assert get_store(page, FOOD_KEY) == before
+    upload.set_input_files([a, b, a])
+    expect(preview).to_contain_text("Duplicate file, skipped")
+    preview.get_by_role("checkbox").check()
+    page.once("dialog", lambda dialog: dialog.accept())
+    preview.get_by_role("button", name="Import 2 food entries").click()
+    assert len(get_store(page, FOOD_KEY)["entries"]) == len(before["entries"]) + 2
+    saved_food = get_store(page, FOOD_KEY)
+    upload.set_input_files([a, b])
+    expect(preview).to_contain_text("All rows already match saved entries")
+    assert get_store(page, FOOD_KEY) == saved_food
+    assert get_store(page, WORKOUT_KEY) == saved
+    page.close()
+
+
 def check_food_csv(context, base, errors):
     from playwright.sync_api import expect
 
@@ -674,6 +737,9 @@ def smoke(repo, chromium_binary=None, headed=False):
                 with browser.new_context(service_workers="block", viewport={"width": 390, "height": 844}) as food_csv:
                     check_food_csv(food_csv, base, errors)
                     findings.append("Food CSV imported by row date without a backup; reimport and correction checks passed.")
+                with browser.new_context(service_workers="block", viewport={"width": 390, "height": 844}) as batch_csv:
+                    check_batch_csv(batch_csv, base, errors)
+                    findings.append("Multi-file workout and food CSV previews, cancellation, import and retry preserved both stores.")
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
                 assert not errors, "Browser JavaScript errors: " + " | ".join(errors[:5])
                 train_baseline = [

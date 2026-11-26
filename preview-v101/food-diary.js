@@ -2,6 +2,7 @@ import {FOOD_KEY,EMPTY_DIARY,NUTRIENTS,validateDiary,saveEntry,deleteEntry,total
 import { initSgFoodLookup } from './sg-food-lookup.js';
 import { LABELLED_PROTEIN_PIECE } from './food-staples.js';
 import {blankDailyFoodCsv,previewDailyFoodCsv,applyDailyFoodCsv} from './food-diary-csv.js';
+import {readCsvBatch,previewFoodBatch} from './batch-import.js';
 const $=id=>document.getElementById(id);
 const number=value=>Number(value).toLocaleString('en-SG',{maximumFractionDigits:1});
 const numeric=value=>value===''?null:Number(value);
@@ -42,6 +43,17 @@ export function initFoodDiary(storage=localStorage){
       ' new, '+preview.updates.length+' corrected, '+preview.skipped.length+
       ' unchanged. Nothing has been saved yet.';
     host.append(count);
+    const batch = preview.files && preview.files.length > 1;
+    if(batch){
+      const files=document.createElement('ul');
+      for(const file of preview.files){
+        const li=document.createElement('li');
+        li.textContent=file.name+' · '+(file.duplicate?'Duplicate file, skipped':
+          file.added+' new · '+file.corrected+' corrected · '+file.skipped+' unchanged');
+        files.append(li);
+      }
+      host.append(files);
+    }
     const list=document.createElement('ul');list.className='fd-csv-preview-list';
     for(const entry of [...preview.add,...preview.skipped]){
       const li=document.createElement('li');
@@ -67,8 +79,22 @@ export function initFoodDiary(storage=localStorage){
     if(preview.add.length+preview.updates.length){
       const label=preview.updates.length ? 'Add '+preview.add.length+' · Correct '+preview.updates.length :
         'Import '+preview.add.length+' food entries';
+      const ack=document.createElement('input');ack.type='checkbox';
+      if(batch){
+        host.append(button('Download pre-import Food Diary JSON backup',()=>{
+          try{
+            if(storage.getItem(FOOD_KEY)!==snapshot)throw Error('Food Diary changed. Reload and review the batch again.');
+            exportFoodBackup();
+          }catch(error){inform(error.message,true);}
+        }));
+        const check=document.createElement('label');
+        check.append(ack,document.createTextNode(' I saved a backup of my current Food Diary.'));
+        host.append(check);
+      }
       const apply=button(label,()=>{
         try{
+          if(batch&&!ack.checked)throw Error('Save and acknowledge a Food Diary backup before importing multiple files.');
+          if(batch&&!preview.updates.length&&!confirm('Import '+preview.add.length+' new food entries from the reviewed batch?'))return;
           if(preview.updates.length&&!confirm('Add '+preview.add.length+' new and correct '+preview.updates.length+
               ' previously CSV-imported food(s) for '+dateSummary+'?'))return;
           // Recheck AFTER the modal: another tab may have changed localStorage.
@@ -188,19 +214,20 @@ export function initFoodDiary(storage=localStorage){
     }catch(error){inform(error.message,true);}
   });
   $('fd-csv-file').addEventListener('change',async event=>{
-    const file=event.target.files?.[0];event.target.value='';
-    if(!file)return;
+    const files=Array.from(event.target.files||[]);event.target.value='';
+    if(!files.length)return;
     const read=++csvRead;
     pendingCsv=null;renderCsvPreview();
     try{
-      if(file.size>100000||!/\.csv$/i.test(file.name))
-        throw Error('Choose a food .csv file smaller than 100 KB.');
-      const snapshot=storage.getItem(FOOD_KEY),contents=await file.text();
+      const snapshot=storage.getItem(FOOD_KEY),input=await readCsvBatch(files,'food');
       if(read!==csvRead)return;
       if(storage.getItem(FOOD_KEY)!==snapshot)
         throw Error('Food Diary changed while reading the CSV. Choose it again.');
       const current=snapshot===null?EMPTY_DIARY():JSON.parse(snapshot);
-      const preview=previewDailyFoodCsv(current,contents);
+      if(input.length>1&&JSON.stringify(validateDiary(current))!==JSON.stringify(diary))
+        throw Error('Food Diary changed in another tab. Reload before importing multiple files.');
+      const contents=input[0].text;
+      const preview=input.length===1?previewDailyFoodCsv(current,contents):previewFoodBatch(current,input);
       pendingCsv={preview,snapshot};
       renderCsvPreview();
       inform('CSV preview ready. Review the dates and entries before importing.');

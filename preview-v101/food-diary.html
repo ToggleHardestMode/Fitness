@@ -7,9 +7,9 @@
 <section class="nj-panel"><h2>Choose day</h2><label class="fd-date-label">Day <input id="fd-date" class="field" type="date" required></label><p class="hint">A blank nutrient means unknown—not zero. Food labels and estimates are references, not precise measurements.</p><div class="nj-stats fd-totals"><div><small>Calories recorded</small><strong id="fd-total-kcal">Not recorded</strong></div><div><small>Protein derived</small><strong id="fd-total-protein">Not recorded</strong></div><div><small>Carbs derived</small><strong id="fd-total-carbs">Not recorded</strong></div><div><small>Fat derived</small><strong id="fd-total-fat">Not recorded</strong></div></div><p class="hint" id="fd-count">0 food/drink entries</p></section>
 <section class="nj-panel" aria-labelledby="fd-daily-csv-title">
   <h2 id="fd-daily-csv-title">Import food CSV</h2>
-  <p class="hint">Use one file for one or more dates. Each row goes to its own date (YYYY-MM-DD). Review new, unchanged and corrected entries before saving. <strong>Changes to previously CSV-imported meals require explicit confirmation</strong>.</p>
+  <p class="hint">Select up to 20 CSV files, each containing one or more dates. Put repeated same-day meals of the same name and occasion in one file. Each row goes to its own date (YYYY-MM-DD). Review new, unchanged and corrected entries before saving. <strong>Changes to previously CSV-imported meals require explicit confirmation</strong>.</p>
   <div class="fd-actions"><button type="button" class="btn secondary" id="fd-csv-template">Download blank CSV</button>
-    <label class="btn secondary fd-import">Choose food CSV<input id="fd-csv-file" type="file" accept=".csv,text/csv"></label></div>
+    <label class="btn secondary fd-import">Choose food CSV files<input id="fd-csv-file" type="file" multiple accept=".csv,text/csv"></label></div>
   <div id="fd-csv-preview" class="fd-csv-preview" hidden></div>
   <p class="hint">CSV columns: <code>date,name,occasion,servings,kcal,protein,carbs,fat</code>. Enter nutrients per serving and leave unknown values blank. Missing rows in the revised CSV stay saved. Manually recorded foods are protected.</p>
 </section>
