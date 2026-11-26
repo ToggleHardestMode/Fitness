@@ -257,6 +257,7 @@ def check_ledger_recovery(browser, base, errors):
         report = page.evaluate("""async ([legacy,food])=>{
           const m=await import('./ledger-model.js'),p=await import('./ledger-prototype.js');
           const e=await import('./encrypted-backup-core.js');
+          const ix=await import('./ledger-indexed-prototype.js');
           const secret='Synthetic fixture recovery passphrase';
           const assert=(ok,msg)=>{if(!ok)throw Error(msg);};
           const reject=async(fn,part)=>{try{await fn();}catch(e){assert(e.message.includes(part),e.message);return;}
@@ -299,6 +300,36 @@ def check_ledger_recovery(browser, base, errors):
             last.exercises.forEach((ex,i)=>{ex.id='additional-occ-'+i;ex.sets.forEach((s,j)=>s.id='additional-set-'+i+'-'+j);});
             next.sessions.push(last);
             await timed('append_session_ms',()=>p.commitLedgerPrototype(db,next,2));
+            // Same initial data and extra session as snapshot benchmark.
+            const indexed=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-main');
+            const recovery=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-recovery');
+            try{
+              await reject(()=>ix.initializeIndexedFixture(indexed,{document:checked,food:start.food},
+                {abortAfterPut:true}),'aborted');
+              assert(await ix.readIndexedFixture(indexed)===null,'Indexed initialization abort persisted data');
+              await timed('indexed_init_ms',()=>ix.initializeIndexedFixture(indexed,{document:checked,food:start.food}));
+              const indexedStart=await timed('indexed_read_ms',()=>ix.readIndexedFixture(indexed));
+              assert(JSON.stringify(indexedStart.document)===JSON.stringify(checked),'Indexed migration differs');
+              await reject(()=>ix.appendIndexedFixture(indexed,last,1,{abortAfterPut:true}),'aborted');
+              assert(JSON.stringify(await ix.readIndexedFixture(indexed))===JSON.stringify(indexedStart),
+                'Indexed append abort altered data');
+              await timed('indexed_append_ms',()=>ix.appendIndexedFixture(indexed,last,1));
+              await reject(()=>ix.appendIndexedFixture(indexed,last,1),'Revision conflict');
+              // Same revision, duplicate set ID across distinct sessions must abort.
+              const duplicate=structuredClone(last);duplicate.id='duplicate-session';
+              duplicate.exercises.forEach((ex,i)=>{ex.id='duplicate-occ-'+i;});
+              await reject(()=>ix.appendIndexedFixture(indexed,duplicate,2),'key');
+              const current=await ix.readIndexedFixture(indexed);
+              assert(current.revision===2&&JSON.stringify(current.document)===JSON.stringify(next),
+                'Indexed duplicate rejection or append differs');
+              assert(JSON.stringify(current.food)===JSON.stringify(start.food),'Indexed food differs');
+              const ixBackup=await timed('indexed_encrypt_ms',()=>ix.exportIndexedFixture(indexed,secret));
+              await timed('indexed_restore_ms',()=>ix.restoreIndexedFixture(recovery,ixBackup,secret));
+              const restored=await ix.readIndexedFixture(recovery);
+              assert(JSON.stringify(restored.document)===JSON.stringify(next)&&
+                JSON.stringify(restored.food)===JSON.stringify(start.food),'Indexed recovery differs');
+              await reject(()=>ix.restoreIndexedFixture(recovery,ixBackup,secret),'empty fixture');
+            }finally{indexed.close();recovery.close();}
             const backup=await timed('encrypt_ms',()=>p.exportCombinedPrototype(db,secret));
             metrics.encrypted_bytes=new TextEncoder().encode(backup).byteLength;
             await reject(()=>p.restoreCombinedPrototype(empty,backup,'incorrect long passphrase'),'Wrong passphrase');
@@ -894,7 +925,7 @@ def smoke(repo, chromium_binary=None, headed=False):
                 check_ledger_prototype(browser, base, errors)
                 findings.append("Native IndexedDB fixture: migration, concurrent revision conflict, abort rollback, legacy divergence and clean-profile recovery.")
                 workload = check_ledger_recovery(browser, base, errors)
-                findings.append("Encrypted ledger recovery and five-year synthetic benchmark: " + json.dumps(workload, sort_keys=True))
+                findings.append("Encrypted ledger recovery and five-year synthetic benchmark (snapshot vs indexed): " + json.dumps(workload, sort_keys=True))
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
                 assert not errors, "Browser JavaScript errors: " + " | ".join(errors[:5])
                 train_baseline = [
