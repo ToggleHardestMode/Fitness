@@ -347,6 +347,69 @@ def check_ledger_recovery(browser, base, errors):
         return report
 
 
+def check_indexed_integrity(browser, base, errors):
+    with browser.new_context(service_workers="block") as context:
+        page = context.new_page()
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.goto(base + "/index.html", wait_until="domcontentloaded")
+        fixtures = create_fixtures()
+        page.evaluate("""async ([legacy,food])=>{
+          const m=await import('./ledger-model.js'),ix=await import('./ledger-indexed-prototype.js');
+          const assert=(ok,msg)=>{if(!ok)throw Error(msg);};
+          const reject=async(fn,part)=>{try{await fn();}catch(e){assert(e.message.includes(part),e.message);return;}
+            throw Error('Expected rejection: '+part);};
+          const doc=m.migrateLegacyWorkout(legacy);
+          const name='fitnesspilot-preview-ledger-indexed-fixture-integrity';
+          const db=await ix.openIndexedLedgerFixture(name);
+          const peer=await ix.openIndexedLedgerFixture(name);
+          const rawWrite=(store,fn)=>new Promise((resolve,reject)=>{
+            const tx=db.transaction(store,'readwrite');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);
+            fn(tx.objectStore(store));
+          });
+          try{
+            await ix.initializeIndexedFixture(db,{document:doc,food});
+            const make=id=>({id,date:legacy.logs[0].date,name:'Synthetic actual',origin:'actual',planId:null,
+              exercises:[{id:'occ-'+id,identity:{kind:'plan',templateId:legacy.templates[0].id,exerciseIndex:0},
+                plannedIndex:null,loadUnit:'unknown',repUnit:'reps',sets:[{id:'set-'+id,number:1,kind:'working',
+                  completed:true,measurement:{actualKg:null,actualReps:8,rpe:null,
+                    loadEvidence:'unknown',repsEvidence:'recorded'}}]}]});
+            const results=await Promise.allSettled([ix.appendIndexedFixture(db,make('a'),1),
+              ix.appendIndexedFixture(peer,make('b'),1)]);
+            assert(results.filter(r=>r.status==='fulfilled').length===1,'Concurrent indexed writers both succeeded');
+            assert(results.some(r=>r.status==='rejected'&&r.reason.message.includes('Revision conflict')),'No revision conflict');
+            const committed=await ix.readIndexedFixture(peer);
+            assert(committed.revision===2&&committed.document.sessions.length===doc.sessions.length+1,'Incorrect revision or count');
+            // Same count, wrong key: a count-only audit would incorrectly accept this fixture.
+            const original=committed.document.sessions[0].exercises[0].sets[0].id;
+            await rawWrite('identities',s=>{s.delete(['set',original]);s.add(true,['set','wrong-key']);});
+            await reject(()=>ix.readIndexedFixture(db),'identity keys disagree');
+            await reject(()=>ix.exportIndexedFixture(db,'Synthetic fixture secret'),'identity keys disagree');
+            await rawWrite('identities',s=>{s.delete(['set','wrong-key']);s.add(true,['set',original]);});
+            assert(JSON.stringify(await ix.readIndexedFixture(db))===JSON.stringify(committed),'Audit modified records');
+            // Version-change closes participating connections; old schema reader fails closed.
+            const upgraded=await new Promise((resolve,reject)=>{
+              const req=indexedDB.open(name,2);req.onsuccess=()=>resolve(req.result);
+              req.onerror=()=>reject(req.error);req.onblocked=()=>reject(Error('Upgrade unexpectedly blocked'));
+            });
+            upgraded.close();
+            await reject(()=>ix.readIndexedFixture(db),'Open a disposable');
+            let refused=false;
+            try{await ix.openIndexedLedgerFixture(name);}catch(e){refused=e.name==='VersionError';}
+            assert(refused,'Old schema reader did not reject newer database');
+          }finally{db.close();peer.close();}
+          const partial=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-partial');
+          try{
+            await new Promise((resolve,reject)=>{
+              const tx=partial.transaction('identities','readwrite');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);
+              tx.objectStore('identities').add(true,['set','orphan']);
+            });
+            await reject(()=>ix.initializeIndexedFixture(partial,{document:doc,food}),'empty fixture');
+            await reject(()=>ix.readIndexedFixture(partial),'Incomplete fixture');
+          }finally{partial.close();}
+        }""", [fixtures[WORKOUT_KEY], fixtures[FOOD_KEY]])
+        assert_absent(page)
+
+
 def check_batch_csv(context, base, errors):
     from playwright.sync_api import expect
 
@@ -924,6 +987,8 @@ def smoke(repo, chromium_binary=None, headed=False):
                     findings.append("Multi-file workout and food CSV previews, cancellation, import and retry preserved both stores.")
                 check_ledger_prototype(browser, base, errors)
                 findings.append("Native IndexedDB fixture: migration, concurrent revision conflict, abort rollback, legacy divergence and clean-profile recovery.")
+                check_indexed_integrity(browser, base, errors)
+                findings.append("Indexed integrity: concurrent writers, exact identity audit, partial target rejection and future database version refusal.")
                 workload = check_ledger_recovery(browser, base, errors)
                 findings.append("Encrypted ledger recovery and five-year synthetic benchmark (snapshot vs indexed): " + json.dumps(workload, sort_keys=True))
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))

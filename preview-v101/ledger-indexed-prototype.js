@@ -5,6 +5,7 @@ import {validateDiary} from './food-diary-core.js';
 import {decodeRecoveryBackup,encodeRecoveryBackup} from './ledger-recovery.js';
 
 const stores=['metadata','sessions','identities'];
+const fixtureHandles=new WeakSet();
 export function openIndexedLedgerFixture(name,idb=globalThis.indexedDB){
   if(typeof name!=='string'||!/^fitnesspilot-preview-ledger-indexed-fixture-[a-zA-Z0-9-]{1,60}$/.test(name))
     return Promise.reject(Error('Disposable indexed fixture name required.'));
@@ -15,10 +16,11 @@ export function openIndexedLedgerFixture(name,idb=globalThis.indexedDB){
     request.onblocked=()=>{blocked=true;reject(Error('Database upgrade blocked.'));};
     request.onerror=()=>reject(request.error);
     request.onsuccess=()=>{const db=request.result;if(blocked){db.close();return;}
-      db.onversionchange=()=>db.close();resolve(db);};
+      db.onversionchange=()=>{fixtureHandles.delete(db);db.close();};fixtureHandles.add(db);resolve(db);};
   });
 }
 function transaction(db,mode,work){
+  if(!fixtureHandles.has(db))return Promise.reject(Error('Open a disposable indexed fixture first.'));
   return new Promise((resolve,reject)=>{
     const tx=db.transaction(stores,mode);let result,failure;
     tx.oncomplete=()=>resolve(result);
@@ -47,12 +49,22 @@ function persistMeta(tx,meta,done,abortAfterPut){
 }
 export function initializeIndexedFixture(db,input,{abortAfterPut=false}={}){
   const doc=validateLedger(input.document),food=validateDiary(input.food);
-  return transaction(db,'readwrite',(tx,current,done)=>{
+  return transaction(db,'readwrite',(tx,current,done,abort)=>{
     if(current!==undefined)throw Error('Initialization requires an empty fixture.');
-    let sets=0;
-    doc.sessions.forEach((session,i)=>{sets+=addSession(tx,session,i);});
-    persistMeta(tx,{revision:1,configuration:doc.configuration,catalog:doc.catalog,
-      food,sessions:doc.sessions.length,sets},done,abortAfterPut);
+    // A missing metadata row alone does not prove that a target is empty.
+    const sessions=tx.objectStore('sessions').count(),ids=tx.objectStore('identities').count();
+    let remaining=2;
+    function finish(){
+      if(--remaining)return;
+      try{
+        if(sessions.result||ids.result)throw Error('Initialization requires an empty fixture.');
+        let sets=0;
+        doc.sessions.forEach((session,i)=>{sets+=addSession(tx,session,i);});
+        persistMeta(tx,{revision:1,configuration:doc.configuration,catalog:doc.catalog,
+          food,sessions:doc.sessions.length,sets},done,abortAfterPut);
+      }catch(e){abort(e);}
+    }
+    sessions.onsuccess=finish;ids.onsuccess=finish;
   });
 }
 export function appendIndexedFixture(db,session,expectedRevision,{abortAfterPut=false}={}){
@@ -75,26 +87,36 @@ export function appendIndexedFixture(db,session,expectedRevision,{abortAfterPut=
 export function readIndexedFixture(db){
   return transaction(db,'readonly',(tx,meta,done,abort)=>{
     const req=tx.objectStore('sessions').getAll();
-    const ids=tx.objectStore('identities').count();
-    let sessions,identityCount,remaining=2;
+    const ids=tx.objectStore('identities').getAllKeys();
+    let sessions,identityKeys,remaining=2;
     function finish(){
       if(--remaining)return;
       try{
         if(meta===undefined){
-          if(sessions.length||identityCount)throw Error('Incomplete fixture database.');
+          if(sessions.length||identityKeys.length)throw Error('Incomplete fixture database.');
           done(null);return;
         }
         if(!Number.isSafeInteger(meta.revision)||meta.revision<1)throw Error('Invalid revision.');
         const document=validateLedger({version:2,configuration:meta.configuration,catalog:meta.catalog,sessions});
         const sets=sessions.reduce((n,s)=>n+s.exercises.reduce((v,e)=>v+e.sets.length,0),0);
         const occurrences=sessions.reduce((n,s)=>n+s.exercises.length,0);
-        if(meta.sessions!==sessions.length||meta.sets!==sets||identityCount!==sessions.length+occurrences+sets)
+        if(meta.sessions!==sessions.length||meta.sets!==sets||identityKeys.length!==sessions.length+occurrences+sets)
           throw Error('Fixture counts disagree.');
+        const keys=new Set(identityKeys.map(k=>JSON.stringify(k)));
+        for(const s of sessions){
+          if(!keys.delete(JSON.stringify(['session',s.id])))throw Error('Fixture identity keys disagree.');
+          for(const e of s.exercises){
+            if(!keys.delete(JSON.stringify(['occurrence',e.id])))throw Error('Fixture identity keys disagree.');
+            for(const set of e.sets)
+              if(!keys.delete(JSON.stringify(['set',set.id])))throw Error('Fixture identity keys disagree.');
+          }
+        }
+        if(keys.size)throw Error('Fixture identity keys disagree.');
         done({revision:meta.revision,document,food:validateDiary(meta.food)});
       }catch(e){abort(e);}
     }
     req.onsuccess=()=>{sessions=req.result;finish();};
-    ids.onsuccess=()=>{identityCount=ids.result;finish();};
+    ids.onsuccess=()=>{identityKeys=ids.result;finish();};
   });
 }
 export async function exportIndexedFixture(db,secret){
