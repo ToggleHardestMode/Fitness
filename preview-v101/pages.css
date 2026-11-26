@@ -1023,7 +1023,7 @@ h1,
 Ordinary links work offline when their pages are cached; no JavaScript action needed. */
 .fp-top-nutrition {
   display: grid;
-  grid-template-columns: repeat(2,minmax(0,1fr));
+  grid-template-columns: repeat(3,minmax(0,1fr));
   gap: 10px;
   margin: 13px 0 17px;
 }

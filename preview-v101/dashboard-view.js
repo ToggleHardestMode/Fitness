@@ -174,6 +174,7 @@ export function dashboardView(state, selection, helpers, storage) {
 
   return `${shellHeading()}<nav class="fp-top-nutrition" aria-label="Nutrition quick links">` +
     '<a class="btn fp-top-nutrition-link" href="./nutrition.html">Nutrition</a>' +
+    '<a class="btn fp-top-nutrition-link" href="./food-diary.html">Food Diary</a>' +
     '<a class="btn secondary fp-top-nutrition-link" href="./nutrition-cheatsheet.html">Cheatsheet</a></nav>' +
     `  <div class="section-label"><h2>Selected training week</h2><span>${nice(s.dates[0])} – ${nice(s.dates[6])}</span></div>
   <div class="fp-week-actions" role="group" aria-label="Choose training week">` +
