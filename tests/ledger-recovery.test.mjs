@@ -9,7 +9,7 @@ const secret='Synthetic recovery passphrase only';
 const fixture=()=>({workout:{...emptyState(),templates:[{id:'test',name:'Synthetic plan',day:0,
   exercises:[{name:'Press',muscle:'Chest',sets:1,min:8,max:12,rest:90}]}],
   logs:[{id:'original',date:'2026-01-01',templateId:'test',exerciseIndex:0,set:1,kg:'10',reps:8,rpe:null}]},
-  food:{version:1,entries:[{id:'food',date:'2026-01-01',name:'Synthetic snack',occasion:'snack',
+  food:{version:1,entries:[{id:'synthetic-food-001',date:'2026-01-01',name:'Synthetic snack',occasion:'snack',
     servings:1,kcal:null,protein:0,carbs:null,fat:1}]}});
 const candidate=()=>{
   const f=fixture(),document=migrateLegacyWorkout(f.workout);
