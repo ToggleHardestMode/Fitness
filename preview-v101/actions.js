@@ -19,7 +19,8 @@ import { mondayOf, shiftWeek, latestLoggedWeek } from './week-window.js';
 import { setActiveSets } from './active-sets.js';
 import { recordExerciseClearance, revokeExerciseClearance } from './exercise-clearance.js';
 import { addExerciseEquivalence, removeExerciseEquivalence, linkCandidates } from './exercise-equivalence.js';
-import { previewCompletedCsv, applyCompletedCsv, blankCompletedCsv } from './completed-workout-csv.js';
+import { readCsvBatch, previewWorkoutBatch } from './batch-import.js';
+import { applyCompletedCsv, blankCompletedCsv } from './completed-workout-csv.js';
 import { verifyLocalSnapshot, inspectBackupFileText } from './recovery-check.js';
 import {
   markWorkoutBackupChecked,
@@ -79,6 +80,7 @@ export function createActions({ render, today, isPTReview }) {
     strengthHistoryFilter = 'all';
   let pendingCompletedCsv = null,
     pendingCompletedSnapshot = null;
+  let completedRead = 0;
   let toastHandle = null;
   const SLIME_HIT_SETTING = 'fitnesspilot.preview.v101.ui.slime-hit.v1';
   let slimeHitEnabled = false,
@@ -312,17 +314,32 @@ export function createActions({ render, today, isPTReview }) {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
-  async function readCompletedCsv(file) {
-    if (!file || file.size > 1_000_000 || !/\.csv$/i.test(file.name))
-      throw Error('Choose a completed-workout .csv file smaller than 1 MB.');
-    const csv = await file.text();
-    if (storageError) throw Error('Saved workout history is locked; CSV import is disabled.');
-    const original = localStorage.getItem(STORAGE_KEY);
-    const parsed = previewCompletedCsv(state, csv);
-    pendingCompletedCsv = parsed;
-    pendingCompletedSnapshot = original;
+  async function readCompletedCsv(files) {
+    const read = ++completedRead;
+    pendingCompletedCsv = null;
+    pendingCompletedSnapshot = null;
     render();
-    toast('Completed workout review ready. Nothing saved yet.');
+    try {
+      if (storageError) throw Error('Saved workout history is locked; CSV import is disabled.');
+      const original = localStorage.getItem(STORAGE_KEY);
+      const baseline = original === null ? emptyState() : validateBackup(JSON.parse(original));
+      if (JSON.stringify(baseline) !== JSON.stringify(state))
+        throw Error('Workout history changed in another tab. Reload before importing.');
+      const input = await readCsvBatch(files, 'workout');
+      if (read !== completedRead) return;
+      if (localStorage.getItem(STORAGE_KEY) !== original)
+        throw Error('Workout history changed while reading files. Reload and choose them again.');
+      pendingCompletedCsv = previewWorkoutBatch(baseline, input);
+      pendingCompletedSnapshot = original;
+      render();
+      toast('Completed workout review ready. Nothing saved yet.');
+    } catch (error) {
+      if (read !== completedRead) return;
+      pendingCompletedCsv = null;
+      pendingCompletedSnapshot = null;
+      render();
+      toast(error.message, true);
+    }
   }
   async function readCSV(file) {
     if (!file || file.size > 1_000_000) throw Error('Choose a CSV smaller than 1 MB.');
@@ -719,6 +736,7 @@ export function createActions({ render, today, isPTReview }) {
         return;
       }
       if (act === 'completed-csv-cancel') {
+        completedRead++;
         pendingCompletedCsv = null;
         pendingCompletedSnapshot = null;
         render();
@@ -744,8 +762,15 @@ export function createActions({ render, today, isPTReview }) {
           )
         )
           return;
+        if (localStorage.getItem(STORAGE_KEY) !== pendingCompletedSnapshot) {
+          pendingCompletedCsv = null;
+          pendingCompletedSnapshot = null;
+          render();
+          throw Error('Workout history changed during confirmation. Reload and review the files again.');
+        }
         const count = pendingCompletedCsv.add.length;
-        const next = applyCompletedCsv(state, pendingCompletedCsv);
+        const baseline = pendingCompletedSnapshot === null ? emptyState() : validateBackup(JSON.parse(pendingCompletedSnapshot));
+        const next = applyCompletedCsv(baseline, pendingCompletedCsv);
         commit(next, 'Imported ' + count + ' completed working sets; saved history preserved.');
         pendingCompletedCsv = null;
         pendingCompletedSnapshot = null;
@@ -1008,15 +1033,9 @@ export function createActions({ render, today, isPTReview }) {
             : '');
     }
     if (target.id === 'completed-workout-file') {
-      const file = target.files?.[0];
+      const files = Array.from(target.files || []);
       target.value = '';
-      if (file)
-        readCompletedCsv(file).catch((error) => {
-          pendingCompletedCsv = null;
-          pendingCompletedSnapshot = null;
-          render();
-          toast(error.message, true);
-        });
+      if (files.length) readCompletedCsv(files);
       return;
     }
     if (target.id === 'csv-file') {

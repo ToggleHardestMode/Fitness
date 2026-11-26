@@ -14,6 +14,10 @@ function completedCsvPanel(pending, selected, fmt) {
     ? '<div class="completed-csv-preview" role="status"><strong>Completed-session import preview</strong>' +
       '<p>' + pending.add.length + ' new working set(s) to add · ' + pending.skipped.length +
       ' identical set(s) already saved · dates: ' + pending.days.map(esc).join(', ') + '</p>' +
+      (pending.files ? '<details class="volume-explanation" open><summary>' + pending.files.length +
+        ' file(s) reviewed</summary>' + pending.files.map(file =>
+        '<p>' + esc(file.name) + ' · ' + file.added + ' new · ' + file.skipped +
+        ' already saved · ' + file.duplicates + ' batch duplicates</p>').join('') + '</details>' : '') +
       '<div class="completed-csv-list">' + pending.add.slice(0, 12).map(row =>
         '<div><strong>' + esc(row.date) + '</strong> · ' + esc(row.exerciseName) + ' · set ' + row.set +
         ' · ' + fmt(row.kg) + ' kg × ' + row.reps + ' reps' +
@@ -34,9 +38,9 @@ function completedCsvPanel(pending, selected, fmt) {
     'This is separate from importing a workout template in Plan.</p></div></div>' +
     '<div class="quick-actions"><button class="btn secondary" type="button" data-action="completed-csv-blank" ' +
     (selected ? '' : 'disabled') + '>Download blank session CSV</button>' +
-    '<button class="btn" type="button" data-action="completed-csv-pick">Choose completed CSV</button></div>' +
+    '<button class="btn" type="button" data-action="completed-csv-pick">Choose completed CSV files</button></div>' +
     '<p class="hint">Choose a workout above to download a dated, exercise-matched worksheet. Fill kg and reps for completed sets, ' +
-    'leave unperformed sets blank, then upload the CSV here. No day column required. Existing sets are never overwritten.</p>' +
+    'leave unperformed sets blank, then upload up to 20 CSV files here. Conflicts block the whole batch. Existing sets are never overwritten.</p>' +
     preview + '</section>';
 }
 
