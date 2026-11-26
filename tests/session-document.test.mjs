@@ -14,7 +14,8 @@ const legacy=()=>({...emptyState(),templates:[
   exerciseEquivalences:[{id:'approved-link',from:{templateId:'plan-a',exerciseIndex:0},to:{templateId:'plan-b',exerciseIndex:0},approvedDate:'2026-10-06'}],
   exerciseClearances:[],activeSets:{'plan-a|0':1}});
 const set=(id,number=1,kg=null,reps=null)=>({id,number,completed:true,kind:'working',
-  observations:[{actualKg:kg,actualReps:reps,rpe:null,source:{kind:'manual'}}]});
+  observations:[{actualKg:kg,actualReps:reps,rpe:null,loadEvidence:kg===null?'unknown':'recorded',
+    repsEvidence:reps===null?'unknown':'recorded',source:{kind:'manual'}}]});
 const occurrence=(id,sets,identity={kind:'catalog',exerciseId:'movement-a'})=>
   ({id,identity,loadUnit:'unknown',plannedExerciseIndex:null,sets});
 const session=(id,exercises,planId=null,extendsLegacy=false)=>({id,date:'2026-10-05',name:'Synthetic session',planId,extendsLegacy,exercises});
@@ -70,13 +71,18 @@ test('explicit extension appends five sets to a two-set prescription without rew
 test('correction provenance round-trips; planned, malformed and duplicate records fail closed',()=>{
   const doc=fixture(),obs=doc.sessions[0].exercises[0].sets[0].observations;
   obs[0].source={kind:'csv',id:'source-row-1',file:'synthetic.csv',row:2,raw:'original,0,8'};
-  obs.push({actualKg:5,actualReps:8,rpe:null,correctionReason:'Owner confirmed load',source:{kind:'manual'}});
+  obs.push({actualKg:5,actualReps:8,rpe:null,loadEvidence:'confirmed',repsEvidence:'recorded',correctionReason:'Owner confirmed load',source:{kind:'manual'}});
   assert.deepEqual(validateSessionDocument(JSON.parse(JSON.stringify(doc))),doc);
   assert.equal(readActualSessions(doc).find(s=>s.id===JSON.stringify(['session','morning']))
     .exercises[0].sets[0].observations[0].actualKg,0);
   const bad=(edit,pattern)=>{const d=structuredClone(doc);edit(d);assert.throws(()=>validateSessionDocument(d),pattern);};
   bad(d=>d.sessions[0].exercises[0].sets[0].completed=false,/explicitly completed/);
   bad(d=>d.sessions[0].exercises[0].sets[0].observations[0].actualKg='5',/Actual kg/);
+  bad(d=>d.sessions[0].exercises[0].sets[0].observations[0].loadEvidence='planned',/Load evidence/);
+  bad(d=>d.sessions[1].exercises[0].sets[0].observations[0].repsEvidence='recorded',/Repetition evidence/);
+  const incomplete=doc.sessions[1].exercises[0].sets[0].observations[0];
+  incomplete.loadEvidence='assumed';incomplete.repsEvidence='planned';
+  assert.deepEqual(validateSessionDocument(doc),doc);
   bad(d=>delete d.sessions[0].exercises[0].sets[0].observations[1].correctionReason,/Correction reason/);
   bad(d=>d.sessions[1].exercises[0].sets[0].observations[0].source=obs[0].source,/Duplicate CSV source/);
   bad(d=>d.sessions[1].id=d.sessions[0].id,/Duplicate session/);

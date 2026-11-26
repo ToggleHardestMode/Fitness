@@ -32,11 +32,19 @@ const planExercise = (plans,ref) => {
   range(ref.exerciseIndex,'Plan exercise index',0,plan.exercises.length-1,true);
   return plan.exercises[ref.exerciseIndex];
 };
+// A number is eligible as an actual measurement only if the owner/source recorded
+// or explicitly confirmed it. A planned/assumed number stays in source evidence.
+function evidence(value,status,label) {
+  const allowed=value===null?['unknown','planned','assumed']:['recorded','confirmed'];
+  if(!allowed.includes(status))fail(label+' does not agree with the actual measurement.');
+}
 function observation(o,sourceIds,revision) {
   obj(o,'Observation');
   nullable(o.actualKg,'Actual kg',0,500);
   nullable(o.actualReps,'Actual reps or seconds',1,100,true);
   nullable(o.rpe,'Actual RPE',1,10);
+  evidence(o.actualKg,o.loadEvidence,'Load evidence');
+  evidence(o.actualReps,o.repsEvidence,'Repetition evidence');
   if(o.technique!==undefined&&!['controlled','unstable'].includes(o.technique))fail('Invalid observed technique.');
   if(o.difficulty!==undefined&&!['too_easy','on_target','too_hard'].includes(o.difficulty))fail('Invalid observed difficulty.');
   if(o.notes!==undefined && (typeof o.notes!=='string'||o.notes.length>4000))fail('Invalid observation notes.');
@@ -147,13 +155,19 @@ export function readActualSessions(input) {
     let occurrence=session.exercises.find(e=>e.id===occurrenceId);
     if(!occurrence){
       occurrence={id:occurrenceId,identity:{kind:'plan',templateId:plan.id,exerciseIndex:i},
-        name:ex.name,muscle:ex.muscle,repUnit:ex.repUnit||'reps',loadUnit:'unknown',plannedExerciseIndex:i,sets:[]};
+        name:ex.name,muscle:ex.muscle,...(ex.muscleDetail?{muscleDetail:ex.muscleDetail}:{}),
+        repUnit:ex.repUnit||'reps',loadUnit:'unknown',plannedExerciseIndex:i,sets:[]};
       session.exercises.push(occurrence);
     }
+    const actualKg=recorded(l.kg,0,500),actualReps=recorded(l.reps,1,100,true);
     occurrence.sets.push({id:key('legacy',l.id,l.date,l.templateId,i,Number(l.set)),number:Number(l.set),completed:true,
       kind:l.isWarmup===true||l.kind==='warmup'?'warmup':'working',
-      observations:[{actualKg:recorded(l.kg,0,500),actualReps:recorded(l.reps,1,100,true),
-        rpe:recorded(l.rpe,1,10),source:{kind:'legacy',record:structuredClone(l)}}]});
+      observations:[{actualKg,actualReps,rpe:recorded(l.rpe,1,10),
+        loadEvidence:actualKg===null?'unknown':'legacy_recorded',
+        repsEvidence:actualReps===null?'unknown':'legacy_recorded',
+        ...(l.technique?{technique:l.technique}:{}),...(l.difficulty?{difficulty:l.difficulty}:{}),
+        ...(typeof l.notes==='string'?{notes:l.notes}:{}),
+        source:{kind:'legacy',record:structuredClone(l)}}]});
   }
   for(const s of doc.sessions){
     const id=s.extendsLegacy?key('legacy',s.date,s.planId):key('session',s.id);
