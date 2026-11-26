@@ -126,3 +126,57 @@ export function insightsMarkup(report, fmt) {
       ' Dates: ' + recovery.missingNextDayDates.join(', ') + '.' : '')) +
     '<p class="hint">Recorded observations only. Missing meals or workouts may change these comparisons. No causal conclusions, nutritional targets or loading recommendations.</p></section>';
 }
+
+// At-a-glance presentation only; no new metric or progression calculations.
+export function weeklyInsightsMarkup(snapshot, report, fmt) {
+  if (report.status === 'future_period') return '<section class="card fp-intelligence" aria-label="Weekly insights">' +
+    '<h2>Weekly insights</h2><p>No elapsed dates in this selected week. Future records are not used for comparisons.</p></section>';
+  const {current, previous} = snapshot.comparison;
+  const {training, weight, loads, food, recovery} = report;
+  const signed = n => (n > 0 ? '+' : '') + fmt(n);
+  const tile = (label, value, unit, note) => '<div class="fp-intelligence-tile"><span>' + esc(label) +
+    '</span><strong>' + esc(value) + (unit ? ' <small>' + esc(unit) + '</small>' : '') +
+    '</strong><span>' + esc(note) + '</span></div>';
+  const countChange = (now, before) => signed(now - before) + ' vs prior period (' + fmt(before) + ')';
+  const trainingTiles = tile('Working sets', fmt(training.current), 'sets', countChange(training.current, training.previous)) +
+    tile('Training dates', fmt(training.currentDays), '/' + current.periodDays + ' days',
+      countChange(training.currentDays, training.previousDays)) +
+    tile('Recorded body weight', weight.current === null ? 'Not recorded' : fmt(weight.current), weight.current === null ? '' : 'kg',
+      weight.currentCount + ' readings · ' + (weight.change === null ? 'comparison unavailable' : signed(weight.change) + ' kg vs prior')) +
+    tile('Matched exercise loads', loads.length ? fmt(loads.length) : 'No matches', loads.length ? 'exercises' : '',
+      loads.length ? loads.filter(row => row.change > 0).length + ' higher · ' +
+        loads.filter(row => row.change === 0).length + ' equal · ' + loads.filter(row => row.change < 0).length + ' lower' :
+        'Same reps, RPE, set and controlled technique required');
+  const macros = ['kcal', 'protein', 'carbs', 'fat'].map(key => {
+    const label = {kcal: 'Calories', protein: 'Protein', carbs: 'Carbs', fat: 'Fat'}[key];
+    const m = current.foodMetrics?.[key], compared = food.nutrients[key];
+    if (!m) return tile(label, 'Unavailable', '', 'Food Diary could not be read');
+    if (m.average === null) return tile(label, m.status === 'not_logged' ? 'Not logged' : 'Unknown', '',
+      m.knownDays + '/' + current.periodDays + ' dates with values');
+    const note = m.knownDays + '/' + current.periodDays + ' dates with values · ' +
+      (m.unknownFoods ? m.unknownFoods + ' unknown item(s)' : compared ? signed(compared.change) + ' vs prior' : 'comparison unavailable');
+    return tile(label, fmt(m.average), m.unit + '/day', note);
+  }).join('');
+  const evidence = (label, known, total, note) => {
+    const ratio = total ? Math.round(known / total * 100) : 0;
+    const bar = total ? '<div class="fp-evidence-track" aria-hidden="true"><span style="width:' +
+      ratio + '%"></span></div>' : '';
+    return '<div class="fp-evidence-row"><strong>' + esc(label) + '</strong><span>' +
+      esc(total ? known + '/' + total : 'None due') + '</span>' + bar +
+      '<small>' + esc(note) + '</small></div>';
+  };
+  const recoveryKnown = recovery.dueDates - recovery.missingNextDayDates.length;
+  const coverage = food.coverage === null ? '<p class="hint">Food Diary unavailable.</p>' :
+    evidence('Food diary dates', food.coverage, current.periodDays, 'Recording coverage only; meals may be missing.');
+  const lowerWeightHigherLoad = weight.change !== null && weight.change < 0 && loads.some(row => row.change > 0);
+  const combined = lowerWeightHigherLoad ? '<p><strong>Lower recorded weight with higher matched load.</strong> ' +
+    'Not proof of muscle gain or clearance.</p>' : '';
+  return '<section class="card fp-intelligence" aria-label="Weekly insights"><h2>Weekly insights</h2>' +
+    '<p class="hint">' + esc(current.from + ' – ' + current.to + ' vs ' + previous.from + ' – ' + previous.to) +
+    '. Matched weekdays; today may be incomplete.</p><div class="fp-intelligence-grid">' + trainingTiles + '</div>' +
+    '<h3>Recorded food · average on known dates</h3><div class="fp-intelligence-grid">' + macros + '</div>' +
+    '<h3>Evidence coverage</h3>' + coverage +
+    evidence('Weigh-ins', weight.currentCount, current.periodDays, 'Measured dates; not a fat-mass measurement.') +
+    evidence('Next-day observations', recoveryKnown, recovery.dueDates, 'Any observation per elapsed training date; not clearance.') +
+    combined + '<p class="hint">Only recorded values. See detailed observations and calculation sources below.</p></section>';
+}

@@ -3,7 +3,7 @@ import { addDays, bestSets, DAYS, weekdayOf, weeklyStats } from './core.js';
 import { dashboardWalkerBanner } from './dashboard-walker.js';
 import { foodDiaryChartForInput, readFoodDiaryInput } from './food-diary-chart.js';
 import { dashboardMetricSnapshot } from './metric-selectors.js';
-import { dashboardInsights, insightsMarkup } from './dashboard-insights.js';
+import { dashboardInsights, insightsMarkup, weeklyInsightsMarkup } from './dashboard-insights.js';
 import { esc } from './html.js';
 import { METRIC_FIELDS, weeklyMetricSources } from './metric-breakdown.js';
 import { strengthDashboard } from './strength-journey-ui.js';
@@ -134,6 +134,7 @@ export function dashboardView(state, selection, helpers, storage) {
   const s = {...baseStats, weight: snapshot.selected.weight.value,
     ...Object.fromEntries(Object.entries(snapshot.selected.manual).map(([key, entry]) => [key, entry.value]))};
   const analysis = snapshot.trainingReport;
+  const insights = dashboardInsights(state, snapshot, today());
   const latestWeek = latestLoggedWeek(state);
   const outsideWeek = Math.max(0, lifetimeTrainingSets(state) - analysis.completed);
   const loggedDays = analysis.days.filter(day => day.completed > 0).length;
@@ -181,17 +182,18 @@ export function dashboardView(state, selection, helpers, storage) {
   return `${shellHeading()}<nav class="fp-top-nutrition" aria-label="Nutrition quick links">` +
     '<a class="btn fp-top-nutrition-link" href="./nutrition.html">Nutrition</a>' +
     '<a class="btn secondary fp-top-nutrition-link" href="./nutrition-cheatsheet.html">Cheatsheet</a></nav>' +
-    `${backupReminderCard(storage, today)}` +
-    `${strengthDashboard(state, strengthJourneyIndex, { today: today(), metric: strengthViewMetric, range: strengthHistoryFilter })}` +
-    `${dashboardWalkerBanner(walkerDataUrl)}${gildedSummary(analysis, nextDay, lifetimeTrainingSets(state), s.dates, helpers)}` +
-    `${!state.templates.length ? initialCard() : workoutCard(nextDay, helpers)}
-  <div class="section-label"><h2>Selected training week</h2><span>${nice(s.dates[0])} – ${nice(s.dates[6])}</span></div>
+    `  <div class="section-label"><h2>Selected training week</h2><span>${nice(s.dates[0])} – ${nice(s.dates[6])}</span></div>
   <div class="fp-week-actions" role="group" aria-label="Choose training week">` +
     '<button type="button" class="btn secondary small-btn" data-action="week-prev">← Previous week</button>' +
     '<button type="button" class="btn secondary small-btn" data-action="week-current">Current week</button>' +
     `<button type="button" class="btn secondary small-btn" data-action="week-latest" ${latestWeek?'':'disabled'}>` +
     'Latest logged week</button>' +
     `<button type="button" class="btn secondary small-btn" data-action="week-next">Next week →</button></div>
+  ${weeklyInsightsMarkup(snapshot, insights, fmt)}` +
+    `${backupReminderCard(storage, today)}` +
+    `${strengthDashboard(state, strengthJourneyIndex, { today: today(), metric: strengthViewMetric, range: strengthHistoryFilter })}` +
+    `${dashboardWalkerBanner(walkerDataUrl)}${gildedSummary(analysis, nextDay, lifetimeTrainingSets(state), s.dates, helpers)}` +
+    `${!state.templates.length ? initialCard() : workoutCard(nextDay, helpers)}
   ${earlierHint}${inWeekCards(s, analysis, fmt)}
   <div class="two-panels" style="margin-top:12px"><section class="card"><div class="card-head">` +
     '<div><h2>Completed sets by day</h2><p>Working sets logged each day</p></div><span class="badge">7 DAYS</span></div>' +
@@ -211,7 +213,7 @@ export function dashboardView(state, selection, helpers, storage) {
     `<a class="btn secondary" href="./nutrition.html">Nutrition trends →</a></div></section>
   ${foodDiaryChartForInput(foodInput, today(), snapshot.selected.food)}
   <div class="section-label"><h2>Insights</h2><span>Only real entries</span></div>
-  ${insightsMarkup(dashboardInsights(state, snapshot, today()), fmt)}
+  ${insightsMarkup(insights, fmt)}
   <div class="two-panels"><section class="card"><div class="card-head"><div><h2>Manual daily check-ins</h2>` +
     '<p>Weekly averages · not derived from Food Diary</p></div><button class="btn ghost small-btn" data-page="train">Add →</button>' +
     `</div>${dailyAverageRows(s, state.metrics, helpers)}</section>
