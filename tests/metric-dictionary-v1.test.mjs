@@ -27,7 +27,7 @@ const log=(id,date,templateId,exerciseIndex,set,kg,reps,extra={})=>({
 
 test('dictionary has distinct versioned definitions, source identities and meaning',()=>{
   const ids=Object.keys(METRIC_DICTIONARY);
-  assert.equal(ids.length,10);
+  assert.equal(ids.length,18);
   assert.equal(new Set(ids).size,ids.length);
   for(const [id,item] of Object.entries(METRIC_DICTIONARY)){
     assert.equal(item.id,id);

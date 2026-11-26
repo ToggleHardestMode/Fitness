@@ -1,11 +1,12 @@
 import { workoutBackupStatus } from './backup-reminder.js';
 import { addDays, bestSets, DAYS, weekdayOf, weeklyStats } from './core.js';
 import { dashboardWalkerBanner } from './dashboard-walker.js';
-import { readFoodDiaryChart } from './food-diary-chart.js';
+import { foodDiaryChartForInput, readFoodDiaryInput } from './food-diary-chart.js';
+import { dashboardMetricSnapshot } from './metric-selectors.js';
 import { esc } from './html.js';
 import { METRIC_FIELDS, weeklyMetricSources } from './metric-breakdown.js';
 import { strengthDashboard } from './strength-journey-ui.js';
-import { lifetimeTrainingSets, setMilestoneProgress, weeklyTrainingAnalysis } from './training-analytics.js';
+import { lifetimeTrainingSets, setMilestoneProgress } from './training-analytics.js';
 import { trainingAnalyticsPanel } from './training-analytics-ui.js';
 import { v102OverlapPanel, v103OverlapPanel } from './v102-overlap-ui.js';
 import { setsBarsMarkup } from './volume-bars.js';
@@ -126,8 +127,12 @@ function workoutCard(nextDay, { today, nice, isPTReview }) {
 export function dashboardView(state, selection, helpers, storage) {
   const { selectedWeekStart, strengthJourneyIndex, strengthViewMetric, strengthHistoryFilter, walkerDataUrl } = selection;
   const { today, fmt, nice, shellHeading } = helpers;
-  const s = weeklyStats(state, selectedWeekStart || today());
-  const analysis = weeklyTrainingAnalysis(state, s.dates[0]);
+  const baseStats = weeklyStats(state, selectedWeekStart || today());
+  const foodInput = readFoodDiaryInput(storage);
+  const snapshot = dashboardMetricSnapshot(state, foodInput.diary, baseStats.dates[0], today());
+  const s = {...baseStats, weight: snapshot.selected.weight.value,
+    ...Object.fromEntries(Object.entries(snapshot.selected.manual).map(([key, entry]) => [key, entry.value]))};
+  const analysis = snapshot.trainingReport;
   const latestWeek = latestLoggedWeek(state);
   const outsideWeek = Math.max(0, lifetimeTrainingSets(state) - analysis.completed);
   const loggedDays = analysis.days.filter(day => day.completed > 0).length;
@@ -203,7 +208,7 @@ export function dashboardView(state, selection, helpers, storage) {
     '<p>Record meals and derive daily calories/protein/carbs/fat in a separate diary. Existing check-ins are unchanged.</p></div></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><a class="btn" href="./food-diary.html">Open Food Diary →</a>' +
     `<a class="btn secondary" href="./nutrition.html">Nutrition trends →</a></div></section>
-  ${readFoodDiaryChart(storage, today(), s.dates[0])}
+  ${foodDiaryChartForInput(foodInput, today(), snapshot.selected.food)}
   <div class="section-label"><h2>Insights</h2><span>Only real entries</span></div>
   <div class="two-panels"><section class="card"><div class="card-head"><div><h2>Manual daily check-ins</h2>` +
     '<p>Weekly averages · not derived from Food Diary</p></div><button class="btn ghost small-btn" data-page="train">Add →</button>' +

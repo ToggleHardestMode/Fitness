@@ -74,6 +74,62 @@ const definitions = [
     formula: 'UNAVAILABLE until explicit day-completeness, target selection and provenance policy exist',
     missing: 'always null under current storage contract',
     meaning: 'not an existing FitnessPilot feature; do not derive from a recorded calorie subtotal'
+  },
+  {
+    id: 'food.recorded_kcal_week.v1', label: 'Recorded food calories', unit: 'kcal',
+    grain: 'selected Monday–Sunday week or explicitly matched elapsed weekdays', source: 'foodDiary.entries',
+    formula: 'sum(known kcal × servings); average = total / distinct dates with known kcal',
+    missing: 'null without known nutrient values; unknown items and known dates reported separately',
+    meaning: 'known recorded subtotal and average, not verified full-day intake'
+  },
+  {
+    id: 'food.recorded_protein_week.v1', label: 'Recorded food protein', unit: 'g',
+    grain: 'selected Monday–Sunday week or explicitly matched elapsed weekdays', source: 'foodDiary.entries',
+    formula: 'sum(known protein × servings); average = total / distinct dates with known protein',
+    missing: 'null without known nutrient values; unknown items and known dates reported separately',
+    meaning: 'known recorded subtotal and average, not verified full-day intake'
+  },
+  {
+    id: 'food.recorded_carbs_week.v1', label: 'Recorded food carbohydrates', unit: 'g',
+    grain: 'selected Monday–Sunday week or explicitly matched elapsed weekdays', source: 'foodDiary.entries',
+    formula: 'sum(known carbs × servings); average = total / distinct dates with known carbs',
+    missing: 'null without known nutrient values; unknown items and known dates reported separately',
+    meaning: 'known recorded subtotal and average, not verified full-day intake'
+  },
+  {
+    id: 'food.recorded_fat_week.v1', label: 'Recorded food fat', unit: 'g',
+    grain: 'selected Monday–Sunday week or explicitly matched elapsed weekdays', source: 'foodDiary.entries',
+    formula: 'sum(known fat × servings); average = total / distinct dates with known fat',
+    missing: 'null without known nutrient values; unknown items and known dates reported separately',
+    meaning: 'known recorded subtotal and average, not verified full-day intake'
+  },
+  {
+    id: 'train.logged_days_week.v1', label: 'Dates with saved working sets', unit: 'days',
+    grain: 'selected Monday–Sunday week or explicitly matched elapsed weekdays', source: 'workoutState.logs/templates',
+    formula: 'count distinct dates with at least one unique valid working set',
+    missing: 'zero means no saved working sets, not verified inactivity',
+    meaning: 'logged training dates, not completed sessions'
+  },
+  {
+    id: 'weight.mean_week.v1', label: 'Recorded average body weight', unit: 'kg',
+    grain: 'selected Monday–Sunday week or explicitly matched elapsed weekdays', source: 'workoutState.metrics.weight',
+    formula: 'sum(valid weight kg) / count(valid weight dates)',
+    missing: 'null without recorded observations; missing dates never imputed',
+    meaning: 'recorded body weight, not fat mass or fat loss'
+  },
+  {
+    id: 'checkin.sleep_mean_week.v1', label: 'Recorded average sleep', unit: 'h',
+    grain: 'selected Monday–Sunday week or explicitly matched elapsed weekdays', source: 'workoutState.metrics.sleep',
+    formula: 'sum(recorded sleep hours) / count(recorded sleep dates)',
+    missing: 'null without recorded observations; missing dates never imputed',
+    meaning: 'self-reported sleep, not objectively measured sleep'
+  },
+  {
+    id: 'checkin.recovery_mean_week.v1', label: 'Recorded average recovery', unit: '/ 5',
+    grain: 'selected Monday–Sunday week or explicitly matched elapsed weekdays', source: 'workoutState.metrics.recovery',
+    formula: 'sum(recorded recovery scores) / count(recorded recovery dates)',
+    missing: 'null without recorded observations; missing dates never imputed',
+    meaning: 'self-reported recovery, not medical clearance or progression approval'
   }
 ];
 export const METRIC_DICTIONARY_VERSION = 1;
