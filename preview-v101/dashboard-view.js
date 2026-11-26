@@ -3,6 +3,7 @@ import { addDays, bestSets, DAYS, weekdayOf, weeklyStats } from './core.js';
 import { dashboardWalkerBanner } from './dashboard-walker.js';
 import { foodDiaryChartForInput, readFoodDiaryInput } from './food-diary-chart.js';
 import { dashboardMetricSnapshot } from './metric-selectors.js';
+import { dashboardInsights, insightsMarkup } from './dashboard-insights.js';
 import { esc } from './html.js';
 import { METRIC_FIELDS, weeklyMetricSources } from './metric-breakdown.js';
 import { strengthDashboard } from './strength-journey-ui.js';
@@ -210,6 +211,7 @@ export function dashboardView(state, selection, helpers, storage) {
     `<a class="btn secondary" href="./nutrition.html">Nutrition trends →</a></div></section>
   ${foodDiaryChartForInput(foodInput, today(), snapshot.selected.food)}
   <div class="section-label"><h2>Insights</h2><span>Only real entries</span></div>
+  ${insightsMarkup(dashboardInsights(state, snapshot, today()), fmt)}
   <div class="two-panels"><section class="card"><div class="card-head"><div><h2>Manual daily check-ins</h2>` +
     '<p>Weekly averages · not derived from Food Diary</p></div><button class="btn ghost small-btn" data-page="train">Add →</button>' +
     `</div>${dailyAverageRows(s, state.metrics, helpers)}</section>
