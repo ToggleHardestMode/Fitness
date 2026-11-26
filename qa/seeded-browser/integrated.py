@@ -183,7 +183,15 @@ def check_ledger_prototype(browser, base, errors):
           const doc=m.migrateLegacyWorkout(legacy);
           const a=await p.openLedgerPrototype('fitnesspilot-preview-ledger-fixture-main');
           const b=await p.openLedgerPrototype('fitnesspilot-preview-ledger-fixture-main');
-          const add=(doc,id)=>{const d=structuredClone(doc);d.catalog.push({id,name:'Synthetic '+id,muscle:null});return d;};
+          const add=(doc,id)=>{
+            const d=structuredClone(doc);
+            d.catalog.push({id,name:'Synthetic '+id,muscle:null});
+            d.sessions.push({id,date:legacy.logs[0].date,name:'Synthetic actual session',origin:'actual',planId:null,
+              exercises:[{id:'occ-'+id,identity:{kind:'catalog',exerciseId:id},plannedIndex:null,
+                loadUnit:'kg_total',repUnit:'reps',sets:[{id:'set-'+id,number:1,completed:true,kind:'working',
+                  measurement:{actualKg:null,actualReps:8,rpe:null,loadEvidence:'unknown',repsEvidence:'recorded'}}]}]});
+            return d;
+          };
           try{
             assert(await p.readLedgerPrototype(a)===null,'Fixture database not empty');
             await reject(()=>p.commitLedgerPrototype(a,doc,0,{abortAfterPut:true}),'aborted');
@@ -197,7 +205,10 @@ def check_ledger_prototype(browser, base, errors):
             assert(results.filter(r=>r.status==='rejected'&&r.reason.message.includes('Revision conflict')).length===1,
               'Missing revision conflict');
             const after=await p.readLedgerPrototype(a);
-            assert(after.revision===2&&after.document.catalog.length===1,'Atomic revision failed');
+            assert(after.revision===2&&after.document.catalog.length===1&&
+              after.document.sessions.length===doc.sessions.length+1,'Atomic revision failed');
+            assert(after.document.sessions.at(-1).exercises[0].sets[0].measurement.actualKg===null,
+              'Unknown load not preserved');
             await reject(()=>p.commitLedgerPrototype(b,add(after.document,'third'),2,{abortAfterPut:true}),'aborted');
             assert(JSON.stringify(await p.readLedgerPrototype(a))===JSON.stringify(after),'Abort altered snapshot');
             await reject(()=>p.restoreLedgerPrototype(a,JSON.stringify(legacy)),'Revision conflict');
@@ -206,9 +217,16 @@ def check_ledger_prototype(browser, base, errors):
             old.saveWorkoutState(later,null);
             assert(m.legacyHasDiverged(after.document,JSON.parse(localStorage.getItem(key))),'Legacy divergence missed');
             assert(JSON.stringify(await p.readLedgerPrototype(b))===JSON.stringify(after),'Legacy writer altered ledger');
-            return {backup:await p.exportLedgerPrototype(a),document:after.document};
+            const backup=await p.exportLedgerPrototype(a);
+            a.close();b.close();
+            const reopened=await p.openLedgerPrototype('fitnesspilot-preview-ledger-fixture-main');
+            try{
+              assert(JSON.stringify(await p.readLedgerPrototype(reopened))===JSON.stringify(after),'Reopen differs');
+              return {backup,document:after.document};
+            }finally{reopened.close();}
           }finally{a.close();b.close();}
         }""", [fixtures[WORKOUT_KEY], WORKOUT_KEY])
+        assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
     with browser.new_context(service_workers="block") as clean:
         page = clean.new_page()
         page.on("pageerror", lambda exc: errors.append(str(exc)))
@@ -216,7 +234,13 @@ def check_ledger_prototype(browser, base, errors):
         restored = page.evaluate("""async backup=>{
           const p=await import('./ledger-prototype.js');
           const db=await p.openLedgerPrototype('fitnesspilot-preview-ledger-fixture-recovery');
-          try{await p.restoreLedgerPrototype(db,backup);return (await p.readLedgerPrototype(db)).document;}
+          try{
+            let rejected=false;
+            try{await p.restoreLedgerPrototype(db,'{broken');}catch(e){rejected=true;}
+            if(!rejected||await p.readLedgerPrototype(db)!==null)throw Error('Malformed backup changed empty target');
+            await p.restoreLedgerPrototype(db,backup);
+            return (await p.readLedgerPrototype(db)).document;
+          }
           finally{db.close();}
         }""", result["backup"])
         assert restored == result["document"]
