@@ -396,6 +396,23 @@ export function createActions({ render, today, isPTReview }) {
     }
     const act = button.dataset.action;
     tryAction(() => {
+      if (act === 'open-scheduled-workout' || act === 'open-today-workout') {
+        if (page !== 'dashboard' || !mayLeaveFocusSet()) return;
+        const scheduled = act === 'open-scheduled-workout';
+        const date = scheduled ? button.dataset.workoutDate : today();
+        dateFromKey(date);
+        const id = scheduled ? button.dataset.workoutId : state.assignments[weekdayOf(date)] || '';
+        if (scheduled && (date < today() || state.assignments[weekdayOf(date)] !== id ||
+          !state.templates.some(t => t.id === id))) throw Error('Workout assignment changed. Open Dashboard again.');
+        activeDate = date;
+        chosenTemplate = id || null;
+        chosenExercise = 0;
+        focusSet = 0;
+        if (chosenTemplate) selectFocusSet();
+        goto('train');
+        if (!scheduled) $('#active-workout')?.focus();
+        return;
+      }
       if (['week-prev', 'week-next', 'week-current', 'week-latest'].includes(act)) {
         if (act === 'week-current') selectedWeekStart = null;
         else if (act === 'week-latest') {
