@@ -2,6 +2,8 @@
 // A single validated snapshot and its revision commit in one transaction. Sharding/indexes
 // are deliberately deferred until real size/performance tests justify them.
 import {validateLedger,validateAppend,decodeLedgerBackup,encodeLedgerBackup} from './ledger-model.js';
+import {validateDiary} from './food-diary-core.js';
+import {decodeRecoveryBackup,encodeRecoveryBackup} from './ledger-recovery.js';
 const STORE='snapshot',KEY='workout';
 const prefix='fitnesspilot-preview-ledger-fixture-';
 export function openLedgerPrototype(name,idb=globalThis.indexedDB){
@@ -24,7 +26,8 @@ export function openLedgerPrototype(name,idb=globalThis.indexedDB){
 function checked(value){
   if(value===undefined)return null;
   if(!Number.isSafeInteger(value.revision)||value.revision<1)throw Error('Invalid stored revision.');
-  return {revision:value.revision,document:validateLedger(value.document)};
+  return {revision:value.revision,document:validateLedger(value.document),
+    ...(Object.hasOwn(value,'food')?{food:validateDiary(value.food)}:{})};
 }
 function transact(db,mode,action){
   return new Promise((resolve,reject)=>{
@@ -47,7 +50,8 @@ export function commitLedgerPrototype(db,document,expectedRevision,{abortAfterPu
   const candidate=validateLedger(document);
   return transact(db,'readwrite',(current,store,tx)=>{
     if((current?.revision||0)!==expectedRevision)throw Error('Revision conflict; reload and review.');
-    const next={revision:expectedRevision+1,document:current?validateAppend(current.document,candidate):candidate};
+    const next={revision:expectedRevision+1,document:current?validateAppend(current.document,candidate):candidate,
+      ...(current&&Object.hasOwn(current,'food')?{food:current.food}:{})};
     const put=store.put(next,KEY);
     // Fault injection only for this fixture-scoped prototype: abort after the put succeeds.
     if(abortAfterPut)put.onsuccess=()=>tx.abort();
@@ -61,4 +65,21 @@ export async function exportLedgerPrototype(db){
 }
 export function restoreLedgerPrototype(db,raw,options){
   return commitLedgerPrototype(db,decodeLedgerBackup(raw),0,options);
+}
+
+/** Combined recovery is staged entirely inside a disposable database, never split across live stores. */
+export async function restoreCombinedPrototype(db,raw,secret,{abortAfterPut=false}={}){
+  const data=await decodeRecoveryBackup(raw,secret);
+  return transact(db,'readwrite',(current,store,tx)=>{
+    if(current)throw Error('Combined recovery requires an empty fixture database.');
+    const next={revision:1,document:data.document,food:data.food};
+    const put=store.put(next,KEY);
+    if(abortAfterPut)put.onsuccess=()=>tx.abort();
+    return next;
+  });
+}
+export async function exportCombinedPrototype(db,secret){
+  const snapshot=await readLedgerPrototype(db);
+  if(!snapshot||!Object.hasOwn(snapshot,'food'))throw Error('No complete combined recovery snapshot.');
+  return encodeRecoveryBackup(snapshot,secret);
 }
