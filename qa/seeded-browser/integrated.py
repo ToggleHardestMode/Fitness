@@ -247,6 +247,75 @@ def check_ledger_prototype(browser, base, errors):
         assert_absent(page)
 
 
+def check_ledger_recovery(browser, base, errors):
+    # Benchmark and encrypted recovery in disposable Chromium only. No live-store writes.
+    with browser.new_context(service_workers="block") as context:
+        page = context.new_page()
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.goto(base + "/index.html", wait_until="domcontentloaded")
+        fixtures = create_fixtures()
+        report = page.evaluate("""async ([legacy,food])=>{
+          const m=await import('./ledger-model.js'),p=await import('./ledger-prototype.js');
+          const e=await import('./encrypted-backup-core.js');
+          const secret='Synthetic fixture recovery passphrase';
+          const assert=(ok,msg)=>{if(!ok)throw Error(msg);};
+          const reject=async(fn,part)=>{try{await fn();}catch(e){assert(e.message.includes(part),e.message);return;}
+            throw Error('Expected rejection: '+part);};
+          const db=await p.openLedgerPrototype('fitnesspilot-preview-ledger-fixture-combined');
+          const empty=await p.openLedgerPrototype('fitnesspilot-preview-ledger-fixture-interrupted');
+          const metrics={};
+          const timed=async(name,fn)=>{const start=performance.now();const value=await fn();
+            metrics[name]=Math.round(performance.now()-start);return value;};
+          try{
+            const old=await e.encryptBoth({workout:legacy,food},secret);
+            await reject(()=>p.restoreCombinedPrototype(empty,old,secret,{abortAfterPut:true}),'aborted');
+            assert(await p.readLedgerPrototype(empty)===null,'Combined abort persisted data');
+            await p.restoreCombinedPrototype(db,old,secret);
+            const start=await p.readLedgerPrototype(db);
+            assert(start.food.entries.length===food.entries.length,'Food migration count');
+            assert(!m.legacyHasDiverged(start.document,legacy),'Legacy migration differs');
+            const doc=structuredClone(start.document);
+            for(let j=0;j<4;j++)doc.catalog.push({id:'bench-'+j,name:'Synthetic movement '+j,muscle:null});
+            for(let i=0;i<1040;i++){
+              const date=new Date(Date.UTC(2020,0,1)+Math.floor(i*7/4)*86400000).toISOString().slice(0,10);
+              doc.sessions.push({id:'bench-session-'+i,date,name:'Synthetic workout',origin:'actual',planId:null,
+                exercises:Array.from({length:4},(_,j)=>({id:'bench-occ-'+i+'-'+j,
+                  identity:{kind:'catalog',exerciseId:'bench-'+j},plannedIndex:null,loadUnit:'kg_total',repUnit:'reps',
+                  sets:Array.from({length:4},(_,k)=>({id:'bench-set-'+i+'-'+j+'-'+k,number:k+1,completed:true,kind:'working',
+                    measurement:{actualKg:20,actualReps:8,rpe:null,loadEvidence:'recorded',repsEvidence:'recorded'}}))}))});
+            }
+            const checked=await timed('validate_ms',()=>m.validateLedger(doc));
+            metrics.json_bytes=new TextEncoder().encode(JSON.stringify(checked)).byteLength;
+            await timed('commit_ms',()=>p.commitLedgerPrototype(db,checked,1));
+            const after=await timed('read_ms',()=>p.readLedgerPrototype(db));
+            metrics.sessions=after.document.sessions.length-start.document.sessions.length;
+            metrics.sets=after.document.sessions.filter(s=>s.origin==='actual')
+              .reduce((n,s)=>n+s.exercises.reduce((sum,e)=>sum+e.sets.length,0),0);
+            assert(metrics.sessions===1040&&metrics.sets===16640,'Unexpected workload count');
+            assert(JSON.stringify(after.food)===JSON.stringify(start.food),'Append changed food');
+            const next=structuredClone(after.document);
+            const last=structuredClone(next.sessions.at(-1));
+            last.id='additional-session';
+            last.exercises.forEach((ex,i)=>{ex.id='additional-occ-'+i;ex.sets.forEach((s,j)=>s.id='additional-set-'+i+'-'+j);});
+            next.sessions.push(last);
+            await timed('append_session_ms',()=>p.commitLedgerPrototype(db,next,2));
+            const backup=await timed('encrypt_ms',()=>p.exportCombinedPrototype(db,secret));
+            metrics.encrypted_bytes=new TextEncoder().encode(backup).byteLength;
+            await reject(()=>p.restoreCombinedPrototype(empty,backup,'incorrect long passphrase'),'Wrong passphrase');
+            assert(await p.readLedgerPrototype(empty)===null,'Wrong passphrase wrote data');
+            await reject(()=>p.restoreCombinedPrototype(db,backup,secret),'empty fixture');
+            const recovered=await timed('restore_ms',()=>p.restoreCombinedPrototype(empty,backup,secret));
+            const latest=await p.readLedgerPrototype(db);
+            assert(JSON.stringify(recovered.document)===JSON.stringify(latest.document),'Restored workouts differ');
+            assert(JSON.stringify(recovered.food)===JSON.stringify(latest.food),'Restored food differs');
+            assert(!m.legacyHasDiverged(recovered.document,legacy),'Restored legacy records differ');
+            return metrics;
+          }finally{db.close();empty.close();}
+        }""", [fixtures[WORKOUT_KEY], fixtures[FOOD_KEY]])
+        assert_absent(page)
+        return report
+
+
 def check_batch_csv(context, base, errors):
     from playwright.sync_api import expect
 
@@ -824,6 +893,8 @@ def smoke(repo, chromium_binary=None, headed=False):
                     findings.append("Multi-file workout and food CSV previews, cancellation, import and retry preserved both stores.")
                 check_ledger_prototype(browser, base, errors)
                 findings.append("Native IndexedDB fixture: migration, concurrent revision conflict, abort rollback, legacy divergence and clean-profile recovery.")
+                workload = check_ledger_recovery(browser, base, errors)
+                findings.append("Encrypted ledger recovery and five-year synthetic benchmark: " + json.dumps(workload, sort_keys=True))
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
                 assert not errors, "Browser JavaScript errors: " + " | ".join(errors[:5])
                 train_baseline = [
