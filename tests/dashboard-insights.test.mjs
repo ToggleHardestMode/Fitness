@@ -96,5 +96,5 @@ test('Dashboard renders actual insight period, preserves links and handles bad d
   assert.match(html, /aria-label="Recorded insights"/);
   assert.match(html, /2026-10-26 – 2026-10-28 compared with 2026-10-19 – 2026-10-21/);
   assert.match(html, /Lower recorded weight with higher matched exercise load/);
-  assert.match(dashboardHtml(f.state, {...options, storage: {[FOOD_KEY]: '{bad'}}}), /Food Diary unavailable/);
+  assert.match(dashboardHtml(f.state, {...options, storage: {[FOOD_KEY]: '{bad'}}), /Food Diary unavailable/);
 });
