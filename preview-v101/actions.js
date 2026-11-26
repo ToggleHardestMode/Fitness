@@ -82,7 +82,7 @@ export function createActions({ render, today, isPTReview }) {
     strengthHistoryFilter = 'all';
   let pendingCompletedCsv = null,
     pendingCompletedSnapshot = null;
-  let completedRead = 0, pendingCompletedReview = null;
+  let completedRead = 0, pendingCompletedReview = null, completedReviewInput = null;
   let toastHandle = null;
   const SLIME_HIT_SETTING = 'fitnesspilot.preview.v101.ui.slime-hit.v1';
   let slimeHitEnabled = false,
@@ -319,6 +319,7 @@ export function createActions({ render, today, isPTReview }) {
   async function readCompletedCsv(files) {
     const read = ++completedRead;
     pendingCompletedReview = null;
+    completedReviewInput = null;
     pendingCompletedCsv = null;
     pendingCompletedSnapshot = null;
     render();
@@ -335,6 +336,7 @@ export function createActions({ render, today, isPTReview }) {
       pendingCompletedSnapshot = original;
       const review = inspectWorkoutFiles(baseline, input);
       pendingCompletedReview = review;
+      completedReviewInput = review;
       if (review.every(file => file.choice === 'exact' && !file.hasNotes)) {
         try {
           pendingCompletedCsv = resolveWorkoutFiles(baseline, review);
@@ -749,8 +751,17 @@ export function createActions({ render, today, isPTReview }) {
       if (act === 'completed-csv-cancel') {
         completedRead++;
         pendingCompletedReview = null;
+        completedReviewInput = null;
         pendingCompletedCsv = null;
         pendingCompletedSnapshot = null;
+        render();
+        return;
+      }
+      if (act === 'completed-csv-reopen') {
+        if (!completedReviewInput || localStorage.getItem(STORAGE_KEY) !== pendingCompletedSnapshot)
+          throw Error('Choose the files again; saved history may have changed.');
+        pendingCompletedReview = completedReviewInput;
+        pendingCompletedCsv = null;
         render();
         return;
       }
@@ -766,6 +777,7 @@ export function createActions({ render, today, isPTReview }) {
           throw Error('Confirm the actual exercise names, notes and measurements first.');
         const baseline = pendingCompletedSnapshot === null ? emptyState() : validateBackup(JSON.parse(pendingCompletedSnapshot));
         pendingCompletedCsv = resolveWorkoutFiles(baseline, reviewed);
+        completedReviewInput = reviewed;
         pendingCompletedReview = null;
         render();
         toast('Resolved batch ready. Nothing saved yet.');
@@ -805,6 +817,7 @@ export function createActions({ render, today, isPTReview }) {
         commit(next, 'Imported ' + count + ' completed working sets; saved history preserved.');
         pendingCompletedCsv = null;
         pendingCompletedSnapshot = null;
+        completedReviewInput = null;
         render();
         return;
       }

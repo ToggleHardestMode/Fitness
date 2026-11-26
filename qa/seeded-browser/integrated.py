@@ -202,6 +202,40 @@ def check_batch_csv(context, base, errors):
     assert get_store(page, WORKOUT_KEY) == saved
     assert get_store(page, FOOD_KEY) == fixtures[FOOD_KEY]
 
+    # Unknown workout and incomplete file are explicit review decisions.
+    historical = file("old-session.csv", header + "2026-10-31,Synthetic old session,Synthetic movement,1,7,8\n")
+    invalid = file("missing.csv", header + "2026-11-01,Synthetic incomplete,Synthetic movement,1,,8\n")
+    upload.set_input_files([historical, invalid])
+    review = page.get_by_label("Workout import resolution")
+    expect(review).to_be_visible()
+    assert get_store(page, WORKOUT_KEY) == saved
+    page.locator("#completed-review-choice-0").select_option("historical")
+    page.locator("#completed-review-choice-1").select_option("skip")
+    page.locator("#completed-review-ack").check()
+    review.get_by_role("button", name="Preview resolved batch").click()
+    expect(preview).to_contain_text("Historical workouts to create")
+    expect(preview).to_contain_text("Excluded files (untouched): missing.csv")
+    assert get_store(page, WORKOUT_KEY) == saved
+    page.locator("#completed-import-backup-ack").check()
+    page.once("dialog", lambda dialog: dialog.accept())
+    preview.get_by_role("button", name="Import 1 completed set(s)").click()
+    after = get_store(page, WORKOUT_KEY)
+    assert after["assignments"] == saved["assignments"]
+    assert after["templates"][:-1] == saved["templates"]
+    assert after["templates"][-1]["sourceVersion"] == "Historical import"
+    assert len(after["logs"]) == len(saved["logs"]) + 1
+    assert after["logs"][:-1] == saved["logs"]
+    historical_id = after["templates"][-1]["id"]
+    expect(page.locator("#active-workout option[value='" + historical_id + "']")).to_have_count(0)
+    upload.set_input_files([historical])
+    expect(review).to_be_visible()
+    page.locator("#completed-review-choice-0").select_option("historical")
+    page.locator("#completed-review-ack").check()
+    review.get_by_role("button", name="Preview resolved batch").click()
+    expect(preview).to_contain_text("All completed rows already exist")
+    assert get_store(page, WORKOUT_KEY) == after
+    saved = after
+
     page.goto(base + "/food-diary.html", wait_until="domcontentloaded")
     header = "date,name,occasion,servings,kcal,protein,carbs,fat\n"
     a = file("food-one.csv", header + "2026-10-29,Synthetic new meal,meal,1,100,5,10,3\n")

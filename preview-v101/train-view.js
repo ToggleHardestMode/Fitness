@@ -11,8 +11,9 @@ import { symptomPanel } from './symptom-ui.js';
 
 function resolutionPanel(review, templates) {
   if (!review) return '';
-  const options = templates.filter(t => !isHistoricalWorkout(t)).map(t =>
-    '<option value="match:' + esc(t.id) + '">' + esc(t.name) + '</option>').join('');
+  const options = choice => templates.filter(t => !isHistoricalWorkout(t)).map(t =>
+    '<option value="match:' + esc(t.id) + '"' + (choice === 'match:' + t.id ? ' selected' : '') +
+    '>' + esc(t.name) + '</option>').join('');
   return '<div class="completed-csv-preview" aria-label="Workout import resolution"><h3>Resolve workout identities</h3>' +
     '<p>Review each file. Edit CSV exercise names only to reflect the actual movement. Missing measurements must be supplied or the file excluded. Historical workouts are unscheduled, history only, and never linked to other plans automatically.</p>' +
     review.map((file, i) => '<details open><summary>' + esc(file.name) + '</summary><p>' +
@@ -21,9 +22,11 @@ function resolutionPanel(review, templates) {
       '<select class="field" id="completed-review-choice-' + i + '">' +
       '<option value="">Choose a resolution</option><option value="exact"' +
       (file.choice === 'exact' ? ' selected' : '') + '>Use exact library identity</option>' +
-      '<option value="historical">Create/reuse separate historical workout (one session)</option>' +
-      '<option value="skip">Exclude this file</option><optgroup label="Explicitly match existing workout">' +
-      options + '</optgroup></select><label class="form-label" for="completed-review-text-' + i +
+      '<option value="historical"' + (file.choice === 'historical' ? ' selected' : '') +
+      '>Create/reuse separate historical workout (one session)</option>' +
+      '<option value="skip"' + (file.choice === 'skip' ? ' selected' : '') +
+      '>Exclude this file</option><optgroup label="Explicitly match existing workout">' +
+      options(file.choice) + '</optgroup></select><label class="form-label" for="completed-review-text-' + i +
       '">CSV rows (editable; retain headings)</label><textarea class="field" rows="6" id="completed-review-text-' +
       i + '">' + esc(file.text) + '</textarea></details>').join('') +
     '<label><input type="checkbox" id="completed-review-ack"> I reviewed actual movements, units, notes and completed measurements. Historical templates are not training prescriptions.</label>' +
@@ -49,6 +52,7 @@ function completedCsvPanel(pending, selected, fmt, review, templates) {
         ' · ' + fmt(row.kg) + ' kg × ' + row.reps + ' reps' +
         (row.rpe == null ? '' : ' · RPE ' + fmt(row.rpe)) + '</div>').join('') + '</div>' +
       (pending.add.length > 12 ? '<p class="hint">Showing the first 12 new sets; all validated rows will be added together.</p>' : '') +
+      '<button class="btn secondary small-btn" data-action="completed-csv-reopen">Review file identities and notes</button>' +
       (pending.add.length
         ? '<div class="completed-csv-review"><button class="btn secondary small-btn" type="button" ' +
           'data-action="completed-csv-backup">Download pre-import JSON backup</button>' +
