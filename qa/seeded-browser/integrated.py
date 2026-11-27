@@ -410,6 +410,55 @@ def check_indexed_integrity(browser, base, errors):
         assert_absent(page)
 
 
+def check_ledger_import(browser, base, errors):
+    with browser.new_context(service_workers="block") as context:
+        page = context.new_page()
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.goto(base + "/index.html", wait_until="domcontentloaded")
+        fixtures = create_fixtures()
+        page.evaluate("""async ([legacy,food])=>{
+          const m=await import('./ledger-model.js'),ix=await import('./ledger-indexed-prototype.js');
+          const imp=await import('./ledger-import.js'),ev=await import('./ledger-import-evidence.js');
+          const assert=(ok,msg)=>{if(!ok)throw Error(msg);};
+          const reject=async(fn,part)=>{try{await fn();}catch(e){assert(e.message.includes(part),e.message);return;}
+            throw Error('Expected rejection: '+part);};
+          const db=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-import');
+          const clean=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-import-recovery');
+          try{
+            const doc=m.migrateLegacyWorkout(legacy);
+            await ix.initializeIndexedFixture(db,{document:doc,food});
+            const s=doc.sessions[0],e=s.exercises[0],set=e.sets[0];
+            const header='date,workout,exercise,set,kg,reps';
+            const file={name:'synthetic.csv',text:[header,[s.date,s.name,'Synthetic press',2,12,8].join(',')].join('\\n')};
+            const choice={sourceId:await imp.ledgerSourceId(file.text),row:2,sessionId:s.id,occurrenceId:e.id,
+              setId:'extra-set',completed:true,loadEvidence:'recorded',repsEvidence:'recorded'};
+            const before=await ix.readIndexedFixture(db);
+            await reject(()=>ix.applyLedgerImportFixture(db,[file],[choice],1),'confirmation');
+            await reject(()=>ix.applyLedgerImportFixture(db,[file],[],1,{confirmed:true}),'Resolve');
+            await reject(()=>ix.applyLedgerImportFixture(db,[file],[choice],1,{confirmed:true,abortAfterPut:true}),'aborted');
+            assert(JSON.stringify(await ix.readIndexedFixture(db))===JSON.stringify(before),'Import abort altered data');
+            const applied=await ix.applyLedgerImportFixture(db,[file],[choice],1,{confirmed:true});
+            assert(applied.revision===2&&applied.counts.added===1,'Import commit differs');
+            const duplicate=await ix.applyLedgerImportFixture(db,[file],[],2,{confirmed:true});
+            assert(duplicate.revision===2&&duplicate.counts.duplicates===1,'Retry wrote data');
+            const correction={name:'correction.csv',text:[header,[s.date,s.name,'Synthetic press',set.number,15,8].join(',')].join('\\n')};
+            const d={...choice,sourceId:await imp.ledgerSourceId(correction.text),setId:set.id,action:'correct',reason:'Fixture review'};
+            await reject(()=>ix.applyLedgerImportFixture(db,[correction],[d],1,{confirmed:true}),'Revision conflict');
+            await ix.applyLedgerImportFixture(db,[correction],[d],2,{confirmed:true});
+            const after=await ix.readIndexedFixture(db);
+            assert(after.revision===3&&after.document.imports.length===2,'Source archive missing');
+            assert(ev.effectiveMeasurements(after.document).get(set.id).actualKg===15,'Correction not applied');
+            assert(!m.legacyHasDiverged(after.document,legacy),'Legacy original changed');
+            const secret='Synthetic import recovery passphrase';
+            await ix.restoreIndexedFixture(clean,await ix.exportIndexedFixture(db,secret),secret);
+            const recovered=await ix.readIndexedFixture(clean);
+            assert(JSON.stringify(recovered.document)===JSON.stringify(after.document),'Import backup differs');
+            assert(JSON.stringify(recovered.food)===JSON.stringify(after.food),'Food changed');
+          }finally{db.close();clean.close();}
+        }""", [fixtures[WORKOUT_KEY], fixtures[FOOD_KEY]])
+        assert_absent(page)
+
+
 def check_batch_csv(context, base, errors):
     from playwright.sync_api import expect
 
@@ -989,6 +1038,8 @@ def smoke(repo, chromium_binary=None, headed=False):
                 findings.append("Native IndexedDB fixture: migration, concurrent revision conflict, abort rollback, legacy divergence and clean-profile recovery.")
                 check_indexed_integrity(browser, base, errors)
                 findings.append("Indexed integrity: concurrent writers, exact identity audit, partial target rejection and future database version refusal.")
+                check_ledger_import(browser, base, errors)
+                findings.append("Reviewed ledger import: confirmation, unresolved rows, abort, retry, stale revision, correction and encrypted recovery.")
                 workload = check_ledger_recovery(browser, base, errors)
                 findings.append("Encrypted ledger recovery and five-year synthetic benchmark (snapshot vs indexed): " + json.dumps(workload, sort_keys=True))
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))

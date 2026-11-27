@@ -3,6 +3,7 @@
 import {validateLedger} from './ledger-model.js';
 import {validateDiary} from './food-diary-core.js';
 import {decodeRecoveryBackup,encodeRecoveryBackup} from './ledger-recovery.js';
+import {previewLedgerImport} from './ledger-import.js';
 
 const stores=['metadata','sessions','identities'];
 const fixtureHandles=new WeakSet();
@@ -61,7 +62,7 @@ export function initializeIndexedFixture(db,input,{abortAfterPut=false}={}){
         let sets=0;
         doc.sessions.forEach((session,i)=>{sets+=addSession(tx,session,i);});
         persistMeta(tx,{revision:1,configuration:doc.configuration,catalog:doc.catalog,
-          food,sessions:doc.sessions.length,sets},done,abortAfterPut);
+          food,sessions:doc.sessions.length,sets,...(doc.imports?{imports:doc.imports}:{})},done,abortAfterPut);
       }catch(e){abort(e);}
     }
     sessions.onsuccess=finish;ids.onsuccess=finish;
@@ -97,7 +98,8 @@ export function readIndexedFixture(db){
           done(null);return;
         }
         if(!Number.isSafeInteger(meta.revision)||meta.revision<1)throw Error('Invalid revision.');
-        const document=validateLedger({version:2,configuration:meta.configuration,catalog:meta.catalog,sessions});
+        const document=validateLedger({version:2,configuration:meta.configuration,catalog:meta.catalog,sessions,
+          ...(meta.imports?{imports:meta.imports}:{})});
         const sets=sessions.reduce((n,s)=>n+s.exercises.reduce((v,e)=>v+e.sets.length,0),0);
         const occurrences=sessions.reduce((n,s)=>n+s.exercises.length,0);
         if(meta.sessions!==sessions.length||meta.sets!==sets||identityKeys.length!==sessions.length+occurrences+sets)
@@ -126,4 +128,37 @@ export async function exportIndexedFixture(db,secret){
 }
 export async function restoreIndexedFixture(db,raw,secret,options){
   return initializeIndexedFixture(db,await decodeRecoveryBackup(raw,secret),options);
+}
+
+/** Recompute a reviewed batch from the verified snapshot; revision is checked again inside the write transaction. */
+export async function applyLedgerImportFixture(db,files,decisions,expectedRevision,{confirmed=false,abortAfterPut=false}={}){
+  if(confirmed!==true)throw Error('Explicit import confirmation required.');
+  if(!Number.isSafeInteger(expectedRevision)||expectedRevision<1||expectedRevision>=Number.MAX_SAFE_INTEGER)
+    throw Error('Expected revision required.');
+  const inputs=structuredClone({files,decisions});
+  const current=await readIndexedFixture(db);
+  if(!current||current.revision!==expectedRevision)throw Error('Revision conflict; review again.');
+  const result=await previewLedgerImport(current.document,inputs.files,inputs.decisions);
+  if(result.unresolved.length)throw Error('Resolve all import rows before applying.');
+  return transaction(db,'readwrite',(tx,meta,done)=>{
+    if(!meta||meta.revision!==expectedRevision)throw Error('Revision conflict; review again.');
+    if(!result.changed){done({revision:expectedRevision,counts:result.counts});return;}
+    const before=new Map(current.document.sessions.map((s,i)=>[s.id,{session:s,index:i}]));
+    const ids=tx.objectStore('identities'),sessions=tx.objectStore('sessions');
+    let total=meta.sets;
+    for(const [i,session] of result.document.sessions.entries()){
+      const old=before.get(session.id);
+      if(!old){total+=addSession(tx,session,i);continue;}
+      if(JSON.stringify(old.session)===JSON.stringify(session))continue;
+      const prior=new Map(old.session.exercises.map(e=>[e.id,new Set(e.sets.map(s=>s.id))]));
+      for(const e of session.exercises){
+        if(!prior.has(e.id))ids.add(true,['occurrence',e.id]);
+        for(const set of e.sets)if(!prior.get(e.id)?.has(set.id)){ids.add(true,['set',set.id]);total++;}
+      }
+      sessions.put(session,old.index);
+    }
+    const revision=expectedRevision+1;
+    persistMeta(tx,{...meta,revision,catalog:result.document.catalog,imports:result.document.imports,
+      sessions:result.document.sessions.length,sets:total},()=>done({revision,counts:result.counts}),abortAfterPut);
+  });
 }
