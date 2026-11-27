@@ -1,5 +1,6 @@
 // Pure canonical workout ledger. No browser reads, writes, or live activation.
 import {validateBackup,dateFromKey} from './core.js';
+import {validateImportHistory} from './ledger-import-evidence.js';
 const fail = message => { throw Error(message); };
 const tuple = (...parts) => JSON.stringify(parts);
 const legacySession = row => tuple('legacy-session',row.date,row.templateId);
@@ -111,11 +112,12 @@ export function validateLedger(doc){
             set.id!==legacySet(raw)||set.number!==Number(raw.set)||
             set.kind!==(raw.isWarmup===true||raw.kind==='warmup'?'warmup':'working')||
             !same(set.measurement,legacyMeasurement(raw)))fail('Legacy observation differs from its original record.');
-        }else if(s.origin!=='actual')fail('Legacy sessions are immutable in this prototype.');
+        }else if(s.origin!=='actual'&&!doc.imports)fail('Legacy additions require audited import provenance.');
       }
     }
   }
   collectLegacy(doc);
+  validateImportHistory(doc);
   return structuredClone(doc);
 }
 export function recoverLegacyWorkout(doc){return collectLegacy(validateLedger(doc));}
@@ -127,6 +129,7 @@ export function legacyHasDiverged(doc,current){
 // need separate reviewed commands in a later phase; no silent removal or replacement.
 export function validateAppend(previous,next){
   const before=validateLedger(previous),after=validateLedger(next);
+  if(!same(before.imports??[],after.imports??[]))fail('Import history requires a reviewed import command.');
   if(!same(before.configuration,after.configuration)||!same(collectLegacy(before),collectLegacy(after)))
     fail('Original configuration or legacy history changed.');
   for(const field of ['catalog','sessions']){

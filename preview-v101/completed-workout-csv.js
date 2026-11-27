@@ -13,7 +13,7 @@ const csvCell = value => {
   return '"'+text.replace(/"/g,'""')+'"';
 };
 
-function splitCsv(text) {
+export function splitCsv(text) {
   if (typeof text !== 'string' || !text.trim() || text.length > MAX_SIZE)
     throw Error('Choose a nonempty completed-workout CSV smaller than 1 MB.');
   const rows=[]; let row=[],field='',quoted=false,finished=false;
