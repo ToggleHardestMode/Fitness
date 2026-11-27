@@ -62,3 +62,21 @@ test('matching legacy measurement is a duplicate; audit identity tampering is re
   const forged=structuredClone(result.document);forged.imports[0].id='sha256:'+'0'.repeat(64);
   await assert.rejects(previewLedgerImport(forged,[f]),/fingerprint mismatch/);
 });
+
+test('multi-file batch is all-or-nothing and stable identified CSV can be reviewed without manual row mapping',async()=>{
+  const old=migrateLegacyWorkout(fixture()),f=file(),g=file('',3);
+  const d=await review(old,f),d2=await review(old,g,{setId:'third-set',loadEvidence:'unknown'});
+  const unresolved=await previewLedgerImport(old,[f,g],[d]);
+  assert.equal(unresolved.document,null);assert.equal(unresolved.unresolved.length,1);
+  const batch=await previewLedgerImport(old,[f,g],[d,d2]);
+  assert.equal(batch.counts.added,2);assert.equal(batch.document.imports.length,2);
+  assert.equal(batch.document.sessions[0].exercises[0].sets[2].measurement.actualKg,null);
+  const identified=structuredClone(batch.document);
+  identified.catalog.push({id:'catalog-ex',name:'Synthetic pull',muscle:null});
+  const csv={name:'identified.csv',text:
+    'date,workout,exercise,set,kg,reps,session_id,occurrence_id,set_id,exercise_id,completed,load_basis,rep_basis,load_evidence,reps_evidence\n'+
+    '2026-01-01,Independent,Synthetic pull,1,12,8,session-2,occ-2,set-2,catalog-ex,true,kg_total,reps,recorded,recorded\n'};
+  const result=await previewLedgerImport(identified,[csv]);
+  assert.equal(result.counts.added,1);assert.equal(result.document.sessions.length,2);
+  assert.deepEqual(recoverLegacyWorkout(result.document),fixture());
+});

@@ -50,7 +50,7 @@ export async function previewLedgerImport(input,files,decisions=[]){
         const measurement=readImportMeasurement(row,choice),number=Number(row.set);
         const existing=index.get(choice.setId);
         const kind=choice.kind??(row.kind||undefined);
-        const audit={row:line,setId:choice.setId,completed:true,after:measurement};
+        const audit={row:line,setId:choice.setId,completed:true,after:structuredClone(measurement)};
         if(existing){
           if(existing.session.id!==choice.sessionId||existing.occurrence.id!==choice.occurrenceId||
             existing.session.date!==row.date||existing.set.number!==number||
@@ -59,13 +59,13 @@ export async function previewLedgerImport(input,files,decisions=[]){
             (choice.repUnit&&choice.repUnit!==existing.occurrence.repUnit)||
             (kind&&kind!==existing.set.kind))fail('Existing set identity, unit or kind conflict.');
           Object.assign(audit,{sessionId:existing.session.id,occurrenceId:existing.occurrence.id,
-            identity:existing.occurrence.identity,loadUnit:existing.occurrence.loadUnit,repUnit:existing.occurrence.repUnit,kind:existing.set.kind});
+            identity:structuredClone(existing.occurrence.identity),loadUnit:existing.occurrence.loadUnit,repUnit:existing.occurrence.repUnit,kind:existing.set.kind});
           const before=values.get(choice.setId);
           if(duplicateMeasurement(before,measurement)){
             source.rows.push({...audit,action:'duplicate'});counts.duplicates++;continue;
           }
           if(choice.action!=='correct'||!text(choice.reason))fail('Conflicting observation; explicit correction and reason required.');
-          source.rows.push({...audit,action:'correct',before,reason:choice.reason});values.set(choice.setId,measurement);
+          source.rows.push({...audit,action:'correct',before:structuredClone(before),reason:choice.reason});values.set(choice.setId,measurement);
           counts.corrected++;continue;
         }
         if(choice.action==='correct')fail('Correction target does not exist.');
@@ -88,7 +88,7 @@ export async function previewLedgerImport(input,files,decisions=[]){
         if(occurrence.sets.some(s=>s.number===number))fail('Set ordinal already exists; identify the saved set.');
         // Validate candidate before retaining any row mutation.
         const set={id:choice.setId,number,completed:true,kind:kind??'working',measurement};
-        Object.assign(audit,{sessionId:session.id,occurrenceId:occurrence.id,identity:occurrence.identity,
+        Object.assign(audit,{sessionId:session.id,occurrenceId:occurrence.id,identity:structuredClone(occurrence.identity),
           loadUnit:occurrence.loadUnit,repUnit:occurrence.repUnit,kind:set.kind});
         const candidate=structuredClone(doc),target=candidate.sessions.find(s=>s.id===session.id);
         if(choice.newExercise){
