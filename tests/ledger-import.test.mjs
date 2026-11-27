@@ -52,3 +52,13 @@ test('explicit independent same-day substitution; no name matching or transferre
   assert.deepEqual(r.document.configuration,doc.configuration);
   assert.deepEqual(r.document.sessions[1].exercises[0].identity,d.identity);
 });
+
+test('matching legacy measurement is a duplicate; audit identity tampering is rejected',async()=>{
+  const doc=migrateLegacyWorkout(fixture()),f=file('10',1),id=doc.sessions[0].exercises[0].sets[0].id;
+  const result=await previewLedgerImport(doc,[f],[await review(doc,f,{setId:id})]);
+  assert.equal(result.counts.duplicates,1);assert.equal(result.counts.corrected,0);
+  const changed=structuredClone(result.document);changed.imports[0].rows[0].occurrenceId='wrong';
+  assert.throws(()=>validateLedger(changed),/target/);
+  const forged=structuredClone(result.document);forged.imports[0].id='sha256:'+'0'.repeat(64);
+  await assert.rejects(previewLedgerImport(forged,[f]),/fingerprint mismatch/);
+});

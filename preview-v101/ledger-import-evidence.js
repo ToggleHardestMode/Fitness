@@ -23,6 +23,19 @@ export function readImportMeasurement(row,choice){
     rpe:numeric(row.rpe,1,10,false),loadEvidence,repsEvidence};
 }
 export function sameMeasurement(a,b){return fields.every(k=>a[k]===b[k]);}
+// Legacy-recorded and recorded describe the same numeric observation for duplicate detection only.
+export function duplicateMeasurement(a,b){
+  const normalize=x=>x==='legacy_recorded'?'recorded':x;
+  return fields.every(k=>normalize(a[k])===normalize(b[k]));
+}
+export async function ledgerSourceId(raw,cryptoImpl=globalThis.crypto){
+  const hash=await cryptoImpl.subtle.digest('SHA-256',new TextEncoder().encode(raw));
+  return 'sha256:'+Array.from(new Uint8Array(hash),x=>x.toString(16).padStart(2,'0')).join('');
+}
+export async function verifyImportFingerprints(doc,cryptoImpl=globalThis.crypto){
+  for(const source of doc.imports??[])
+    if(await ledgerSourceId(source.text,cryptoImpl)!==source.id)fail('Import source fingerprint mismatch.');
+}
 export function ledgerSetIndex(doc){
   const result=new Map();
   for(const session of doc.sessions)for(const occurrence of session.exercises)for(const set of occurrence.sets)
@@ -40,6 +53,7 @@ export function validateImportHistory(doc){
   if(!Array.isArray(doc.imports)||doc.imports.length>5000)fail('Invalid import source archive.');
   const sets=ledgerSetIndex(doc),values=new Map([...sets].map(([id,x])=>[id,x.set.measurement]));
   const hashes=new Set(),texts=new Set(),added=new Set();let bytes=0;
+  const declaredAdds=new Set(doc.imports.flatMap(s=>Array.isArray(s?.rows)?s.rows.filter(e=>e?.action==='add').map(e=>e.setId):[]));
   for(const source of doc.imports){
     if(!source||!/^sha256:[0-9a-f]{64}$/.test(source.id)||hashes.has(source.id)||texts.has(source.text)||
       !text(source.name,255)||typeof source.text!=='string'||(bytes+=source.text.length)>10_000_000)
@@ -52,7 +66,13 @@ export function validateImportHistory(doc){
       if(event.action==='skip'){if(!text(event.reason))fail('Skip reason required.');continue;}
       const target=sets.get(event.setId),row=rows[i];
       if(!target||target.session.date!==row.date||target.set.number!==Number(row.set)||
+        target.session.id!==event.sessionId||target.occurrence.id!==event.occurrenceId||
+        !same(target.occurrence.identity,event.identity)||target.occurrence.loadUnit!==event.loadUnit||
+        target.occurrence.repUnit!==event.repUnit||target.set.kind!==event.kind||
+        (row.completed!==undefined&&row.completed!==''&&row.completed!=='true')||
         (row.completed!=='true'&&event.completed!==true))fail('Invalid import target or completion.');
+      if(event.action!=='add'&&declaredAdds.has(event.setId)&&!added.has(event.setId))
+        fail('Import event precedes original observation.');
       const measurement=readImportMeasurement(row,event.after??{});
       if(!sameMeasurement(measurement,event.after??{}))fail('Import measurement does not match source evidence.');
       const current=values.get(event.setId);
@@ -61,10 +81,10 @@ export function validateImportHistory(doc){
           fail('Invalid imported original observation.');
         added.add(event.setId);
       }else if(event.action==='duplicate'){
-        if(!sameMeasurement(current,measurement))fail('Duplicate does not match accepted observation.');
+        if(!duplicateMeasurement(current,measurement))fail('Duplicate does not match accepted observation.');
       }else{
         if(!text(event.reason)||!event.before||!sameMeasurement(current,event.before)||
-          sameMeasurement(current,measurement))fail('Invalid audited correction.');
+          duplicateMeasurement(current,measurement))fail('Invalid audited correction.');
         values.set(event.setId,measurement);
       }
     }

@@ -2,6 +2,7 @@
 import {decryptBoth,FILE_FORMAT} from './encrypted-backup-core.js';
 import {migrateLegacyWorkout,validateLedger} from './ledger-model.js';
 import {validateDiary} from './food-diary-core.js';
+import {verifyImportFingerprints} from './ledger-import-evidence.js';
 
 export const RECOVERY_FORMAT='fitnesspilot-encrypted-ledger-fixture-v1';
 const ITERATIONS=310000,MAX_PLAIN=10_000_000,MAX_FILE=16_000_000;
@@ -38,7 +39,9 @@ function checked(input){
 }
 export async function encodeRecoveryBackup(input,secret,cryptoImpl=globalThis.crypto){
   passphrase(secret);
-  const data=checked(input),plain=encoder.encode(JSON.stringify(data)),c=engine(cryptoImpl);
+  const data=checked(input),c=engine(cryptoImpl);
+  await verifyImportFingerprints(data.document,c);
+  const plain=encoder.encode(JSON.stringify(data));
   if(plain.byteLength>MAX_PLAIN)throw Error('Combined records exceed the 10 MB prototype encryption limit.');
   const salt=c.getRandomValues(new Uint8Array(16)),iv=c.getRandomValues(new Uint8Array(12));
   const key=await derive(secret,salt,c);
@@ -65,5 +68,7 @@ export async function decodeRecoveryBackup(raw,secret,cryptoImpl=globalThis.cryp
   let data;
   try{data=JSON.parse(decoder.decode(decrypted));}
   catch{throw Error('Decrypted backup contains invalid JSON.');}
-  return checked(data);
+  const result=checked(data);
+  await verifyImportFingerprints(result.document,c);
+  return result;
 }

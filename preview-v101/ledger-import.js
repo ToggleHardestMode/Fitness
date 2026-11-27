@@ -2,17 +2,14 @@
 // File hash identifies exact source text, not a semantic workout.
 import {validateLedger} from './ledger-model.js';
 import {splitCsv} from './completed-workout-csv.js';
-import {readImportMeasurement,effectiveMeasurements,ledgerSetIndex,sameMeasurement} from './ledger-import-evidence.js';
+import {readImportMeasurement,effectiveMeasurements,ledgerSetIndex,duplicateMeasurement,ledgerSourceId,verifyImportFingerprints} from './ledger-import-evidence.js';
+export {ledgerSourceId};
 const fail=m=>{throw Error(m);};
 const text=(v,max=1000)=>typeof v==='string'&&v.trim()&&v.length<=max;
 const equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-export async function ledgerSourceId(raw){
-  const bytes=new TextEncoder().encode(raw);
-  const hash=await globalThis.crypto.subtle.digest('SHA-256',bytes);
-  return 'sha256:'+Array.from(new Uint8Array(hash),x=>x.toString(16).padStart(2,'0')).join('');
-}
 export async function previewLedgerImport(input,files,decisions=[]){
   const doc=validateLedger(input),counts={added:0,duplicates:0,corrected:0,skipped:0,unresolved:0};
+  await verifyImportFingerprints(doc);
   if(!Array.isArray(files)||!files.length||files.length>20||!Array.isArray(decisions)||decisions.length>2000)
     fail('Choose 1–20 CSV files and at most 2,000 row decisions.');
   const choices=new Map();
@@ -52,15 +49,19 @@ export async function previewLedgerImport(input,files,decisions=[]){
         if(!/^\d+$/.test(row.set)||Number(row.set)<1||Number(row.set)>1000)fail('Invalid set ordinal.');
         const measurement=readImportMeasurement(row,choice),number=Number(row.set);
         const existing=index.get(choice.setId);
+        const kind=choice.kind??(row.kind||undefined);
         const audit={row:line,setId:choice.setId,completed:true,after:measurement};
         if(existing){
           if(existing.session.id!==choice.sessionId||existing.occurrence.id!==choice.occurrenceId||
             existing.session.date!==row.date||existing.set.number!==number||
             (choice.identity&&!equal(choice.identity,existing.occurrence.identity))||
             (choice.loadUnit&&choice.loadUnit!==existing.occurrence.loadUnit)||
-            (choice.repUnit&&choice.repUnit!==existing.occurrence.repUnit))fail('Existing set identity or unit conflict.');
+            (choice.repUnit&&choice.repUnit!==existing.occurrence.repUnit)||
+            (kind&&kind!==existing.set.kind))fail('Existing set identity, unit or kind conflict.');
+          Object.assign(audit,{sessionId:existing.session.id,occurrenceId:existing.occurrence.id,
+            identity:existing.occurrence.identity,loadUnit:existing.occurrence.loadUnit,repUnit:existing.occurrence.repUnit,kind:existing.set.kind});
           const before=values.get(choice.setId);
-          if(sameMeasurement(before,measurement)){
+          if(duplicateMeasurement(before,measurement)){
             source.rows.push({...audit,action:'duplicate'});counts.duplicates++;continue;
           }
           if(choice.action!=='correct'||!text(choice.reason))fail('Conflicting observation; explicit correction and reason required.');
@@ -86,7 +87,9 @@ export async function previewLedgerImport(input,files,decisions=[]){
         }
         if(occurrence.sets.some(s=>s.number===number))fail('Set ordinal already exists; identify the saved set.');
         // Validate candidate before retaining any row mutation.
-        const set={id:choice.setId,number,completed:true,kind:choice.kind??'working',measurement};
+        const set={id:choice.setId,number,completed:true,kind:kind??'working',measurement};
+        Object.assign(audit,{sessionId:session.id,occurrenceId:occurrence.id,identity:occurrence.identity,
+          loadUnit:occurrence.loadUnit,repUnit:occurrence.repUnit,kind:set.kind});
         const candidate=structuredClone(doc),target=candidate.sessions.find(s=>s.id===session.id);
         if(choice.newExercise){
           if(choice.identity?.kind!=='catalog'||choice.newExercise.id!==choice.identity.exerciseId||
