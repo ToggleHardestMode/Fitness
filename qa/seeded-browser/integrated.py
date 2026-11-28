@@ -528,6 +528,36 @@ def check_ledger_review_ui(browser, base, errors):
         page.get_by_text("Committed revision 3.", exact=False).wait_for()
         assert "2 sessions" in page.locator("#revision").inner_text()
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        # Group only explicitly selected source records, never the similarly named other source slot.
+        page.locator("#files").set_input_files({
+            "name": "fixture-group.csv", "mimeType": "text/csv",
+            "buffer": b"date,workout,exercise,exercise_index,set,kg,reps,notes\n2026-01-01,Synthetic Upper,Synthetic Press,1,3,12,8,first\n2026-01-01,Synthetic Upper,Synthetic Press,1,4,12,8,second\n2026-01-01,Synthetic Upper,Synthetic Press,2,5,12,8,other slot\n"
+        })
+        row = page.locator('article[data-row="2"]')
+        row.get_by_label("Decision", exact=True).select_option("match")
+        row.get_by_label("Load evidence", exact=True).select_option("recorded")
+        row.get_by_label("Repetition evidence", exact=True).select_option("recorded")
+        row.get_by_label("Confirm this set was completed").check()
+        row.get_by_label("Set kind", exact=True).select_option("working")
+        row.get_by_label("Existing performed occurrence").select_option("0")
+        row.get_by_text("Review additional rows together", exact=True).click()
+        assert row.locator("details input[type=checkbox]").count() == 1
+        assert not row.locator("details input[type=checkbox]").first.is_checked()
+        row.locator("details input[type=checkbox]").first.check()
+        row.get_by_role("button", name="Save row decision").click()
+        row.wait_for(state="detached")
+        assert "Add 2" in page.locator("#summary").inner_text()
+        assert "Unresolved 1" in page.locator("#summary").inner_text()
+        assert page.locator("#apply").is_disabled()
+        other = page.locator('article[data-row="4"]')
+        other.get_by_label("Decision", exact=True).select_option("skip")
+        other.get_by_label("Reason (required for correction or skip)").fill("Different source slot")
+        other.get_by_role("button", name="Save row decision").click()
+        other.wait_for(state="detached")
+        page.locator("#confirm").check()
+        page.locator("#apply").click()
+        page.get_by_text("Committed revision 4.", exact=False).wait_for()
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         assert_absent(page)
 
 
@@ -1113,7 +1143,7 @@ def smoke(repo, chromium_binary=None, headed=False):
                 check_ledger_import(browser, base, errors)
                 findings.append("Reviewed ledger import: confirmation, unresolved rows, abort, retry, stale revision, correction and encrypted recovery.")
                 check_ledger_review_ui(browser, base, errors)
-                findings.append("Standalone fixture review UI: explicit mapping, correction evidence, confirm, retry, reload and mobile overflow.")
+                findings.append("Standalone fixture review UI: explicit mapping, correction evidence, confirm, retry, reload and mobile overflow. Explicit group review: selected rows only, different source slot unresolved.")
                 workload = check_ledger_recovery(browser, base, errors)
                 findings.append("Encrypted ledger recovery and five-year synthetic benchmark (snapshot vs indexed): " + json.dumps(workload, sort_keys=True))
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
