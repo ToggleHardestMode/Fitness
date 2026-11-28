@@ -679,6 +679,58 @@ def check_ledger_review_ui(browser, base, errors):
         assert_absent(page)
 
 
+def check_recovery_capacity(browser, base, errors):
+    with browser.new_context(service_workers="block") as context:
+        page = context.new_page()
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.goto(base + "/index.html", wait_until="domcontentloaded")
+        fixtures = create_fixtures()
+        result = page.evaluate("""async ([legacy,food])=>{
+          const m=await import('./ledger-model.js'),ix=await import('./ledger-indexed-prototype.js');
+          const r=await import('./ledger-recovery.js'),imp=await import('./ledger-import.js');
+          const assert=(ok,msg)=>{if(!ok)throw Error(msg);};
+          const reject=async(fn,part)=>{try{await fn();}catch(e){assert(e.message.includes(part),e.message);return;}
+            throw Error('Expected rejection: '+part);};
+          const db=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-capacity');
+          const empty=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-capacity-empty');
+          const restore=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-capacity-restore');
+          const secret='Synthetic capacity recovery passphrase';
+          try{
+            let doc=m.migrateLegacyWorkout(legacy);
+            const source=async i=>{
+              const file={name:'synthetic-'+i+'.csv',text:'date,workout,exercise,set,kg,reps,notes\\n2026-01-01,Synthetic,Press,1,10,8,'+i+'界'.repeat(900000)};
+              const decision={sourceId:await imp.ledgerSourceId(file.text),row:2,action:'skip',reason:'Synthetic capacity fixture'};
+              return {file,decision};
+            };
+            for(let i=0;i<3;i++){
+              const {file,decision}=await source(i);
+              const reviewed=await imp.previewLedgerImport(doc,[file],[decision]);
+              assert(!reviewed.unresolved.length,'Synthetic source not accepted');
+              doc=reviewed.document;
+            }
+            const acceptedBytes=r.assertRecoveryCapacity({document:doc,food});
+            await ix.initializeIndexedFixture(db,{document:doc,food});
+            const before=await ix.readIndexedFixture(db),{file,decision}=await source(3);
+            const candidate=await imp.previewLedgerImport(before.document,[file],[decision]);
+            assert(candidate.changed&&!candidate.unresolved.length,'Candidate must be structurally valid');
+            const rejectedBytes=new TextEncoder().encode(JSON.stringify({document:candidate.document,food:before.food})).byteLength;
+            assert(rejectedBytes>10000000,'Candidate below recovery ceiling');
+            await reject(()=>ix.applyLedgerImportFixture(db,[file],[decision],1,{confirmed:true}),'10 MB');
+            assert(JSON.stringify(await ix.readIndexedFixture(db))===JSON.stringify(before),'Capacity refusal changed records');
+            await reject(()=>ix.initializeIndexedFixture(empty,{document:candidate.document,food}),'10 MB');
+            assert(await ix.readIndexedFixture(empty)===null,'Capacity refusal initialized fixture');
+            const backup=await ix.exportIndexedFixture(db,secret);
+            await ix.restoreIndexedFixture(restore,backup,secret);
+            const restored=await ix.readIndexedFixture(restore);
+            assert(JSON.stringify(restored.document)===JSON.stringify(before.document),'Near-limit recovery lost records');
+            assert(JSON.stringify(restored.food)===JSON.stringify(before.food),'Near-limit recovery lost food');
+            return {acceptedBytes,rejectedBytes,encryptedBytes:new TextEncoder().encode(backup).byteLength};
+          }finally{db.close();empty.close();restore.close();}
+        }""", [fixtures[WORKOUT_KEY], fixtures[FOOD_KEY]])
+        assert_absent(page)
+        return result
+
+
 def check_batch_csv(context, base, errors):
     from playwright.sync_api import expect
 
@@ -1262,6 +1314,8 @@ def smoke(repo, chromium_binary=None, headed=False):
                 findings.append("Reviewed ledger import: confirmation, unresolved rows, abort, retry, stale revision, correction and encrypted recovery.")
                 check_ledger_review_ui(browser, base, errors)
                 findings.append("Standalone fixture review UI: explicit mapping, correction evidence, confirm, retry, reload and mobile overflow. Explicit group review: selected rows only, different source slot unresolved. Canonical analytics: accepted correction, extra sets, independent sessions, unknown load, read-only revision, 320/390/428px. Fixture editor: extra set, unchecked omission, correction, confirmation, explicit substitution, abort, stale revision, retry, encrypted recovery and analytics readback.")
+                capacity = check_recovery_capacity(browser, base, errors)
+                findings.append("Combined recovery capacity: " + json.dumps(capacity, sort_keys=True))
                 workload = check_ledger_recovery(browser, base, errors)
                 findings.append("Encrypted ledger recovery and five-year synthetic benchmark (snapshot vs indexed): " + json.dumps(workload, sort_keys=True))
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))

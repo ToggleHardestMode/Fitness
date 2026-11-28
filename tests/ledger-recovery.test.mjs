@@ -4,7 +4,7 @@ import {webcrypto} from 'node:crypto';
 import {emptyState} from '../preview-v101/core.js';
 import {encryptBoth,decryptBoth} from '../preview-v101/encrypted-backup-core.js';
 import {migrateLegacyWorkout,recoverLegacyWorkout} from '../preview-v101/ledger-model.js';
-import {encodeRecoveryBackup,decodeRecoveryBackup,RECOVERY_FORMAT} from '../preview-v101/ledger-recovery.js';
+import {encodeRecoveryBackup,decodeRecoveryBackup,RECOVERY_FORMAT,assertRecoveryCapacity} from '../preview-v101/ledger-recovery.js';
 const secret='Synthetic recovery passphrase only';
 const fixture=()=>({workout:{...emptyState(),templates:[{id:'test',name:'Synthetic plan',day:0,
   exercises:[{name:'Press',muscle:'Chest',sets:1,min:8,max:12,rest:90}]}],
@@ -48,4 +48,23 @@ test('wrong passphrase, tampering, malformed encoding and downgraded envelope re
   await assert.rejects(decryptBoth(file,secret,webcrypto),/Unknown/);
   const data=candidate();data.food.entries[0].servings=-1;
   await assert.rejects(encodeRecoveryBackup(data,secret,webcrypto),/Servings/);
+});
+
+test('combined recovery preflight uses normalized UTF-8 bytes, including source and food',async()=>{
+  const data=candidate();
+  const decoded=await decodeRecoveryBackup(await encodeRecoveryBackup(data,secret,webcrypto),secret,webcrypto);
+  assert.equal(assertRecoveryCapacity(data),new TextEncoder().encode(JSON.stringify(decoded)).byteLength);
+  // Four valid skipped sources are below the archive character ceiling but above the encrypted byte ceiling.
+  data.document.imports=[];
+  for(let i=0;i<4;i++){
+    const text='date,workout,exercise,set,kg,reps,notes\n2026-01-01,Synthetic,Press,1,10,8,'+i+'界'.repeat(900000);
+    const hash=await webcrypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+    data.document.imports.push({id:'sha256:'+Buffer.from(hash).toString('hex'),name:'synthetic-'+i+'.csv',text,
+      rows:[{row:2,action:'skip',reason:'Synthetic capacity fixture'}]});
+  }
+  const last=data.document.imports.pop();
+  assert.ok(assertRecoveryCapacity(data)<10000000);
+  data.document.imports.push(last);
+  assert.throws(()=>assertRecoveryCapacity(data),/10 MB/);
+  await assert.rejects(encodeRecoveryBackup(data,secret,webcrypto),/10 MB/);
 });
