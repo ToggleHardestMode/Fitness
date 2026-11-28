@@ -496,6 +496,38 @@ def check_ledger_review_ui(browser, base, errors):
         page.locator("#demo").click()
         page.get_by_text("All source files already reconciled.", exact=False).wait_for()
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        # Exercise real file input, explicit new movement, unknown load and an audited skip.
+        page.locator("#files").set_input_files({
+            "name": "fixture-new.csv", "mimeType": "text/csv",
+            "buffer": b"date,workout,exercise,set,kg,reps\n2026-01-02,Synthetic New,Synthetic Pull,1,,8\n2026-01-02,Synthetic New,Unconfirmed,2,12,8\n"
+        })
+        row = page.locator('article[data-row="2"]')
+        row.get_by_label("Decision", exact=True).select_option("new")
+        row.get_by_label("Load evidence", exact=True).select_option("unknown")
+        row.get_by_label("Repetition evidence", exact=True).select_option("recorded")
+        row.get_by_label("Confirm this set was completed").check()
+        row.get_by_label("Set kind", exact=True).select_option("working")
+        row.get_by_label("Session", exact=True).select_option("new")
+        row.get_by_label("New session key (reuse explicitly for rows in the same session)").fill("fixture-session")
+        row.get_by_label("New occurrence key (reuse explicitly for sets of the same movement)").fill("fixture-pull")
+        row.get_by_label("Actual movement").select_option("new")
+        row.get_by_label("New movement name").fill("Synthetic Pull")
+        row.get_by_label("Load basis").select_option("unknown")
+        row.get_by_label("Repetition basis").select_option("reps")
+        row.get_by_role("button", name="Save row decision").click()
+        row.wait_for(state="detached")
+        row = page.locator('article[data-row="3"]')
+        row.get_by_label("Decision", exact=True).select_option("skip")
+        row.get_by_label("Reason (required for correction or skip)").fill("Completion not established")
+        row.get_by_role("button", name="Save row decision").click()
+        row.wait_for(state="detached")
+        assert "Skip 1" in page.locator("#summary").inner_text()
+        assert "Completion not established" in page.locator("#audit").inner_text()
+        page.locator("#confirm").check()
+        page.locator("#apply").click()
+        page.get_by_text("Committed revision 3.", exact=False).wait_for()
+        assert "2 sessions" in page.locator("#revision").inner_text()
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         assert_absent(page)
 
 

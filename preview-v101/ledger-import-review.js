@@ -31,7 +31,7 @@ async function run(fn){
 }
 async function setFiles(next){
   invalidate();files=[];rows.clear();choices.clear();$('exceptions').replaceChildren();
-  $('summary').textContent='No review yet.';
+  $('summary').textContent='No review yet.';$('sources').textContent='No files selected.';
   if(next.length>20)throw Error('Choose at most 20 files.');
   let bytes=0,count=0;
   for(const f of next){
@@ -46,13 +46,13 @@ async function setFiles(next){
   if(files.length)await preview();
 }
 function select(label,options,parent,value){
-  const labelNode=el('label',label),input=el('select');
+  const labelNode=el('label',label),input=el('select');input.setAttribute('aria-label',label);
   for(const [v,t] of options){const opt=el('option',t);opt.value=v;input.append(opt);}
   if(value!==undefined)input.value=value;
   labelNode.append(input);parent.append(labelNode);return input;
 }
 function input(label,parent,value=''){
-  const l=el('label',label),n=el('input');n.value=value;l.append(n);parent.append(l);return n;
+  const l=el('label',label),n=el('input');n.setAttribute('aria-label',label);n.value=value;l.append(n);parent.append(l);return n;
 }
 const evidence=[['','Choose evidence'],...['recorded','confirmed','unknown','planned','assumed'].map(x=>[x,x])];
 const loadUnits=['unknown','kg_per_dumbbell','kg_total','kg_stack','bodyweight'];
@@ -186,13 +186,15 @@ async function preview(){
   controls();
 }
 function revision(){$('revision').textContent='Fixture revision '+snapshot.revision+' · '+snapshot.document.sessions.length+' sessions · '+(snapshot.document.imports??[]).length+' sources';}
-$('demo').addEventListener('click',()=>run(()=>setFiles(demo())));
+$('demo').addEventListener('click',()=>run(()=>{$('files').value='';return setFiles(demo());}));
 $('files').addEventListener('change',()=>run(async()=>{
   const selected=[...$('files').files];
+  await setFiles([]);
   if(selected.length>20||selected.reduce((n,f)=>n+f.size,0)>5_000_000)throw Error('Choose up to 20 files and 5 MB.');
   await setFiles(await Promise.all(selected.map(async f=>({name:f.name,text:await f.text()}))));
 }));
 $('preview').addEventListener('click',()=>run(preview));
+$('refresh').addEventListener('click',()=>run(async()=>{invalidate();snapshot=await readIndexedFixture(db);revision();choices.clear();if(files.length)await preview();}));
 $('confirm').addEventListener('change',controls);
 $('apply').addEventListener('click',()=>run(async()=>{
   if(!reviewed||!$('confirm').checked||reviewed.result.unresolved.length)throw Error('Review and confirm first.');
