@@ -410,6 +410,99 @@ def check_indexed_integrity(browser, base, errors):
         assert_absent(page)
 
 
+def check_indexed_version_boundary(browser, base, errors):
+    # Real IDB versionchange/blocked/abort events, not a simulated compatibility flag.
+    with browser.new_context(service_workers="block") as context:
+        page = context.new_page()
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.goto(base + "/index.html", wait_until="domcontentloaded")
+        fixtures = create_fixtures()
+        page.evaluate("""async ([legacy,food])=>{
+          const m=await import('./ledger-model.js'),ix=await import('./ledger-indexed-prototype.js');
+          const assert=(ok,msg)=>{if(!ok)throw Error(msg);};
+          const reject=async(fn,part)=>{try{await fn();}catch(e){assert(e.message.includes(part),e.message);return;}
+            throw Error('Expected rejection: '+part);};
+          const name='fitnesspilot-preview-ledger-indexed-fixture-release-boundary';
+          const secret='Synthetic version recovery passphrase';
+          const openRaw=version=>new Promise((resolve,reject)=>{
+            const request=indexedDB.open(name,version);
+            request.onsuccess=()=>resolve(request.result);
+            request.onerror=()=>reject(request.error);
+            request.onblocked=()=>reject(Error('Raw open blocked unexpectedly'));
+          });
+          const rawSnapshot=db=>new Promise((resolve,reject)=>{
+            const tx=db.transaction(['metadata','sessions','identities'],'readonly');
+            const meta=tx.objectStore('metadata').get('ledger'),sessions=tx.objectStore('sessions').getAll();
+            const identities=tx.objectStore('identities').getAllKeys();
+            tx.oncomplete=()=>resolve({meta:meta.result,sessions:sessions.result,identities:identities.result});
+            tx.onabort=()=>reject(tx.error);
+          });
+          const beginUpgrade=abortUpgrade=>{
+            let notify;
+            const blocked=new Promise(resolve=>{notify=resolve;});
+            const finished=new Promise(resolve=>{
+              const request=indexedDB.open(name,2);
+              request.onblocked=()=>notify();
+              request.onupgradeneeded=()=>{
+                if(abortUpgrade){
+                  // Deliberate fixture mutation must roll back with the version change.
+                  request.transaction.objectStore('metadata').put({revision:999},'ledger');
+                  request.transaction.abort();
+                }
+              };
+              request.onsuccess=()=>resolve({db:request.result});
+              request.onerror=()=>resolve({error:request.error});
+            });
+            return {blocked,finished};
+          };
+          const doc=m.migrateLegacyWorkout(legacy);
+          const first=await ix.openIndexedLedgerFixture(name);
+          const recovery=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-release-recovery');
+          let holder,reopened,newer;
+          try{
+            await ix.initializeIndexedFixture(first,{document:doc,food});
+            const baseline=await ix.readIndexedFixture(first);
+            const rawBefore=await rawSnapshot(first);
+            const backup=await ix.exportIndexedFixture(first,secret);
+            const candidate={id:'stale-session',date:legacy.logs[0].date,name:'Synthetic actual',origin:'actual',planId:null,
+              exercises:[{id:'stale-occurrence',identity:{kind:'plan',templateId:legacy.templates[0].id,exerciseIndex:0},
+                plannedIndex:null,loadUnit:'unknown',repUnit:'reps',sets:[{id:'stale-set',number:1,completed:true,
+                  kind:'working',measurement:{actualKg:null,actualReps:8,rpe:null,loadEvidence:'unknown',repsEvidence:'recorded'}}]}]};
+            holder=await openRaw(1);
+            holder.onversionchange=()=>{}; // Deliberately uncooperative old client.
+            const aborted=beginUpgrade(true);
+            await aborted.blocked;
+            await reject(()=>ix.readIndexedFixture(first),'Open a disposable');
+            await reject(()=>ix.appendIndexedFixture(first,candidate,1),'Open a disposable');
+            await reject(()=>ix.applyLedgerImportFixture(first,[],[],1,{confirmed:true}),'Open a disposable');
+            assert(JSON.stringify(await rawSnapshot(holder))===JSON.stringify(rawBefore),'Blocked upgrade changed records');
+            holder.close();holder=null;
+            const failed=await aborted.finished;
+            assert(failed.error?.name==='AbortError','Expected failed version upgrade');
+            reopened=await ix.openIndexedLedgerFixture(name);
+            assert(reopened.version===1,'Aborted upgrade changed version');
+            assert(JSON.stringify(await ix.readIndexedFixture(reopened))===JSON.stringify(baseline),'Aborted upgrade changed baseline');
+            holder=await openRaw(1);holder.onversionchange=()=>{};
+            const upgrade=beginUpgrade(false);
+            await upgrade.blocked;
+            await reject(()=>ix.appendIndexedFixture(reopened,candidate,1),'Open a disposable');
+            await reject(()=>ix.applyLedgerImportFixture(reopened,[],[],1,{confirmed:true}),'Open a disposable');
+            holder.close();holder=null;
+            const completed=await upgrade.finished;
+            assert(completed.db?.version===2,'Version upgrade failed');newer=completed.db;
+            assert(JSON.stringify(await rawSnapshot(newer))===JSON.stringify(rawBefore),'Version upgrade changed records');
+            let refused=false;
+            try{await ix.openIndexedLedgerFixture(name);}catch(e){refused=e.name==='VersionError';}
+            assert(refused,'Old code opened newer database');
+            await ix.restoreIndexedFixture(recovery,backup,secret);
+            const recovered=await ix.readIndexedFixture(recovery);
+            assert(JSON.stringify(recovered.document)===JSON.stringify(baseline.document),'Recovery lost workout records');
+            assert(JSON.stringify(recovered.food)===JSON.stringify(baseline.food),'Recovery lost food records');
+          }finally{holder?.close();newer?.close();reopened?.close();first.close();recovery.close();}
+        }""", [fixtures[WORKOUT_KEY], fixtures[FOOD_KEY]])
+        assert_absent(page)
+
+
 def check_ledger_import(browser, base, errors):
     with browser.new_context(service_workers="block") as context:
         page = context.new_page()
@@ -1392,6 +1485,8 @@ def smoke(repo, chromium_binary=None, headed=False):
                 check_ledger_prototype(browser, base, errors)
                 findings.append("Native IndexedDB fixture: migration, concurrent revision conflict, abort rollback, legacy divergence and clean-profile recovery.")
                 check_indexed_integrity(browser, base, errors)
+                check_indexed_version_boundary(browser, base, errors)
+                findings.append("Indexed release boundary: blocked upgrade, stale write rejection, aborted version rollback, future version refusal and independent encrypted recovery.")
                 findings.append("Indexed integrity: concurrent writers, exact identity audit, partial target rejection and future database version refusal.")
                 check_ledger_import(browser, base, errors)
                 findings.append("Reviewed ledger import: confirmation, unresolved rows, abort, retry, stale revision, correction and encrypted recovery.")
