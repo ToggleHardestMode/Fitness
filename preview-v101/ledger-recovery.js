@@ -37,12 +37,20 @@ async function derive(secret,salt,c){
 function checked(input){
   return {document:validateLedger(input?.document),food:validateDiary(input?.food)};
 }
+function recoveryPlain(data){
+  const plain=encoder.encode(JSON.stringify(data));
+  if(plain.byteLength>MAX_PLAIN)throw Error('Combined records exceed the 10 MB prototype encryption limit.');
+  return plain;
+}
+// Exact same normalized JSON and UTF-8 bytes as encrypted export, not an estimate.
+export function assertRecoveryCapacity(input){
+  return recoveryPlain(checked(input)).byteLength;
+}
 export async function encodeRecoveryBackup(input,secret,cryptoImpl=globalThis.crypto){
   passphrase(secret);
   const data=checked(input),c=engine(cryptoImpl);
   await verifyImportFingerprints(data.document,c);
-  const plain=encoder.encode(JSON.stringify(data));
-  if(plain.byteLength>MAX_PLAIN)throw Error('Combined records exceed the 10 MB prototype encryption limit.');
+  const plain=recoveryPlain(data);
   const salt=c.getRandomValues(new Uint8Array(16)),iv=c.getRandomValues(new Uint8Array(12));
   const key=await derive(secret,salt,c);
   const encrypted=await c.subtle.encrypt({name:'AES-GCM',iv,additionalData:aad},key,plain);

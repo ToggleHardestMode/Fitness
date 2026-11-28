@@ -2,7 +2,7 @@
 // no live imports, no new live keys, no editing or automatic identity matching.
 import {validateLedger} from './ledger-model.js';
 import {validateDiary} from './food-diary-core.js';
-import {decodeRecoveryBackup,encodeRecoveryBackup} from './ledger-recovery.js';
+import {decodeRecoveryBackup,encodeRecoveryBackup,assertRecoveryCapacity} from './ledger-recovery.js';
 import {previewLedgerImport} from './ledger-import.js';
 
 const stores=['metadata','sessions','identities'];
@@ -50,6 +50,7 @@ function persistMeta(tx,meta,done,abortAfterPut){
 }
 export function initializeIndexedFixture(db,input,{abortAfterPut=false}={}){
   const doc=validateLedger(input.document),food=validateDiary(input.food);
+  assertRecoveryCapacity({document:doc,food});
   return transaction(db,'readwrite',(tx,current,done,abort)=>{
     if(current!==undefined)throw Error('Initialization requires an empty fixture.');
     // A missing metadata row alone does not prove that a target is empty.
@@ -140,6 +141,9 @@ export async function applyLedgerImportFixture(db,files,decisions,expectedRevisi
   if(!current||current.revision!==expectedRevision)throw Error('Revision conflict; review again.');
   const result=await previewLedgerImport(current.document,inputs.files,inputs.decisions);
   if(result.unresolved.length)throw Error('Resolve all import rows before applying.');
+  // The editor shares this path. A candidate that cannot be exported must not be committed.
+  // Revision is checked again below, so a concurrent writer cannot invalidate this preflight.
+  if(result.changed)assertRecoveryCapacity({document:result.document,food:current.food});
   return transaction(db,'readwrite',(tx,meta,done)=>{
     if(!meta||meta.revision!==expectedRevision)throw Error('Revision conflict; review again.');
     if(!result.changed){done({revision:expectedRevision,counts:result.counts});return;}
