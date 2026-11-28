@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>FitnessPilot | Workout editor fixture</title><link rel="stylesheet" href="./ledger-import-review.css">
+<script type="module" src="./ledger-editor-view.js"></script></head>
+<body><main><header><p class="eyebrow">FITNESSPILOT / DISPOSABLE PROTOTYPE</p><h1>Flexible workout editor</h1>
+<p>Synthetic records only. Records what was performed, not authorization to train. No progression advice or clearance changes.</p></header>
+<section><button id="reload" type="button">Load / reload fixture</button><p id="revision"></p></section>
+<fieldset id="editor" disabled>
+<section><h2>1. Session and movement</h2><label for="session">Session</label><select id="session"></select>
+<div id="new-session"><label for="date">Date</label><input id="date" type="date"><label for="name">Session name</label><input id="name" maxlength="120">
+<label for="plan">Original plan (optional)</label><select id="plan"></select></div>
+<label for="occurrence">Performed occurrence</label><select id="occurrence"></select>
+<div id="new-occurrence"><label for="slot">Prescribed slot (optional)</label><select id="slot"></select>
+<label for="movement">Actual movement</label><select id="movement"></select>
+<label for="new-name">New movement name (only for new catalog movement)</label><input id="new-name" maxlength="80">
+<label for="load-unit">Load basis</label><select id="load-unit"></select><label for="rep-unit">Repetition basis</label><select id="rep-unit"></select></div>
+<p id="context"></p></section>
+<section><h2>2. Completed sets</h2><label for="mode">Action</label><select id="mode"><option value="add">Add completed sets</option><option value="correct">Correct one saved measurement</option></select>
+<div id="correction" hidden><label for="saved-set">Saved set</label><select id="saved-set"></select><p id="before"></p>
+<label for="reason">Correction reason</label><input id="reason" maxlength="1000"></div>
+<div id="sets"></div><button id="add-set" type="button">Add draft set</button><p>Unchecked sets are not saved. Unknown measurements must be blank.</p></section>
+<section><h2>3. Review and save</h2><button id="review" type="button">Review changes</button><div id="summary"></div>
+<label class="check"><input id="confirm" type="checkbox" disabled> Confirm reviewed changes to disposable fixture only</label>
+<button id="save" type="button" disabled>Save reviewed workout</button></section></fieldset>
+<p id="status" role="status" aria-live="polite"></p></main></body></html>
