@@ -13,7 +13,7 @@ import threading
 
 from fixture import FOOD_KEY, WORKOUT_KEY, LAST_DAY, create_fixtures, validate_fixture
 from verify import check_repo, get_store, select_day, set_seed
-from offline import UpgradeHandler, check_offline_upgrade
+from offline import UpgradeHandler, check_offline_upgrade, check_coherent_release
 from train_ui_30 import reference_fixture, run_mode
 
 
@@ -1499,6 +1499,7 @@ def smoke(repo, chromium_binary=None, headed=False):
                 workload = check_ledger_recovery(browser, base, errors)
                 findings.append("Encrypted ledger recovery and five-year synthetic benchmark (snapshot vs indexed): " + json.dumps(workload, sort_keys=True))
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))
+                findings.extend(check_coherent_release(browser, base, errors))
                 assert not errors, "Browser JavaScript errors: " + " | ".join(errors[:5])
                 train_baseline = [
                     run_mode(browser, base.removesuffix('/preview-v101'), benchmark_fixture, mode)
