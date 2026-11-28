@@ -22,7 +22,7 @@ function displayJourney(){
 }
 function render(){
   for(const id of ['dashboard','volume','journey','logbook'])$(id).replaceChildren();
-  report=ledgerAnalytics(doc,$('week').value);
+  report=null;report=ledgerAnalytics(doc,$('week').value);
   const {current:w,previous:p}=report;
   line($('dashboard'),'Lifetime working sets: '+report.lifetime);
   line($('dashboard'),'This week: '+w.completed+' working sets · '+w.sessions+' sessions · '+w.loggedDays+' days');

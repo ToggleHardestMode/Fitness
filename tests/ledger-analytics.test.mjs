@@ -61,3 +61,13 @@ test('controlled comparison requires same explicit identity, basis, reps and RPE
   const next=await previewLedgerImport(result.document,[other]);
   assert.equal(ledgerAnalytics(next.document,'2026-01-05').insights.length,0);
 });
+
+test('approved linked history remains visible before first set in new plan',()=>{
+  const old=original();old.templates=[plan,{...plan,id:'next',name:'New plan'}];
+  old.exerciseEquivalences=[{id:'link',from:{templateId:'plan',exerciseIndex:0},to:{templateId:'next',exerciseIndex:0},approvedDate:'2026-01-06'}];
+  const doc=migrateLegacyWorkout(old),a=ledgerAnalytics(doc,'2026-01-05');
+  const key=identityKey({kind:'plan',templateId:'next',exerciseIndex:0});
+  assert.ok(a.movements.some(x=>x.key===key));
+  assert.equal(a.journey(key).length,1);assert.equal(a.journey(key)[0].linked,true);
+  assert.equal(a.lifetime,1);
+});

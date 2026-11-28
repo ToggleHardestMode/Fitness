@@ -36,7 +36,17 @@ export function ledgerObservations(input){
         technique:raw.technique??'',difficulty:raw.difficulty??'',notes:raw.notes??''});
     }
   }
-  return {configuration:doc.configuration,rows:rows.sort(sort)};
+  rows.sort(sort);
+  const movements=new Map(rows.map(r=>[r.key,{key:r.key,name:r.exercise,identity:r.identity}]));
+  // A newly approved plan rename may have linked history before its first recorded set.
+  const include=(identity,name)=>{
+    const key=identityKey(identity);
+    if(!movements.has(key))movements.set(key,{key,name,identity});
+  };
+  for(const t of doc.configuration.templates)t.exercises.forEach((e,exerciseIndex)=>
+    include({kind:'plan',templateId:t.id,exerciseIndex},e.name));
+  for(const e of doc.catalog)include({kind:'catalog',exerciseId:e.id},e.name);
+  return {configuration:doc.configuration,rows,movements:[...movements.values()]};
 }
 function week(model,monday){
   if(dateFromKey(monday).getDay()!==1)throw Error('Choose a Monday for the training week.');
@@ -75,7 +85,7 @@ function week(model,monday){
     timed:[...timed].map(([unit,value])=>({unit,value}))};
 }
 function journey(model,key){
-  const exact=model.rows.find(r=>r.key===key);
+  const exact=model.movements.find(r=>r.key===key);
   if(!exact)return [];
   const linked=new Set(exact.identity.kind==='plan'?linkedSources(model.configuration,exact.identity.templateId,exact.identity.exerciseIndex)
     .map(i=>identityKey({kind:'plan',...i})):[]);
@@ -133,8 +143,7 @@ function comparable(model,current,previous){
 export function ledgerAnalytics(input,monday){
   const model=ledgerObservations(input),current=week(model,monday),previous=week(model,addDays(monday,-7));
   const lifetime=model.rows.filter(working).length;
-  const movements=[...new Map(model.rows.map(r=>[r.key,{key:r.key,name:r.exercise,identity:r.identity}])).values()];
-  return {lifetime,milestone:setMilestoneProgress(lifetime),current,previous,movements,
+  return {lifetime,milestone:setMilestoneProgress(lifetime),current,previous,movements:model.movements,
     insights:comparable(model,current,previous),journey:key=>journey(model,key),
     logbook:logbook(model,current.from,current.to)};
 }
