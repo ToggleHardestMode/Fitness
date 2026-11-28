@@ -559,6 +559,24 @@ def check_ledger_review_ui(browser, base, errors):
         page.get_by_text("Committed revision 4.", exact=False).wait_for()
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         assert_absent(page)
+        # Read the same committed fixture through the standalone analytics UI.
+        page.goto(base + "/ledger-analytics.html", wait_until="domcontentloaded")
+        page.locator("#refresh").click()
+        page.get_by_text("Read-only fixture revision 4", exact=True).wait_for()
+        assert "Lifetime working sets: 5" in page.locator("#dashboard").inner_text()
+        assert "This week: 5 working sets" in page.locator("#dashboard").inner_text()
+        assert "Original: 10 kg" in page.locator("#logbook").inner_text()
+        assert "11 kg" in page.locator("#logbook").inner_text()
+        assert "Missing actual load/reps: 1" in page.locator("#volume").inner_text()
+        assert "No controlled comparable load pair." in page.locator("#dashboard").inner_text()
+        assert page.locator("#logbook article").count() == 2
+        assert "corrected" in page.locator("#journey").inner_text()
+        for width in [320, 390, 428]:
+            page.set_viewport_size({"width": width, "height": 844})
+            assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        assert_absent(page)
+        page.locator("#refresh").click()
+        page.get_by_text("Read-only fixture revision 4", exact=True).wait_for()
 
 
 def check_batch_csv(context, base, errors):
@@ -1143,7 +1161,7 @@ def smoke(repo, chromium_binary=None, headed=False):
                 check_ledger_import(browser, base, errors)
                 findings.append("Reviewed ledger import: confirmation, unresolved rows, abort, retry, stale revision, correction and encrypted recovery.")
                 check_ledger_review_ui(browser, base, errors)
-                findings.append("Standalone fixture review UI: explicit mapping, correction evidence, confirm, retry, reload and mobile overflow. Explicit group review: selected rows only, different source slot unresolved.")
+                findings.append("Standalone fixture review UI: explicit mapping, correction evidence, confirm, retry, reload and mobile overflow. Explicit group review: selected rows only, different source slot unresolved. Canonical analytics: accepted correction, extra sets, independent sessions, unknown load, read-only revision, 320/390/428px.")
                 workload = check_ledger_recovery(browser, base, errors)
                 findings.append("Encrypted ledger recovery and five-year synthetic benchmark (snapshot vs indexed): " + json.dumps(workload, sort_keys=True))
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))

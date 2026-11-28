@@ -5,7 +5,7 @@ const V101_ARMS = Object.freeze({
   'DB Hammer Curl (SS1)': 'Biceps',
   'Supported DB Overhead Triceps Ext (SS1)': 'Triceps'
 });
-const directMuscle = (template, exercise) => {
+export const directMuscle = (template, exercise) => {
   if (exercise.muscle !== 'Arms') return exercise.muscle;
   if (exercise.muscleDetail === 'Biceps' || exercise.muscleDetail === 'Triceps') return exercise.muscleDetail;
   if (template?.sourceVersion === 'V10.1 Home' || template?.name?.startsWith('V10.1 Home —')) {
