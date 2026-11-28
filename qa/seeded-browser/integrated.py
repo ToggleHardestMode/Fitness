@@ -731,6 +731,89 @@ def check_recovery_capacity(browser, base, errors):
         return result
 
 
+def check_migration_rehearsal(browser, base, errors):
+    with browser.new_context(service_workers="block") as context:
+        page = context.new_page()
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.goto(base + "/index.html", wait_until="domcontentloaded")
+        fixtures = create_fixtures()
+        page.evaluate("""async ([workout,food])=>{
+          const m=await import('./ledger-migration-fixture.js'),ix=await import('./ledger-indexed-prototype.js');
+          const assert=(ok,msg)=>{if(!ok)throw Error(msg);};
+          const reject=async(fn,part)=>{try{await fn();}catch(e){assert(e.message.includes(part),e.message);return;}
+            throw Error('Expected rejection: '+part);};
+          const keys=m.MIGRATION_FIXTURE_KEYS,raw={workout:JSON.stringify(workout),food:JSON.stringify(food)};
+          for(const kind of ['workout','food'])localStorage.setItem(keys[kind],raw[kind]);
+          const name='fitnesspilot-preview-ledger-indexed-fixture-migration-main';
+          const db=await ix.openIndexedLedgerFixture(name);
+          try{
+            const first=await m.inspectMigrationFixture(db,localStorage);
+            assert(first.status==='ready','Expected ready');
+            await reject(()=>m.initializeMigrationFixture(db,localStorage,first.review),'confirmation');
+            localStorage.setItem(keys.food,'{}');
+            await reject(()=>m.initializeMigrationFixture(db,localStorage,first.review,{confirmed:true}),'changed since review');
+            assert(await ix.readIndexedFixture(db)===null,'Stale review wrote records');
+            localStorage.setItem(keys.food,raw.food);
+            await reject(()=>m.initializeMigrationFixture(db,localStorage,first.review,{confirmed:true,abortAfterPut:true}),'aborted');
+            assert(await ix.readIndexedFixture(db)===null,'Interrupted initialization persisted');
+            assert(localStorage.getItem(keys.workout)===raw.workout&&localStorage.getItem(keys.food)===raw.food,'Source altered');
+            const done=await m.initializeMigrationFixture(db,localStorage,first.review,{confirmed:true});
+            assert(done.status==='aligned'&&done.committed&&done.revision===1,'Migration commit differs');
+            const retry=await m.initializeMigrationFixture(db,localStorage,first.review,{confirmed:true});
+            assert(retry.status==='aligned'&&!retry.committed&&retry.revision===1,'Retry wrote data');
+            const after=await ix.readIndexedFixture(db);
+            const model=await import('./ledger-model.js');
+            assert(!model.legacyHasDiverged(after.document,workout),'Workout differs');
+            assert(JSON.stringify(after.food)===JSON.stringify((await import('./food-diary-core.js')).validateDiary(food)),'Food differs');
+          }finally{db.close();}
+          // Simulated change at the post-commit source read, after initial review was checked.
+          const late=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-migration-late');
+          try{
+            const first=await m.inspectMigrationFixture(late,localStorage);
+            let calls=0;
+            const reader={getItem:key=>{
+              calls++;
+              return calls>2&&key===keys.food?'{}':localStorage.getItem(key);
+            }};
+            const done=await m.initializeMigrationFixture(late,reader,first.review,{confirmed:true});
+            assert(done.committed&&done.status==='source-unavailable','Late source change not detected');
+            assert((await ix.readIndexedFixture(late)).revision===1,'Committed target lost');
+          }finally{late.close();}
+        }""", [fixtures[WORKOUT_KEY], fixtures[FOOD_KEY]])
+        # A separate tab represents an old writer using ONLY synthetic source keys.
+        old = context.new_page()
+        old.goto(base + "/index.html", wait_until="domcontentloaded")
+        old.evaluate("""async ()=>{
+          const {MIGRATION_FIXTURE_KEYS:k}=await import('./ledger-migration-fixture.js');
+          const w=JSON.parse(localStorage.getItem(k.workout)),f=JSON.parse(localStorage.getItem(k.food));
+          w.logs[0].kg=w.logs[0].kg===99?98:99;f.entries[0].servings=f.entries[0].servings===2?3:2;
+          localStorage.setItem(k.workout,JSON.stringify(w));localStorage.setItem(k.food,JSON.stringify(f));
+        }""")
+        page.reload(wait_until="domcontentloaded")
+        page.evaluate("""async ()=>{
+          const m=await import('./ledger-migration-fixture.js'),ix=await import('./ledger-indexed-prototype.js');
+          const db=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-migration-main');
+          const assert=(ok,msg)=>{if(!ok)throw Error(msg);};
+          try{
+            const before=await ix.readIndexedFixture(db),report=await m.inspectMigrationFixture(db,localStorage);
+            assert(report.status==='diverged'&&report.changed.join(',')==='workout,food','Old writer divergence missed');
+            assert(report.revision===1,'Unexpected revision');
+            const k=m.MIGRATION_FIXTURE_KEYS,raw={workout:localStorage.getItem(k.workout),food:localStorage.getItem(k.food)};
+            let refused=false;
+            try{await m.initializeMigrationFixture(db,localStorage,raw,{confirmed:true});}catch(e){refused=e.message.includes('diverged');}
+            assert(refused,'Divergent source was accepted');
+            assert(JSON.stringify(await ix.readIndexedFixture(db))===JSON.stringify(before),'Old writer or retry altered target');
+            assert(localStorage.getItem(k.workout)===raw.workout&&localStorage.getItem(k.food)===raw.food,'Divergent source overwritten');
+            localStorage.removeItem(k.food);
+            const missing=await m.inspectMigrationFixture(db,localStorage);
+            assert(missing.status==='source-unavailable'&&missing.unavailable[0]==='food','Missing source treated as empty');
+            assert(JSON.stringify(await ix.readIndexedFixture(db))===JSON.stringify(before),'Missing source altered target');
+          }finally{db.close();}
+        }""")
+        assert_absent(page)
+        assert_absent(old)
+
+
 def check_batch_csv(context, base, errors):
     from playwright.sync_api import expect
 
@@ -1314,6 +1397,8 @@ def smoke(repo, chromium_binary=None, headed=False):
                 findings.append("Reviewed ledger import: confirmation, unresolved rows, abort, retry, stale revision, correction and encrypted recovery.")
                 check_ledger_review_ui(browser, base, errors)
                 findings.append("Standalone fixture review UI: explicit mapping, correction evidence, confirm, retry, reload and mobile overflow. Explicit group review: selected rows only, different source slot unresolved. Canonical analytics: accepted correction, extra sets, independent sessions, unknown load, read-only revision, 320/390/428px. Fixture editor: extra set, unchecked omission, correction, confirmation, explicit substitution, abort, stale revision, retry, encrypted recovery and analytics readback.")
+                check_migration_rehearsal(browser, base, errors)
+                findings.append("Migration rehearsal: stale review, atomic abort, retry, post-commit source change, separate-tab divergence and missing source; no live keys.")
                 capacity = check_recovery_capacity(browser, base, errors)
                 findings.append("Combined recovery capacity: " + json.dumps(capacity, sort_keys=True))
                 workload = check_ledger_recovery(browser, base, errors)
