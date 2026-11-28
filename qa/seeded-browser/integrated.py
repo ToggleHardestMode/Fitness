@@ -617,6 +617,66 @@ def check_ledger_review_ui(browser, base, errors):
         assert "14 kg" in page.locator("#logbook").inner_text()
         assert "Original: 10 kg" in page.locator("#logbook").inner_text()
         assert_absent(page)
+        # Explicit substitution on an independent same-day session, with the prescription unchanged.
+        page.goto(base + "/ledger-editor.html", wait_until="domcontentloaded")
+        page.locator("#reload").click()
+        page.get_by_text("Fixture revision 6", exact=True).wait_for()
+        page.locator("#date").fill("2026-01-01")
+        page.locator("#name").fill("Synthetic independent")
+        page.locator("#plan").select_option(index=1)
+        page.locator("#slot").select_option("0")
+        page.locator("#movement").select_option("new")
+        page.locator("#new-name").fill("Synthetic substitute")
+        page.locator("#load-unit").select_option("kg_total")
+        page.locator("#rep-unit").select_option("reps")
+        row=page.locator("#sets article").first
+        row.get_by_label("Actual kg", exact=True).fill("9")
+        row.get_by_label("Actual repetitions or seconds").fill("8")
+        row.get_by_label("Load evidence", exact=True).select_option("recorded")
+        row.get_by_label("Repetition evidence").select_option("recorded")
+        row.get_by_label("Confirm performed set").check()
+        page.locator("#review").click()
+        page.get_by_text("Add 1 · Correct 0 · Unchecked 0", exact=True).wait_for()
+        assert "Synthetic substitute" in page.locator("#summary").inner_text()
+        assert "Original prescription: Synthetic Press" in page.locator("#summary").inner_text()
+        assert "[PT Review]" in page.locator("#context").inner_text()
+        page.locator("#confirm").check()
+        page.locator("#save").click()
+        page.get_by_text("Committed revision 7.", exact=True).wait_for()
+        page.evaluate("""async ()=>{
+          const ix=await import('./ledger-indexed-prototype.js'),ed=await import('./ledger-editor.js');
+          const db=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-review-ui');
+          const recovery=await ix.openIndexedLedgerFixture('fitnesspilot-preview-ledger-indexed-fixture-editor-recovery');
+          const assert=(ok,msg)=>{if(!ok)throw Error(msg);};
+          const reject=async(fn,part)=>{try{await fn();}catch(e){assert(e.message.includes(part),e.message);return;}
+            throw Error('Expected rejection: '+part);};
+          try{
+            const before=await ix.readIndexedFixture(db),s=before.document.sessions.find(s=>s.name==='Synthetic independent'),e=s.exercises[0];
+            const draft={commandId:'editor-fixture-abort',mode:'add',sessionId:s.id,occurrenceId:e.id,
+              entries:[{number:2,completed:true,kg:'9',reps:'8',rpe:'',kind:'working',loadEvidence:'recorded',repsEvidence:'recorded'}]};
+            const reviewed=await ed.reviewEditorCommand(before.document,draft);
+            await reject(()=>ed.saveEditorCommand(db,reviewed,7,{confirmed:true,abortAfterPut:true}),'aborted');
+            assert(JSON.stringify(await ix.readIndexedFixture(db))===JSON.stringify(before),'Editor abort changed records');
+            await ed.saveEditorCommand(db,reviewed,7,{confirmed:true});
+            const after=await ix.readIndexedFixture(db);
+            assert(after.revision===8,'Editor revision mismatch');
+            await reject(()=>ed.saveEditorCommand(db,reviewed,7,{confirmed:true}),'Revision conflict');
+            const retry=await ed.saveEditorCommand(db,reviewed,8,{confirmed:true});
+            assert(retry.revision===8&&retry.counts.duplicates===1,'Editor retry wrote data');
+            assert(JSON.stringify(before.document.configuration)===JSON.stringify(after.document.configuration),'Editor changed configuration');
+            assert(JSON.stringify(before.food)===JSON.stringify(after.food),'Editor changed food');
+            const secret='Synthetic editor recovery passphrase';
+            await ix.restoreIndexedFixture(recovery,await ix.exportIndexedFixture(db,secret),secret);
+            const restored=await ix.readIndexedFixture(recovery);
+            assert(JSON.stringify(restored.document)===JSON.stringify(after.document),'Editor recovery differs');
+          }finally{db.close();recovery.close();}
+        }""")
+        page.goto(base + "/ledger-analytics.html", wait_until="domcontentloaded")
+        page.locator("#refresh").click()
+        page.get_by_text("Read-only fixture revision 8", exact=True).wait_for()
+        assert "Lifetime working sets: 8" in page.locator("#dashboard").inner_text()
+        assert "Synthetic substitute" in page.locator("#logbook").inner_text()
+        assert_absent(page)
 
 
 def check_batch_csv(context, base, errors):
@@ -1201,7 +1261,7 @@ def smoke(repo, chromium_binary=None, headed=False):
                 check_ledger_import(browser, base, errors)
                 findings.append("Reviewed ledger import: confirmation, unresolved rows, abort, retry, stale revision, correction and encrypted recovery.")
                 check_ledger_review_ui(browser, base, errors)
-                findings.append("Standalone fixture review UI: explicit mapping, correction evidence, confirm, retry, reload and mobile overflow. Explicit group review: selected rows only, different source slot unresolved. Canonical analytics: accepted correction, extra sets, independent sessions, unknown load, read-only revision, 320/390/428px. Fixture editor: extra set, unchecked omission, correction, confirmation, analytics readback.")
+                findings.append("Standalone fixture review UI: explicit mapping, correction evidence, confirm, retry, reload and mobile overflow. Explicit group review: selected rows only, different source slot unresolved. Canonical analytics: accepted correction, extra sets, independent sessions, unknown load, read-only revision, 320/390/428px. Fixture editor: extra set, unchecked omission, correction, confirmation, explicit substitution, abort, stale revision, retry, encrypted recovery and analytics readback.")
                 workload = check_ledger_recovery(browser, base, errors)
                 findings.append("Encrypted ledger recovery and five-year synthetic benchmark (snapshot vs indexed): " + json.dumps(workload, sort_keys=True))
                 findings.extend(check_offline_upgrade(browser, base, fixtures, errors))

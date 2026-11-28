@@ -111,8 +111,18 @@ $('review').onclick=()=>run(async()=>{
   const result=await reviewEditorCommand(snapshot.document,d);
   review={...result,revision:snapshot.revision};
   const counts=result.result.counts;$('summary').append(el('p','Add '+counts.added+' · Correct '+counts.corrected+' · Unchecked '+result.omitted));
-  const source=result.result.document.imports.at(-1);
-  for(const e of source.rows){const p=el('p',e.action+' · '+e.setId+' · '+JSON.stringify(e.after)+(e.before?' · Before '+JSON.stringify(e.before)+' · '+e.reason:''));$('summary').append(p);}
+  const source=result.result.document.imports.at(-1),savedSession=result.result.document.sessions.find(s=>s.id===result.sessionId);
+  const savedOccurrence=savedSession.exercises.find(e=>e.id===result.occurrenceId),ref=savedOccurrence.identity;
+  const movement=ref.kind==='catalog'?result.result.document.catalog.find(e=>e.id===ref.exerciseId)?.name:actualName(ref);
+  const originalPlan=result.result.document.configuration.templates.find(t=>t.id===savedSession.planId);
+  const prescribed=originalPlan?.exercises[savedOccurrence.plannedIndex];
+  $('summary').append(el('p',savedSession.date+' · '+savedSession.name+' · '+movement+' · '+savedOccurrence.loadUnit+' / '+savedOccurrence.repUnit),
+    el('p',prescribed?'Original prescription: '+prescribed.name+' · '+prescribed.sets+' sets (unchanged).':'No prescribed slot.'));
+  for(const e of source.rows){
+    const set=savedOccurrence.sets.find(s=>s.id===e.setId);
+    const p=el('p',e.action+' · Set '+set.number+' · '+e.kind+' · '+JSON.stringify(e.after)+(e.before?' · Before '+JSON.stringify(e.before)+' · '+e.reason:''));
+    $('summary').append(p);
+  }
 });
 $('confirm').onchange=controls;
 // Confirmation is not a draft edit. Stop its bubbling invalidation.
