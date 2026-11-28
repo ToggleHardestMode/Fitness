@@ -4,6 +4,7 @@ import {migrateLegacyWorkout} from './ledger-model.js';
 import {splitCsv} from './completed-workout-csv.js';
 import {previewLedgerImport,ledgerSourceId} from './ledger-import.js';
 import {effectiveMeasurements} from './ledger-import-evidence.js';
+import {sameReviewGroup,expandGroupReview} from './ledger-group-review.js';
 import {openIndexedLedgerFixture,initializeIndexedFixture,readIndexedFixture,applyLedgerImportFixture} from './ledger-indexed-prototype.js';
 const $=id=>document.getElementById(id);
 const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
@@ -58,7 +59,7 @@ const evidence=[['','Choose evidence'],...['recorded','confirmed','unknown','pla
 const loadUnits=['unknown','kg_per_dumbbell','kg_total','kg_stack','bodyweight'];
 const repUnits=['unknown','reps','reps_per_side','seconds','seconds_per_side'];
 const options=items=>[['','Choose'],...items.map(x=>[x,x])];
-function exception(problem){
+function exception(problem,unresolved){
   const k=key(problem.sourceId,problem.row),source=rows.get(k),row=source.row,prior=choices.get(k);
   const card=el('article');card.dataset.row=String(problem.row);card.dataset.source=source.file;
   card.append(el('h3',row.date+' · '+row.exercise+' · set '+row.set),
@@ -104,6 +105,22 @@ function exception(problem){
     sessionKey.parentElement.hidden=session.value!=='new';name.parentElement.hidden=identity.value!=='new';
   };
   for(const n of [action,session,identity])n.addEventListener('change',visibility);visibility();
+  const group=el('details');group.append(el('summary','Review additional rows together'));
+  const groupNote=el('p','Select each additional row explicitly. Only add/match decisions can be grouped; corrections and skips stay individual.');
+  group.append(groupNote);
+  const peers=[];
+  for(const p of unresolved){
+    const pk=key(p.sourceId,p.row);
+    if(pk===k||choices.has(pk))continue;
+    const item=rows.get(pk);
+    if(!sameReviewGroup({sourceId:problem.sourceId,row},{sourceId:p.sourceId,row:item.row}))continue;
+    const label=el('label');label.className='check';
+    const check=el('input');check.type='checkbox';
+    label.append(check,el('span','Record '+p.row+' · set '+item.row.set+' · kg: '+(item.row.kg||'blank')+
+      ' · reps: '+(item.row.reps||'blank')+' · notes: '+(item.row.notes||'none')));
+    group.append(label);peers.push({check,problem:p,row:item.row});
+  }
+  if(peers.length)card.append(group);
   const save=el('button','Save row decision');save.type='button';card.append(save);
   save.addEventListener('click',()=>run(async()=>{
     const d={sourceId:problem.sourceId,row:problem.row,uiAction:action.value,reason:reason.value.trim()};
@@ -131,7 +148,11 @@ function exception(problem){
         if(identity.value==='new')d.newExercise={id:eid,name:nm,muscle:null};
       }
     }
-    choices.set(k,d);invalidate();await preview();
+    const selected=peers.filter(p=>p.check.checked).map(p=>({sourceId:p.problem.sourceId,record:p.problem.row,row:p.row}));
+    const additions=expandGroupReview(d,{sourceId:problem.sourceId,record:problem.row,row},selected,
+      action.value==='match'&&target.value!==''?targets[Number(target.value)].e:null);
+    for(const decision of additions)choices.set(key(decision.sourceId,decision.row),decision);
+    invalidate();await preview();
   }));
   return card;
 }
@@ -155,7 +176,7 @@ async function preview(){
   const result=await previewLedgerImport(snapshot.document,files,decisions);
   const c=result.counts;
   $('summary').textContent='Add '+c.added+' · Duplicate '+c.duplicates+' · Correct '+c.corrected+' · Skip '+c.skipped+' · Unresolved '+c.unresolved;
-  $('exceptions').replaceChildren(...result.unresolved.map(exception));
+  $('exceptions').replaceChildren(...result.unresolved.map(p=>exception(p,result.unresolved)));
   // Resolved manual decisions stay inspectable and can be undone before apply.
   for(const [k,d] of choices){
     if(result.unresolved.some(p=>key(p.sourceId,p.row)===k))continue;
