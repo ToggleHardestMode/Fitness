@@ -786,7 +786,7 @@ def check_migration_rehearsal(browser, base, errors):
         old.evaluate("""async ()=>{
           const {MIGRATION_FIXTURE_KEYS:k}=await import('./ledger-migration-fixture.js');
           const w=JSON.parse(localStorage.getItem(k.workout)),f=JSON.parse(localStorage.getItem(k.food));
-          w.logs[0].kg=99;f.entries[0].servings=2;
+          w.logs[0].kg=w.logs[0].kg===99?98:99;f.entries[0].servings=f.entries[0].servings===2?3:2;
           localStorage.setItem(k.workout,JSON.stringify(w));localStorage.setItem(k.food,JSON.stringify(f));
         }""")
         page.reload(wait_until="domcontentloaded")

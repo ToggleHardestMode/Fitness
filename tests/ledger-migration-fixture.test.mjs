@@ -14,7 +14,7 @@ test('migration alignment compares both original sources, not current session co
  document.sessions.push({id:'actual',date:'2026-01-01',name:'Independent',origin:'actual',planId:null,
    exercises:[{id:'occ',identity:{kind:'plan',templateId:'plan',exerciseIndex:0},plannedIndex:null,loadUnit:'unknown',repUnit:'reps',
      sets:[{id:'extra',number:1,completed:true,kind:'working',measurement:{actualKg:null,actualReps:8,rpe:null,loadEvidence:'unknown',repsEvidence:'recorded'}}]}]});
- const snapshot={revision:2,document,food:f};
+ const snapshot={revision:2,document,food:structuredClone(f)};
  assert.equal(classifyMigrationFixture(null,raw()).status,'ready');
  assert.deepEqual(classifyMigrationFixture(snapshot,raw()),{status:'aligned',revision:2,changed:[]});
  w.logs[0].kg=11;f.entries[0].servings=2;
